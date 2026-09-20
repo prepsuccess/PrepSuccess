@@ -1,0 +1,1963 @@
+PREPSUCCESS
+COMPLETE PRODUCT REQUIREMENTS DOCUMENT
+ALL PHASES, ALL FEATURES, ALL TICKETS
+
+SECTION 1. INTRODUCTION AND VISION
+
+PrepSuccess is a placement readiness and 
+preparation platform built for college 
+students who are approaching campus 
+placements or off campus job hunting and do 
+not have a clear, structured way to know 
+where they stand. The product exists to 
+answer one question for the student, phrased 
+as simply as possible: where do I stand 
+right now, and what should I do next.
+
+Every year, large numbers of students, 
+especially from colleges that are not tier 
+one institutions, prepare for placements 
+using scattered and disconnected sources. 
+They watch YouTube playlists, follow random 
+test series, borrow resume templates from 
+seniors, and rarely get a single honest 
+signal that tells them, in one place, how 
+ready they actually are. PrepSuccess is 
+built to be that single place.
+
+The product starts intentionally small. The 
+first release, referred to throughout this 
+document and throughout the Jira project as 
+Phase 1, is nothing more than a self 
+assessment and a dashboard. A student signs 
+up, fills a short profile, takes an 
+assessment covering technical skills, soft 
+skills, and aptitude, and is shown a 
+readiness score broken down by category 
+along with their weakest specific skills. 
+That is the entire loop for the first 
+release. Nothing about interview question 
+banks, nothing about mentors, nothing about 
+payments, and nothing about artificial 
+intelligence is part of that first release.
+
+From that small, validated core, the product 
+grows in three additional phases. Phase 2 
+adds an interview question bank organized by 
+company, role, and topic, along with 
+bookmarking and progress tracking over time. 
+Phase 3 adds one to one mentorship, meaning 
+a student can book a video call with a 
+verified developer or mentor, chat with that 
+mentor, and receive session notes that turn 
+into concrete next steps on their dashboard. 
+Phase 4 expands the platform to new user 
+segments, namely freshers who have already 
+graduated and working employees who want to 
+benchmark themselves, and layers in 
+artificial intelligence to generate 
+personalized recommendations, resume 
+feedback, and a downloadable personalized 
+readiness report.
+
+This document is the single, complete 
+requirements reference for the whole 
+project. It exists so that any engineer, 
+designer, or reviewer can read one file and 
+understand exactly what is being built, why 
+it is being built in this order, how every 
+piece of data and every screen fits 
+together, and how the work is tracked day to 
+day inside Jira. Everything described here 
+has already been broken into epics, tickets, 
+story point estimates, fix versions, and 
+sprints inside the SCRUM project on the 
+team's Jira site, and this document cross 
+references those tickets throughout so that 
+the plain language explanation here and the 
+tracked work there never drift apart.
+
+SECTION 2. THE PROBLEM BEING SOLVED
+
+College students, particularly those 
+studying subjects such as BCA and similar 
+computer science adjacent programs, face 
+three overlapping problems on the road to 
+placement. The first is a lack of clarity 
+about their own skill gaps. A student might 
+feel generally unprepared without being able 
+to say specifically that their data 
+structures knowledge is weak, or that their 
+resume is poorly structured, or that their 
+aptitude test speed is too slow. The second 
+problem is a complete lack of structure in 
+how they prepare. Technical preparation, 
+communication and resume preparation, and 
+aptitude preparation are treated as three 
+unrelated efforts, each pursued through a 
+different source, with nothing tying them 
+into a single readiness picture. The third 
+problem is the absence of any real feedback 
+loop. Students typically do not get an 
+honest, structured signal on how ready they 
+actually are until they are already sitting 
+in an interview and failing it.
+
+PrepSuccess addresses all three problems by 
+giving every student one dashboard that 
+answers the readiness question directly, by 
+tying technical, soft skill, and aptitude 
+preparation into one underlying data model 
+built around a shared concept of a skill, 
+and by giving the student a continuously 
+updated feedback loop as they take more 
+assessments, solve more practice questions, 
+and attend more mentor sessions.
+
+SECTION 3. WHO THE PRODUCT IS FOR
+
+The primary and only user segment for the 
+first release is the college student, 
+specifically students in their last one to 
+two years before placements or job hunting, 
+starting with BCA and similar backgrounds. 
+This is a deliberate narrowing of scope. 
+Building for one segment first keeps the 
+problem small enough to solve completely, 
+and produces a foundation, meaning the 
+assessment engine, the scoring logic, and 
+the dashboard, that later user segments can 
+reuse without a redesign.
+
+Two additional user segments are planned for 
+later phases. Freshers are people who have 
+already graduated but have not yet landed a 
+job and need continued guidance along with 
+sharper interview preparation. Working 
+employees are people who are already 
+employed and want to benchmark their current 
+skills, prepare for a job switch, or work 
+toward a promotion. Both of these segments 
+are explicitly deferred to Phase 4 and are 
+not touched by any work in Phases 1 through 
+3.
+
+Beyond the primary student user, the 
+platform introduces two additional roles as 
+the phases progress. The mentor or developer 
+role is introduced in Phase 3 and represents 
+a verified professional who conducts one to 
+one sessions with students. The admin role 
+exists from the beginning conceptually but 
+its concrete tooling, meaning the actual 
+admin panel and admin APIs, is built 
+alongside the Phase 1 release as part of the 
+platform operations work, because admins are 
+needed to approve mentors, manage the skill 
+taxonomy, and view aggregate analytics as 
+soon as there is real user data to look at.
+
+SECTION 4. GUIDING PRODUCT PRINCIPLES
+
+Every phase is expected to stand on its own 
+as a usable product. Phase 1 by itself, with 
+nothing else built, is a complete and 
+launchable product: a student can sign up, 
+take an assessment, and see where they 
+stand. This means the team should never feel 
+pressure to rush later phase work into an 
+earlier release just to make the earlier 
+release feel more complete.
+
+Every phase's data model and infrastructure 
+is designed in advance to make the next 
+phase easier to build rather than harder. 
+The clearest example of this is the Skill 
+table introduced in Phase 1. It is designed 
+from day one to be reused unchanged by the 
+Phase 2 question bank, so that a question is 
+simply tagged with a skill rather than 
+requiring a second, duplicate taxonomy. 
+Similarly, the User table introduced in 
+Phase 1 is designed to be reused directly by 
+the Phase 3 mentor and session tables, so 
+that a mentor is simply a user with an 
+attached mentor profile rather than a 
+separate identity system.
+
+Role based data boundaries are treated as a 
+hard platform rule rather than a soft UI 
+convention. A student never sees another 
+student's data. A mentor sees only the 
+narrow, session relevant slice of a 
+student's data that is needed for that 
+specific session, never the student's full 
+assessment history and never another 
+mentor's sessions. An admin sees aggregate, 
+platform wide analytics and never browses an 
+individual student's private results 
+casually. These boundaries are enforced on 
+the server, not just hidden in the 
+interface, and every relevant ticket 
+description in Jira repeats this requirement 
+explicitly so it cannot be missed during 
+implementation or code review.
+
+Artificial intelligence, wherever it appears 
+in the later phases, is designed to augment 
+the existing dashboard and preparation 
+material with personalization, and it is 
+explicitly never meant to replace the human 
+mentor connection introduced in Phase 3. The 
+intended relationship is that AI provides 
+scale and instant feedback, while mentors 
+provide depth and human judgment, and the 
+two feed into the exact same "next steps" 
+list on the student dashboard so the student 
+experiences one unified stream of guidance 
+rather than two competing systems.
+
+SECTION 5. TECHNOLOGY STACK AND REASONING
+
+The frontend is built with Next.js. This 
+choice was made because Next.js is a modern 
+React framework with strong developer 
+experience, straightforward deployment, and 
+support for both statically rendered and 
+server rendered pages, which suits a 
+dashboard heavy application where some pages 
+benefit from server rendering and others do 
+not.
+
+The backend is built with FastAPI. This 
+choice was made because FastAPI allows fast 
+development of REST APIs in Python, 
+generates OpenAPI documentation 
+automatically, has good asynchronous 
+support, and integrates cleanly with 
+SQLAlchemy for the database layer and 
+Pydantic for request and response validation.
+
+The database is PostgreSQL. The data in this 
+application, meaning users, assessments, 
+scores, questions, sessions, and messages, 
+is fundamentally relational, with clear 
+foreign key relationships between entities, 
+so a relational database is the natural fit. 
+PostgreSQL specifically was chosen for its 
+maturity, reliability, and wide support 
+across hosting providers.
+
+Authentication supports both email and 
+password and Google OAuth. This covers the 
+two most common signup paths for students: a 
+fast, low friction Google sign in for 
+convenience, and a traditional email and 
+password flow as a fallback for students who 
+prefer not to use Google or do not have a 
+Google account tied to their identity of 
+choice.
+
+SECTION 6. HIGH LEVEL ARCHITECTURE
+
+The frontend, built in Next.js, never talks 
+to the database directly. Every piece of 
+data the frontend needs passes through REST 
+calls, sent as JSON over HTTPS, to the 
+FastAPI backend. The backend talks to 
+PostgreSQL through SQLAlchemy. Google OAuth 
+is handled entirely on the backend, meaning 
+the Google client secret and the OAuth token 
+exchange never touch frontend code, and the 
+frontend only ever receives the platform's 
+own issued session token or JWT once the 
+backend has completed the OAuth handshake. 
+This keeps all sensitive credentials server 
+side and gives the platform a single, 
+auditable point of control over 
+authentication.
+
+SECTION 7. PHASE 1, THE CORE MVP, DETAILED 
+EXPLANATION
+
+Phase 1 is tracked in Jira under five epics: 
+Platform Infrastructure and DevOps, Auth and 
+Onboarding, Student Profile and Assessment, 
+Design System and UX, and Backend Foundation 
+and Data Model. Its fix version in Jira is 
+v0.1, Phase 1 MVP. The work is further split 
+across three sequential two week sprints 
+because the total ticket volume, roughly 
+sixty tickets and around one hundred seventy 
+story points, was too large to run as a 
+single sprint. Sprint one is named 
+Foundation and covers repository setup, 
+environment configuration, database 
+provisioning, both application scaffolds, 
+the core schema tickets, and the design 
+system tokens. Sprint two is named Core 
+Build and covers authentication, profile, 
+assessment, the dashboard, and the remaining 
+wireframes and mockups. Sprint three is 
+named Launch Prep and covers the admin 
+panel, notifications, continuous integration 
+and deployment pipelines, quality assurance, 
+and legal and compliance pages.
+
+The following paragraphs walk through every 
+ticket in Phase 1 individually, in the same 
+level of detail as the ticket itself carries 
+in Jira, so that this document alone is 
+sufficient to understand the full scope of 
+the first release.
+
+Ticket SCRUM-5, set up GitHub monorepo 
+structure for frontend and backend. The goal 
+is to stand up the GitHub repository that 
+will host the entire PrepSuccess codebase as 
+a single monorepo. The scope includes 
+creating the repository with a frontend 
+folder for the Next.js application and a 
+backend folder for the FastAPI application 
+as the two top level folders, adding a root 
+README describing the repository layout and 
+how to run each application, adding a root 
+gitignore file covering Node, Python, and 
+IDE generated artifacts, setting up branch 
+protection on the main branch so that a pull 
+request and at least one review are required 
+and direct pushes are blocked, and defining 
+a basic pull request template. The 
+acceptance criteria are that the repository 
+exists with both folders scaffolded even if 
+they only contain placeholders for now, that 
+the main branch is protected so that a 
+direct push is rejected, and that a new 
+teammate can clone the repository and find 
+clear instructions in the README. This 
+ticket blocks both the backend scaffold 
+ticket and the frontend scaffold ticket, 
+because both need the repository structure 
+to exist first.
+
+Ticket SCRUM-6, set up PostgreSQL database 
+and hosting. The goal is to provision the 
+PostgreSQL database that will back the 
+entire platform. The scope includes choosing 
+and provisioning a managed Postgres instance 
+for development, using a provider such as 
+Supabase, Railway, or Neon, creating both a 
+development database and, if the free tier 
+allows, a staging database, recording the 
+connection string format along with a 
+credential storage approach that supports 
+safe rotation, and verifying connectivity 
+from a local machine while confirming SSL 
+mode requirements. The acceptance criteria 
+are that a reachable Postgres instance 
+exists with a documented connection string, 
+that credentials are never committed to the 
+repository, and that a basic connection has 
+been tested using a client such as psql. 
+This ticket blocks the SQLAlchemy and 
+Alembic setup ticket.
+
+Ticket SCRUM-7, configure environment 
+variables and secrets management. The goal 
+is to establish a consistent, secure way to 
+manage environment variables and secrets 
+across both the frontend and backend 
+applications. The scope includes defining an 
+example environment file for both the 
+backend and frontend folders listing every 
+required key, such as the database URL, the 
+JWT secret, the Google OAuth client id and 
+secret, and the API base URL, documenting 
+the local setup steps of copying the example 
+file and filling in real values, ensuring 
+that actual environment files are never 
+committed to git, and deciding how secrets 
+will be injected in continuous integration, 
+staging, and production environments, 
+typically through a platform level secret 
+manager. The acceptance criteria are that 
+the example environment file exists in both 
+applications with every variable documented, 
+that no real secret value exists anywhere in 
+the repository, and that a new developer can 
+go from cloning the repository to running 
+the application using only the README and 
+the example environment file. This ticket 
+blocks the email and password authentication 
+ticket, the Google OAuth authentication 
+ticket, and effectively every backend 
+feature that reads configuration values.
+
+Ticket SCRUM-8, scaffold FastAPI project 
+structure. The goal is to scaffold the 
+FastAPI backend application skeleton 
+following the agreed project structure. The 
+scope includes creating the main application 
+file with application bootstrap, cross 
+origin resource sharing configuration, and a 
+health check route, creating the core folder 
+for configuration and security helpers using 
+pydantic settings, creating the database 
+folder for the session and base model, 
+creating the models folder, the schemas 
+folder, the api version one folder, and the 
+services folder, adding a requirements file 
+listing FastAPI, Uvicorn, SQLAlchemy, 
+Pydantic, Alembic, and either python jose or 
+passlib for authentication related work, and 
+adding a local run script or README section 
+describing how to start the development 
+server. The acceptance criteria are that the 
+development server runs locally and the 
+health check route returns a success 
+response, that the folder structure matches 
+the agreed project overview document, and 
+that the automatically generated OpenAPI 
+documentation is available. This ticket 
+depends on the GitHub monorepo setup ticket 
+and blocks every other backend ticket.
+
+Ticket SCRUM-9, set up SQLAlchemy and 
+Alembic migrations. The goal is to wire up 
+SQLAlchemy and Alembic so that the backend 
+can talk to Postgres and evolve its schema 
+safely over time. The scope includes 
+configuring the SQLAlchemy engine and 
+session factory to read the database URL 
+from the environment configuration, adding a 
+declarative base class and a dependency 
+function that provides a database session to 
+FastAPI routes, initializing Alembic pointed 
+at the SQLAlchemy metadata, and verifying 
+that generating a migration automatically 
+and applying it against the development 
+database both work. The acceptance criteria 
+are that a no operation migration runs 
+cleanly against the development database, 
+and that the database session dependency can 
+be injected into a route and successfully 
+execute a trivial query. This ticket depends 
+on both the PostgreSQL provisioning ticket 
+and the FastAPI scaffold ticket, and it 
+blocks the core database models ticket along 
+with every ticket that depends on a real 
+schema.
+
+Ticket SCRUM-10, implement core database 
+models for User, Skill, Assessment, and 
+AssessmentResult. The goal is to implement 
+the Phase 1 SQLAlchemy models and generate 
+the first real migration. The scope includes 
+the User model with fields for id, name, 
+email, a nullable password hash to support 
+Google only users, a nullable Google id, 
+college, branch, year, target role, and 
+timestamps, the Skill model with id, name, 
+and category as either technical or soft, 
+the Assessment model with id, a foreign key 
+to user, a type of technical, soft, or 
+aptitude, and a taken at timestamp, and the 
+AssessmentResult model with id, a foreign 
+key to assessment, a foreign key to skill, 
+and a numeric score, along with appropriate 
+indexes and unique constraints such as a 
+unique email on the User table and correct 
+relationships so that, for example, an 
+assessment object can navigate to its 
+results in Python. The acceptance criteria 
+are that all four tables exist in the 
+development database with correct foreign 
+keys, and that the relationships between 
+them are navigable in code. This ticket 
+depends on the individual schema design 
+tickets for User, Skill, Assessment, and 
+AssessmentResult, as well as the SQLAlchemy 
+and Alembic setup ticket, and it blocks the 
+authentication, profile, assessment, and 
+dashboard API tickets.
+
+Ticket SCRUM-11, authentication API for 
+signup and login with email and password. 
+The goal is to let a student sign up and log 
+in using an email address and a password. 
+The scope includes a signup endpoint that 
+creates a user with a bcrypt hashed password 
+and validates that the email is unique, a 
+login endpoint that verifies the submitted 
+credentials and issues a JSON web token as 
+an access token, with a refresh token if 
+that is in scope, password validation rules 
+such as a minimum length along with clear 
+error messages, and an authentication 
+dependency function that protects other 
+routes by requiring a valid current user. 
+The acceptance criteria are that signing up 
+twice with the same email returns a clear 
+client error, that a valid login returns a 
+usable JSON web token while an invalid one 
+returns an unauthorized response, and that a 
+protected test route rejects any request 
+that does not include a valid token. This 
+ticket depends on the core database models 
+ticket and the environment and secrets 
+configuration ticket, and it blocks the 
+login and signup pages ticket on the 
+frontend.
+
+Ticket SCRUM-12, authentication API for 
+Google OAuth login. The goal is to let a 
+student sign in using their Google account 
+instead of a password. The scope includes 
+registering an OAuth client in the Google 
+Cloud console and storing the client id and 
+secret in environment configuration, a login 
+redirect endpoint that sends the user to 
+Google's consent screen, a callback endpoint 
+that exchanges the authorization code, 
+verifies the identity token, creates or 
+finds the user by their Google id or email, 
+and issues the platform's own JSON web 
+token, and explicit handling of the case 
+where an email already exists through a 
+password signup, either linking the accounts 
+or rejecting the attempt with a clear 
+message. The acceptance criteria are that a 
+brand new Google account that completes the 
+flow ends up with a real user row and a 
+valid session token, and that the Google 
+client secret is never exposed to the 
+frontend at any point. This ticket depends 
+on the same two tickets as the email and 
+password authentication ticket, and it 
+blocks the Google OAuth login integration 
+ticket on the frontend.
+
+Ticket SCRUM-13, profile CRUD API. The goal 
+is to let a logged in student view and 
+update their own profile. The scope includes 
+a route to return the current profile and a 
+route to update college, branch, year, and 
+target role, backed by Pydantic schemas with 
+field validation. The acceptance criteria 
+are that the route requires a valid token 
+and rejects anonymous requests, that 
+updating an unknown or invalid field returns 
+a clear validation error, and that changes 
+persist and are visible on the next read. 
+This ticket depends on the core database 
+models and the authentication API, and it 
+blocks the profile setup page on the 
+frontend.
+
+Ticket SCRUM-14, assessment submission API. 
+The goal is to let a student take and submit 
+a self assessment covering technical, soft, 
+or aptitude categories. The scope includes a 
+start endpoint that creates an assessment 
+row of the requested type, and a submit 
+endpoint that accepts per skill answers or 
+raw scores and persists them as assessment 
+result rows, with input validation ensuring 
+the assessment belongs to the requesting 
+user and has not already been submitted. The 
+acceptance criteria are that submitting the 
+same assessment twice is rejected, and that 
+submitted results can be queried per user 
+and per skill. This ticket depends on the 
+core database models and the authentication 
+API, and it blocks both the assessment 
+taking flow on the frontend and the 
+readiness scoring API.
+
+Ticket SCRUM-15, readiness scoring logic and 
+dashboard API. The goal is to turn raw, per 
+skill assessment results into the readiness 
+score shown on the dashboard. The scope 
+includes a scoring service that computes an 
+overall readiness number on a zero to one 
+hundred scale along with a category 
+breakdown across technical, soft, and 
+aptitude from a user's latest assessment 
+results, a skill gap ranking that surfaces 
+the weakest skills, and a dashboard endpoint 
+that returns the overall score, the category 
+breakdown, and the top gaps for the current 
+user. The acceptance criteria are that the 
+scoring logic can be unit tested in 
+isolation from the HTTP layer, and that a 
+user with no assessments yet receives a 
+sensible empty response rather than an 
+error. This ticket depends on the assessment 
+submission API, and it blocks the readiness 
+dashboard UI on the frontend, the future AI 
+skill gap analysis service in Phase 4, and 
+the admin analytics API.
+
+Ticket SCRUM-16, scaffold Next.js project 
+structure. The goal is to scaffold the 
+Next.js frontend application skeleton 
+following the agreed project structure. The 
+scope includes initializing Next.js with the 
+app router and TypeScript, creating 
+placeholder route folders for the 
+authentication pages, the dashboard, the 
+assessment flow, and the profile page, 
+creating folders for shared components, a 
+library folder holding the API client and 
+authentication helpers, and a styles folder, 
+and wiring a basic fetch based API client 
+pointed at the backend base URL from 
+environment configuration. The acceptance 
+criteria are that the development server 
+serves a working application with navigable 
+placeholder routes, and that the folder 
+structure matches the agreed project 
+overview document. This ticket depends on 
+the GitHub monorepo setup ticket and blocks 
+every other frontend ticket.
+
+Ticket SCRUM-17, login and signup pages for 
+email and password. The goal is to build the 
+login and signup screens for the email and 
+password authentication path. The scope 
+includes a signup form with name, email, and 
+password plus confirmation and client side 
+validation that calls the signup endpoint, a 
+login form with email and password that 
+calls the login endpoint and stores the 
+resulting token either as an http only 
+cookie or in secure storage, inline error 
+states for a duplicate email, wrong 
+credentials, or validation failures, and a 
+redirect to profile setup for a new user or 
+to the dashboard for a returning user on 
+success. The acceptance criteria are that a 
+wrong password shows an inline error rather 
+than crashing, that a successful signup 
+lands the user on the profile setup page, 
+and that a successful login lands the user 
+on the dashboard. This ticket depends on the 
+authentication API, the signup and login 
+wireframes, the high fidelity auth mockups, 
+and the Next.js scaffold.
+
+Ticket SCRUM-18, Google OAuth login 
+integration on the frontend. The goal is to 
+add a sign in with Google option to the 
+authentication screens. The scope includes a 
+Google sign in button that redirects to the 
+backend's Google login route, handling of 
+the callback redirect back into the 
+application along with storage of the 
+returned session token, and loading and 
+error states for cases such as the user 
+cancelling the Google consent screen. The 
+acceptance criteria are that clicking the 
+button completes a full round trip and lands 
+the user on the dashboard or profile setup 
+page, and that no Google tokens or secrets 
+are ever stored in frontend code or local 
+storage. This ticket depends on the Google 
+OAuth authentication API and the login and 
+signup pages ticket.
+
+Ticket SCRUM-19, profile setup page. The 
+goal is to let a new student fill in their 
+profile immediately after signing up. The 
+scope includes form fields for college, 
+branch, year, and target role, calling the 
+profile CRUD API to read and update these 
+values, and a decision on whether the step 
+is required or skippable, with the 
+recommendation being to require it before 
+the first assessment. The acceptance 
+criteria are that submitting the form saves 
+the profile and routes the student into the 
+assessment flow or the dashboard, and that 
+revisiting the page later pre fills the 
+existing values. This ticket depends on the 
+profile CRUD API, the profile setup 
+wireframe, and the Next.js scaffold.
+
+Ticket SCRUM-20, assessment taking flow UI. 
+The goal is to build the flow that lets a 
+student take the technical, soft, and 
+aptitude self assessment. The scope includes 
+either a selection step for assessment type 
+or a single guided flow covering all three, 
+a question and answer interface with a 
+progress indicator, submission of answers to 
+the assessment submission API, and a 
+completion screen that routes into the 
+dashboard. The acceptance criteria are that 
+progress is not lost on an accidental page 
+refresh, using at minimum local state 
+persistence, and that submission errors are 
+shown clearly without losing the student's 
+already entered answers. This ticket depends 
+on the assessment submission API, the 
+assessment flow wireframe, the high fidelity 
+assessment mockups, and the Next.js scaffold.
+
+Ticket SCRUM-21, readiness dashboard UI. The 
+goal is to build the readiness dashboard, 
+the home screen that ties every feature 
+together and answers the core question of 
+where the student stands. The scope includes 
+an overall readiness score display, a 
+category breakdown across technical, soft, 
+and aptitude, a list of skill gap highlights 
+showing the weakest skills ranked, an empty 
+state for a user who has not yet taken an 
+assessment, and a call to the dashboard API. 
+The acceptance criteria are that the page 
+renders correctly both for a fresh user with 
+no data and for a user with real results, 
+and that the displayed numbers always match 
+what the backend scoring service returns 
+rather than being recomputed on the client. 
+This ticket depends on the readiness scoring 
+and dashboard API, the dashboard wireframe, 
+the high fidelity dashboard mockups, and the 
+Next.js scaffold.
+
+Ticket SCRUM-22, design system covering 
+color palette, typography, and spacing 
+tokens. The goal is to establish the visual 
+foundation that every screen in the product 
+will use. The scope includes a color palette 
+covering primary, secondary, and accent 
+colors, semantic colors for success, 
+warning, error, and informational states, 
+neutral tones, and light and dark mode if 
+that is in scope, a typography scale 
+defining font family, sizes, weights, and 
+line heights for headings, body text, and 
+captions, a spacing scale based on a four or 
+eight pixel grid along with radius and 
+shadow tokens, and publishing all of this as 
+a styles library page in the design tool. 
+The acceptance criteria are that every token 
+is documented and consistently named, and 
+that the tokens are consumable by the 
+component library. This ticket blocks the 
+component library ticket and every wireframe 
+and mockup ticket in the project.
+
+Ticket SCRUM-23, component library covering 
+buttons, inputs, cards, and modals. The goal 
+is to build the reusable interface component 
+library that every screen draws from. The 
+scope includes buttons in primary, 
+secondary, and ghost variants across 
+default, hover, disabled, and loading 
+states, inputs including text fields, 
+selects, checkboxes, radios, and text areas 
+with error and helper text states, and 
+cards, modals, dialogs, tabs, badges, and 
+toasts, all built on the tokens from the 
+design system ticket. The acceptance 
+criteria are that every component documents 
+all of its interactive states, and that the 
+components are organized into a design tool 
+library that other frames can instance from. 
+This ticket depends on the design system 
+tokens ticket and blocks every wireframe and 
+mockup ticket.
+
+Ticket SCRUM-24, wireframes for the landing 
+and marketing page. The goal is to produce a 
+low fidelity layout for the public landing 
+page. The scope includes a hero section 
+explaining the core value proposition, 
+feature highlights covering assessment, the 
+dashboard, and teasers for future mentorship 
+and AI features, and a call to action 
+leading to signup or login. The acceptance 
+criteria are that the wireframe covers both 
+desktop and mobile breakpoints and is 
+reviewed and approved before high fidelity 
+work begins. This ticket depends on the 
+component library.
+
+Ticket SCRUM-25, wireframes for the signup 
+and login screens. The goal is to produce a 
+low fidelity layout for both the signup and 
+login screens. The scope includes the signup 
+form layout with name, email, and password, 
+the login form layout with email and 
+password, placement of the Google sign in 
+entry point, and placeholders for error and 
+validation states. The acceptance criteria 
+are that both screens are wireframed for 
+desktop and mobile and approved before high 
+fidelity work starts. This ticket depends on 
+the component library and blocks both the 
+high fidelity auth mockups and the login and 
+signup pages ticket.
+
+Ticket SCRUM-26, wireframes for the profile 
+setup flow. The goal is to produce a low 
+fidelity layout for the post signup profile 
+setup flow. The scope includes the form 
+layout for college, branch, year, and target 
+role, and a decision between a single step 
+or multi step form. The acceptance criteria 
+are that the wireframe covers desktop and 
+mobile and is approved before build work 
+begins. This ticket depends on the component 
+library and blocks the profile setup page 
+ticket.
+
+Ticket SCRUM-27, wireframes for the 
+assessment taking flow. The goal is to 
+produce a low fidelity layout for the 
+assessment taking experience. The scope 
+includes the question and answer layout, the 
+progress indicator, transitions between the 
+technical, soft, and aptitude sections, and 
+a completion or summary screen layout. The 
+acceptance criteria are that the wireframe 
+covers desktop and mobile and is approved 
+before build work begins. This ticket 
+depends on the component library and blocks 
+both the high fidelity assessment mockups 
+and the assessment taking flow UI ticket.
+
+Ticket SCRUM-28, wireframes for the 
+readiness dashboard. The goal is to produce 
+a low fidelity layout for the readiness 
+dashboard. The scope includes placement of 
+the overall score, the category breakdown 
+layout, the skill gap highlights list, and 
+layout scaffolding that anticipates later 
+phase additions such as progress over time, 
+next steps, and mentor sessions so the 
+dashboard does not need a redesign later. 
+The acceptance criteria are that the 
+wireframe covers desktop and mobile and is 
+approved before build work begins. This 
+ticket depends on the component library and 
+blocks both the high fidelity dashboard 
+mockups and the readiness dashboard UI 
+ticket.
+
+Ticket SCRUM-29, high fidelity mockups for 
+the authentication screens. The goal is to 
+produce the final visual design for login, 
+signup, and OAuth entry screens. The scope 
+includes applying the design tokens and 
+components to the approved wireframe, 
+covering every state including default, 
+validation error, loading, and success. The 
+acceptance criteria are pixel accurate 
+desktop and mobile frames handed off with 
+specifications, spacing, and exported 
+assets. This ticket depends on the signup 
+and login wireframes and blocks the login 
+and signup pages ticket and the Google OAuth 
+integration ticket.
+
+Ticket SCRUM-30, high fidelity mockups for 
+the dashboard. The goal is to produce the 
+final visual design for the readiness 
+dashboard. The scope includes applying 
+tokens and components to the approved 
+wireframe, a data visualization treatment 
+for the score and category breakdown using 
+progress rings or bars, and an empty state 
+design for a user with no assessments yet. 
+The acceptance criteria are pixel accurate 
+desktop and mobile frames handed off. This 
+ticket depends on the dashboard wireframe 
+and blocks the readiness dashboard UI ticket.
+
+Ticket SCRUM-36, high fidelity mockups for 
+the admin panel. The goal is to produce the 
+final visual design for the admin panel used 
+to manage users, content, and analytics. The 
+scope includes the admin shell and 
+navigation, user management tables, content 
+management screens for skills, questions, 
+and PDFs, and an analytics overview. The 
+acceptance criteria are pixel accurate 
+desktop frames, with mobile being optional 
+for admin tools. This ticket depends on the 
+component library and blocks the admin 
+dashboard shell UI, the admin user 
+management UI, and the admin content 
+management UI tickets.
+
+Ticket SCRUM-37, responsive and mobile 
+design pass across core flows. The goal is 
+to make sure every core flow holds up on 
+small screens. The scope includes reviewing 
+the authentication, profile, assessment, and 
+dashboard frames at mobile breakpoints and 
+fixing layout breakpoints, touch target 
+sizes, and text truncation issues. The 
+acceptance criteria are that every Phase 1 
+screen has an approved mobile frame and that 
+there is no horizontal scrolling or 
+overlapping elements at a three hundred 
+seventy five pixel width. This ticket 
+depends on the high fidelity mockups for 
+authentication, dashboard, and assessment.
+
+Ticket SCRUM-38, accessibility audit of the 
+design system. The goal is to verify the 
+design system meets basic accessibility 
+standards before it is reused widely. The 
+scope includes a color contrast check 
+against the WCAG AA standard for text 
+against background and for interactive 
+states, a review of focus states for every 
+interactive component, and a review of font 
+sizing and tap target sizes. The acceptance 
+criteria are that every token color passes 
+AA contrast for its intended use, and that 
+every interactive component has a visible 
+focus state. This ticket depends on the 
+design system tokens and the component 
+library.
+
+Ticket SCRUM-39, design and implement the 
+User schema. The goal is to finalize the 
+design of the User table before 
+implementation. The scope includes fields 
+for id, name, a unique indexed email, a 
+nullable password hash, a nullable unique 
+Google id, college, branch, year, target 
+role, and created and updated timestamps, 
+constraints ensuring email uniqueness and 
+that at least one of the password hash or 
+Google id is present, and a decision about 
+whether to add a role field now given that 
+mentor and admin roles in Phase 3 will reuse 
+this same table. The acceptance criteria are 
+that the schema is reviewed and documented 
+with its fields, types, constraints, and 
+indexes, and that it is signed off before 
+the core models implementation ticket 
+proceeds. This ticket blocks the core 
+database models implementation ticket.
+
+Ticket SCRUM-40, design and implement the 
+Skill schema. The goal is to finalize the 
+design of the Skill table, the taxonomy that 
+will later be reused by the question bank. 
+The scope includes fields for id, a unique 
+name, and a category of technical or soft, 
+along with consideration of an additional 
+subcategory or tag field now to make Phase 2 
+question tagging easier later. The 
+acceptance criteria are that the schema is 
+documented and confirmed reusable by the 
+Phase 2 question bank without requiring a 
+breaking migration. This ticket blocks the 
+core database models implementation ticket 
+and the admin content management API.
+
+Ticket SCRUM-41, design and implement the 
+Assessment schema. The goal is to finalize 
+the design of the Assessment table 
+representing one attempt at a self 
+assessment. The scope includes fields for 
+id, a foreign key to user, a type of 
+technical, soft, or aptitude, a taken at 
+timestamp, and a status of in progress or 
+submitted. The acceptance criteria are that 
+the schema is documented and confirmed to 
+support a user retaking an assessment, 
+meaning multiple rows per user and type, 
+which is needed for Phase 2 progress 
+tracking. This ticket blocks the core 
+database models implementation ticket.
+
+Ticket SCRUM-42, design and implement the 
+AssessmentResult schema. The goal is to 
+finalize the design of the AssessmentResult 
+table representing a per skill score within 
+an assessment. The scope includes fields for 
+id, a foreign key to assessment, a foreign 
+key to skill, and a numeric score, with a 
+unique constraint across the assessment and 
+skill pair. The acceptance criteria are that 
+the schema is documented and confirmed 
+sufficient for the readiness scoring service 
+to compute both category and overall scores. 
+This ticket blocks the core database models 
+implementation ticket.
+
+Ticket SCRUM-48, design and implement the 
+Notification schema. The goal is to design 
+the table used for both in app and email 
+notifications. The scope includes fields for 
+id, a foreign key to user, a type such as 
+session booked, AI suggestion ready, or 
+mentor note added, a JSON payload, a 
+nullable read at timestamp, and a created at 
+timestamp. The acceptance criteria are that 
+the schema is documented and covers the 
+notification types needed by the features 
+already scoped in Phases 2 through 4. This 
+ticket blocks the notification service 
+backend ticket.
+
+Ticket SCRUM-49, full entity relationship 
+diagram and database documentation. The goal 
+is to produce a single source of truth 
+diagram and data model document covering all 
+four phases. The scope includes diagramming 
+every table across the phases, including 
+User, Skill, Assessment, AssessmentResult, 
+QuestionBank, UserQuestionProgress, 
+MentorProfile, Session, ChatMessage, and 
+Notification, with their relationships and 
+cardinality, along with a short document 
+explaining key design decisions such as why 
+the Skill table is shared across Phase 1 and 
+Phase 2. The acceptance criteria are that 
+the diagram matches every schema ticket 
+exactly and that it is linked from the 
+repository README to help new engineers 
+onboard. This ticket depends on every schema 
+design ticket listed above.
+
+The remaining Phase 1 tickets, covering the 
+admin panel, notifications, DevOps, and 
+quality assurance, are described in Section 
+11 of this document under Platform 
+Operations, because they are grouped there 
+for clarity even though several of them ship 
+inside the v0.1 fix version alongside the 
+rest of Phase 1.
+
+SECTION 8. PHASE 2, INTERVIEW PREP, DETAILED 
+EXPLANATION
+
+Phase 2 is tracked in Jira under the 
+Interview Prep epic, with fix version v0.2. 
+Its dependency is that Phase 1 has shipped, 
+specifically the Skill table, the 
+authentication system, and the dashboard, 
+since Phase 2 extends all three rather than 
+replacing any of them.
+
+The core idea of Phase 2 is that once a 
+student knows their gaps from the Phase 1 
+dashboard, the natural next step is targeted 
+practice. The question bank lets a student 
+search and filter interview questions by 
+company, role, and topic, mark questions as 
+bookmarked or solved, and see their 
+improvement over time as a chart rather than 
+a single static number.
+
+Two new tables are introduced. The 
+QuestionBank table holds id, title, body, an 
+optional company, an optional role, a topic, 
+a difficulty level, a foreign key to skill, 
+and a created by field referencing the admin 
+who authored it. This table deliberately 
+reuses the Skill foreign key from Phase 1 
+rather than inventing a second taxonomy, so 
+a question about arrays ties directly back 
+to the same skill that the Phase 1 
+assessment already measures. The 
+UserQuestionProgress table holds id, a 
+foreign key to user, a foreign key to 
+question, a status of bookmarked or solved, 
+and an updated at timestamp, with a unique 
+constraint across the user and question pair 
+so a student cannot accidentally create 
+duplicate progress rows for the same 
+question.
+
+On the backend, admins get exclusive create, 
+update, and delete access to questions 
+through dedicated routes, while students and 
+the public get a read only, filterable, 
+paginated listing along with a detail view 
+for a single question. A separate pair of 
+routes lets a student bookmark or unbookmark 
+a question and mark a question as solved, 
+both designed to be idempotent so that 
+repeated calls never create duplicate 
+progress rows, along with routes that return 
+a student's own bookmarked and solved lists. 
+A progress route aggregates a student's 
+readiness score history together with their 
+solved question counts over time, pre 
+bucketed so the frontend can plot it 
+directly without additional processing.
+
+On the frontend, the question bank browsing 
+screen lets a student filter and search by 
+company, role, topic, and skill, with 
+pagination or infinite scroll and bookmark 
+and solved indicators shown directly on each 
+question, and the filter state is reflected 
+in the URL so a filtered view is shareable 
+and bookmarkable in the browser sense as 
+well. A question detail screen shows the 
+full question along with inline bookmark and 
+solve actions that update immediately 
+without a full page reload. A dedicated 
+bookmarked questions screen lists everything 
+the student has saved with a remove action. 
+A progress over time chart, shown on the 
+dashboard, plots the readiness score history 
+as a line or area chart alongside a 
+secondary view of questions solved over 
+time, and it is expected to render sensibly 
+whether the student has only one data point 
+so far or many. Finally, a downloadable 
+curated prep PDF screen lets students browse 
+and download admin curated guides such as an 
+SDE interview guide or an aptitude quick 
+reference, with the underlying PDF metadata 
+managed by admins through the same content 
+management tooling described in the platform 
+operations section.
+
+The acceptance criteria for the entire phase 
+are that only admins can write to the 
+question bank while students receive a 
+forbidden response on any write attempt, 
+that combining multiple filters at once 
+works correctly, that bookmarking or solving 
+the same question twice never creates 
+duplicate rows, and that the progress chart 
+renders correctly at every stage of data 
+volume. Explicitly out of scope for this 
+phase are AI curated or AI generated 
+questions, which are reserved for Phase 4, 
+and any concept of a mentor assigning 
+specific practice sets to a student, which 
+is not currently planned at all.
+
+SECTION 9. PHASE 3, THE MENTORSHIP PLATFORM, 
+DETAILED EXPLANATION
+
+Phase 3 is tracked in Jira under the 
+Mentorship Platform epic, with fix version 
+v0.3. It depends on the Phase 1 User and 
+authentication system, and it benefits from 
+but does not strictly require Phase 2 to be 
+complete first.
+
+The reasoning behind Phase 3 is that some 
+gaps, particularly around soft skills, 
+career direction, and real interview 
+experience, are best closed by a real person 
+rather than by more content. This phase lets 
+a student book a one to one video session 
+with a verified developer or mentor, chat 
+with that mentor around the session, and 
+receive session notes afterward that become 
+new, concrete next step items on the exact 
+same dashboard surface that Phase 4's AI 
+suggestions will also write to.
+
+Three new tables are introduced. The 
+MentorProfile table holds id, a unique 
+foreign key to user, a bio, expertise tags, 
+years of experience, and an approval status 
+of pending, approved, or rejected. It 
+deliberately extends the existing User table 
+rather than duplicating identity fields, so 
+any existing user can apply to become a 
+mentor without creating a second account. 
+The Session table holds id, a foreign key to 
+the student user, a foreign key to the 
+mentor profile, a scheduled at timestamp, a 
+duration in minutes, a status of booked, 
+completed, or cancelled, and a nullable 
+notes field for post session follow up. The 
+ChatMessage table holds id, a sender foreign 
+key, a recipient foreign key, a nullable 
+session foreign key, a body, a sent at 
+timestamp, and a nullable read at timestamp.
+
+The mentor lifecycle begins when any user 
+applies to become a mentor, which creates a 
+pending mentor profile row. An admin then 
+approves or rejects that application through 
+dedicated admin routes, and only approved 
+mentors are ever included in the public 
+mentor listing, which is enforced on the 
+backend so that an unapproved mentor can 
+never be discovered even if a student 
+guesses a direct link. A mentor sets their 
+own availability windows, with overlapping 
+windows either rejected or merged rather 
+than silently duplicated, and already booked 
+slots are automatically excluded from what 
+is shown as available.
+
+Booking works through a dedicated endpoint 
+that books an open slot, with double booking 
+of the same slot explicitly rejected at the 
+database or application level, plus a 
+cancellation endpoint. A critical rule 
+enforced here is that when a session is 
+booked, the mentor is only ever shown the 
+session relevant slice of the student's 
+data, meaning their target role and key 
+skill gaps, and never the student's full 
+assessment history. This is the same role 
+based data boundary principle described 
+earlier in this document, applied concretely 
+to the booking flow.
+
+Video calling is handled through integration 
+with a third party video provider such as 
+Twilio Video, Daily, Agora, or a generated 
+Google Meet link, with a join endpoint that 
+returns a join token or URL that is valid 
+only for the two actual participants in that 
+specific session and only within a 
+reasonable time window around the scheduled 
+start time. Chat is handled through a 
+WebSocket endpoint for real time messaging, 
+backed by the ChatMessage table for 
+persistence and a REST endpoint for fetching 
+history, with the platform enforcing that 
+chat is only ever possible between two users 
+who already share a booking relationship, 
+meaning this is never a general purpose 
+social messaging feature.
+
+After a session, the mentor can add notes 
+and recommended next steps through a 
+dedicated endpoint, and those notes appear 
+on the student's dashboard next steps list 
+within the same request cycle, with no 
+separate manual synchronization step 
+required. If the mentorship model requires 
+payment, a payment integration creates a 
+payment intent or order through a provider 
+such as Stripe or Razorpay, with a webhook 
+handler that verifies the payment signature 
+and only then marks the session as paid and 
+confirmed, meaning a session is never 
+treated as booked until payment succeeds 
+unless it has been explicitly marked as a 
+free session.
+
+On the frontend, a mentor profile page shows 
+the mentor's bio, expertise, experience, and 
+a preview of their availability with a book 
+session call to action. A booking calendar 
+screen shows the mentor's real availability 
+as a calendar or slot picker, with a 
+confirmation step and clear handling of the 
+edge case where a slot becomes unavailable 
+partway through the booking flow. A video 
+call screen exposes a join call action that 
+is only enabled within the valid time 
+window. A chat screen shows the conversation 
+list and message thread with real time 
+updates delivered over the WebSocket 
+connection. A session notes screen lets a 
+student review notes and follow up actions 
+from past sessions, and a payment checkout 
+screen handles the payment step within the 
+booking flow if payments are enabled, with 
+success, failure, and pending states all 
+handled explicitly so that a failed payment 
+leaves the slot unbooked and retryable 
+rather than stuck in an ambiguous state.
+
+The acceptance criteria for the entire phase 
+are that an unapproved mentor never appears 
+publicly under any circumstance, that a 
+mentor's view of a student is always scoped 
+to session relevant data only, that double 
+booking the same slot is structurally 
+impossible, that a failed payment always 
+leaves the slot available for a retry, and 
+that chat is only ever possible between 
+users who share an actual booking 
+relationship. Explicitly out of scope for 
+this phase are group sessions or webinars, 
+mentor ratings or reviews, which are not 
+currently scoped and would need a separate 
+decision, and AI assisted session 
+preparation, which belongs conceptually to 
+Phase 4 rather than this epic.
+
+SECTION 10. PHASE 4, AI AND PERSONALIZATION, 
+DETAILED EXPLANATION
+
+Phase 4 is tracked in Jira under the AI and 
+Personalization epic, with fix version v0.4. 
+It depends on the Phase 1 readiness scoring 
+API for its input data, and it depends on 
+Phase 3 having already established the 
+shared next steps surface on the dashboard, 
+since Phase 4's AI suggestions are designed 
+to write into that exact same list rather 
+than creating a separate one.
+
+The purpose of this phase is to layer 
+artificial intelligence assisted 
+personalization on top of the assessment and 
+mentorship data the platform has already 
+collected, without ever replacing the human 
+mentor connection from Phase 3. The stated 
+guiding principle, repeated from earlier in 
+this document, is that AI provides scale and 
+instant feedback while mentors provide depth 
+and human judgment, and the two are 
+explicitly complementary rather than 
+competing.
+
+The skill gap analysis service takes a 
+student's most recent assessment results and 
+produces, through a large language model 
+call, a plain language explanation of their 
+weakest areas that goes beyond a bare number 
+to explain why a gap matters and what to do 
+about it. This output is strictly grounded 
+in the student's actual scores, meaning it 
+must never reference a skill that does not 
+appear in the student's real data, and it is 
+cached, regenerating only when the 
+underlying assessment data actually changes 
+rather than on every dashboard view.
+
+The personalized next steps service combines 
+that skill gap output with the student's 
+target role to produce three to five ranked, 
+specific, actionable next steps, which are 
+written into the same shared next steps list 
+that mentor notes from Phase 3 also 
+populate, so the student always experiences 
+one unified list rather than two separate 
+and potentially conflicting sources of 
+advice.
+
+The resume feedback service accepts an 
+uploaded resume, in at minimum PDF or plain 
+text form, runs it through a large language 
+model prompt tuned to the student's target 
+role, and returns structured feedback 
+covering which sections were found, specific 
+issues, and suggestions, rendered as a 
+scannable checklist on the frontend rather 
+than a wall of free text. This feedback also 
+feeds a resume quality signal into the soft 
+skills readiness category on the dashboard, 
+tying Phase 4 back into the Phase 1 scoring 
+model rather than existing as an island 
+feature.
+
+The personalized readiness PDF service auto 
+generates a downloadable document 
+summarizing a student's current readiness 
+score, category breakdown, top skill gaps, 
+and AI suggested next steps, intended as 
+something a student can review offline or 
+share with a mentor ahead of a session. It 
+regenerates when the underlying data changes 
+and otherwise serves a cached version, and 
+it is required to render sensibly whether 
+the student has zero, partial, or full 
+assessment data.
+
+On the frontend, a next steps panel on the 
+dashboard shows the AI generated items 
+alongside mentor authored items from the 
+same shared list, with loading and empty 
+states while AI content is still generating. 
+A resume upload and feedback screen handles 
+the upload, shows a loading state while the 
+AI processes the resume, and then renders 
+the structured feedback as a checklist. A 
+download button on the dashboard triggers 
+the personalized readiness PDF download, 
+with a disabled or explained state for a 
+student who has no assessment data yet.
+
+Explicitly out of scope for the currently 
+ticketed work in this phase are AI assisted 
+feedback on written or recorded mock 
+interview answers, which the original 
+product requirements document describes as a 
+future, lightweight complement to human 
+mentor sessions but which has not yet been 
+broken into tickets, and AI generated or AI 
+curated interview questions, which would 
+logically extend the Phase 2 question bank 
+but is likewise not currently scoped as a 
+ticket.
+
+SECTION 11. ADMINISTRATION, NOTIFICATIONS, 
+AND PLATFORM OPERATIONS
+
+This section covers everything that is not a 
+student facing feature in its own right but 
+is required to operate, govern, and safely 
+launch the platform. In Jira this work sits 
+under two epics, Admin and Notifications, 
+and Platform Ops QA and Compliance, and the 
+majority of it ships inside the v0.1 fix 
+version alongside the rest of Phase 1, since 
+admins, notifications, and basic operational 
+safety are needed as soon as real users 
+exist, not later.
+
+Admin user management gives admins the 
+ability to list, search, and filter both 
+student and mentor accounts, deactivate 
+accounts, and approve or reject pending 
+mentor applications, all enforced through a 
+server side role check rather than a hidden 
+navigation link, meaning even a student who 
+somehow discovers the admin route directly 
+would still be rejected. Admin content 
+management gives admins exclusive create, 
+read, update, and delete access to the Skill 
+taxonomy, the Question Bank, and the curated 
+PDF library, with the explicit rule that 
+deleting a skill or question that is already 
+in active use is blocked or handled through 
+a soft delete rather than a hard delete that 
+would silently break historical data. Admin 
+analytics exposes platform wide, strictly 
+aggregate numbers such as signups over time, 
+assessments taken, average readiness scores, 
+mentor session volume, and question bank 
+engagement, with a hard rule that no 
+endpoint anywhere in the system ever allows 
+an admin to browse a single student's raw 
+results by casually clicking through the 
+interface; the analytics surface only ever 
+returns aggregates.
+
+The notification system is backed by the 
+Notification table described in the Phase 1 
+schema section and dispatches both in app 
+and email notifications, using a provider 
+such as SendGrid or Amazon SES, for events 
+including a session being booked, an AI 
+suggestion becoming ready, or a mentor note 
+being added. A core reliability rule here is 
+that an email delivery failure must never 
+block the action that triggered it, meaning 
+a booking still succeeds even if the 
+confirmation email temporarily fails to 
+send, with the failure logged and retried 
+rather than surfaced to the user as an 
+error. On the frontend, a notification bell 
+shows an unread count and a dropdown or 
+panel of recent notifications, with toasts 
+for real time events, and reading a 
+notification updates the unread count 
+without requiring a full page reload.
+
+The DevOps work covers the full path from a 
+developer's pull request to a live 
+production deployment. A continuous 
+integration pipeline runs linting, backend 
+and frontend unit tests, and a build step on 
+every pull request against the main branch, 
+blocking the merge if any of those steps 
+fail, with a target completion time under 
+roughly ten minutes so it does not slow the 
+team down. A continuous deployment pipeline 
+triggers on every merge to main and 
+automatically builds and deploys both 
+applications to a staging environment, 
+running database migrations as part of that 
+deploy, with the explicit rule that a failed 
+migration blocks the deploy entirely rather 
+than leaving staging in a half updated 
+state. A staging environment provides 
+isolated instances of the backend, frontend, 
+and database, seeded with representative 
+test data such as sample users, skills, and 
+questions, reachable at its own URL entirely 
+separate from production data. Production 
+deployment involves choosing real hosting 
+for the backend and frontend, configuring 
+production secrets, a custom domain, and 
+HTTPS, and treating a promotion from staging 
+to production as a deliberate, reviewed 
+action rather than something that happens 
+automatically on every merge. Monitoring 
+integrates an error tracking tool such as 
+Sentry into both applications, configures 
+alerting to a real channel such as Slack or 
+email for new error types and spikes, and 
+adds basic uptime and health check 
+monitoring for the API, verified by the rule 
+that a deliberately thrown test error in 
+each application must show up in the 
+tracking dashboard within about a minute and 
+must trigger a real alert, not just appear 
+silently in a dashboard nobody is watching.
+
+The quality assurance work includes unit 
+tests for the authentication module covering 
+signup with a duplicate email, password 
+hashing, login with valid and invalid 
+credentials, JSON web token generation and 
+validation, and the Google OAuth callback's 
+user creation logic, unit tests for the 
+assessment and scoring module covering 
+assessment start and submit, duplicate 
+submission rejection, and the scoring 
+service's overall and category calculations 
+across edge cases including no data, partial 
+data, and full data, with the scoring math 
+specifically tested against hand computed 
+expected values rather than merely checked 
+for not crashing, unit tests for the Phase 2 
+question bank module covering admin only 
+write enforcement, filtering and pagination, 
+and bookmark and solve idempotency, and unit 
+tests for the Phase 3 mentorship module 
+covering mentor approval, availability 
+conflict handling, session booking including 
+double booking prevention, and specifically 
+that a mentor cannot see more student data 
+than the platform's data boundary rules 
+allow. End to end tests cover the signup and 
+login flow from signup through profile 
+setup, log out, log back in, and arriving at 
+the dashboard, including a wrong password 
+case, the assessment to dashboard flow from 
+login through taking and submitting an 
+assessment to seeing the correct score 
+reflected on the dashboard, and the Phase 3 
+booking flow from browsing mentors through 
+viewing a profile, booking an available 
+slot, and seeing it reflected in upcoming 
+sessions, including the case where a slot 
+becomes unavailable mid flow. A dedicated 
+security review covers a dependency 
+vulnerability scan for both applications, a 
+manual review of authentication, role checks 
+across student, mentor, and admin, and the 
+enforcement of data boundaries described 
+throughout this document, and a check for 
+common issues including SQL injection 
+through ORM misuse, cross site scripting, 
+exposed secrets, and missing rate limiting, 
+with the acceptance criteria that no high or 
+critical dependency vulnerability remains 
+outstanding and that a written summary of 
+findings and fixes exists. API documentation 
+work ensures every FastAPI route has a clear 
+summary, description, and request and 
+response examples, reviewed for completeness 
+in the automatically generated 
+documentation, with the acceptance criteria 
+that a developer unfamiliar with the code 
+can find and understand any endpoint from 
+the documentation alone.
+
+Rate limiting and API security hardening 
+adds throttling on sensitive endpoints 
+including login, signup, and the AI routes 
+to prevent brute force and abuse, standard 
+security headers including cross origin 
+resource sharing locked to known origins and 
+a content security policy where applicable, 
+and a review of input validation across 
+every endpoint for injection and oversized 
+payload risks, with the acceptance criteria 
+that repeated rapid login attempts are 
+throttled with a clear error rather than 
+silently allowed, and that cross origin 
+resource sharing in production only allows 
+the platform's own known frontend origin.
+
+Finally, this section covers a handful of 
+product and compliance tickets that are 
+cross cutting rather than tied to one phase. 
+A target role taxonomy definition finalizes 
+the initial list of target roles offered in 
+the profile form, such as SDE, Data Analyst, 
+and QA Engineer, and maps each role to the 
+relevant skills for scoring emphasis and, 
+later, to question bank content, which both 
+the profile setup page and the Phase 4 AI 
+next steps service depend on. Terms of 
+Service and Privacy Policy pages cover the 
+data the platform collects, including 
+assessment results, resume content, and 
+payment information from Phase 3 onward, 
+presented as static pages linked from the 
+signup flow and the site footer, ideally 
+with an explicit acknowledgement step during 
+signup. Analytics and event tracking 
+instrumentation integrates a product 
+analytics tool such as PostHog, Mixpanel, or 
+Google Analytics on the frontend and tracks 
+key events including signup completed, 
+assessment submitted, dashboard viewed, PDF 
+downloaded, and session booked, with the 
+acceptance criteria that each event fires 
+exactly once per real occurrence rather than 
+duplicating on a component re render.
+
+SECTION 12. ROLE MANAGEMENT AND PERMISSIONS 
+IN DETAIL
+
+The platform has three core roles. The 
+student role can take assessments and view 
+their own dashboard only, book mentor 
+sessions and chat with mentors they have 
+booked or been booked by, and download prep 
+PDFs along with their own personalized 
+readiness PDF, and cannot see any other 
+student's data, mentor internal tooling, or 
+admin tools under any circumstance. The 
+mentor or developer role sets their own 
+availability for sessions, conducts video 
+calls and chats with students who have 
+booked them, sees only the session relevant 
+slice of a student's data, meaning target 
+role, key gaps, and prior notes with that 
+specific mentor, and never the student's 
+full assessment history or another mentor's 
+sessions, leaves session notes and follow up 
+actions that feed the student's dashboard, 
+and cannot see other mentors' schedules, 
+sessions, or students. The admin role 
+manages user accounts for both students and 
+mentors, including mentor onboarding and 
+approval, manages the Skill taxonomy and 
+Question Bank content, manages and authors 
+curated interview prep PDFs, views platform 
+wide analytics in aggregate form only, and 
+handles moderation of chat or session 
+reports.
+
+A permissions summary, described here in 
+prose rather than as a table, is as follows. 
+Taking assessments is allowed for students 
+only. Viewing one's own dashboard is allowed 
+for students only, since mentors and admins 
+have their own separate views rather than a 
+personal readiness dashboard. Viewing 
+another user's dashboard is never allowed 
+for a student, is allowed for a mentor only 
+in the limited session context described 
+above, and is allowed for an admin only for 
+support and analytics purposes in aggregate 
+form, never as a casual browse. Booking a 
+mentor session is something a student does, 
+while conducting one is something a mentor 
+does, and an admin does neither directly. 
+Chatting, scoped strictly to an existing 
+relationship, is available to both students 
+and mentors, while an admin's only 
+involvement is moderation. Downloading prep 
+PDFs is available to students, unavailable 
+to mentors, and available to admins only in 
+the sense that they author and manage the 
+underlying content rather than download it 
+as a consumer. Managing the Skill or 
+Question Bank content is exclusively an 
+admin capability, unavailable to both 
+students and mentors. Approving mentor 
+accounts is exclusively an admin capability. 
+Viewing platform wide analytics is 
+exclusively an admin capability.
+
+The operational rules that keep this 
+trustworthy as the platform scales are as 
+follows. Content management, meaning the 
+Skill taxonomy, the Question Bank, and the 
+curated PDF library, is owned entirely by 
+admins and is never student or mentor 
+editable, which keeps prep content 
+consistent and vetted. Mentor vetting 
+requires every new mentor or developer 
+account to go through an admin approval step 
+before it can appear as bookable, protecting 
+the quality of one to one sessions. Data 
+boundaries between roles are deliberately 
+limited at every layer, meaning a mentor 
+gets only what is needed for their specific 
+session, a student never sees another 
+student's data, and admins see aggregate 
+analytics rather than browsing individual 
+accounts casually. The feedback loop, 
+meaning both AI suggestions from Phase 4 and 
+mentor session notes from Phase 3, is 
+deliberately designed to write into the 
+exact same next steps surface on the student 
+dashboard, so the student experiences one 
+unified list rather than juggling separate 
+AI and mentor recommendation systems.
+
+SECTION 13. HOW THE WORK IS TRACKED IN JIRA
+
+All of the work described in this document 
+is tracked inside a single Jira project with 
+the key SCRUM, on a board named SCRUM board, 
+hosted on the team's Atlassian site. The 
+project is organized around ten epics, each 
+one representing a feature area rather than 
+a single ticket, and every task level ticket 
+in the project has been re parented under 
+exactly one of these epics so that the epic 
+hierarchy in Jira mirrors the section 
+structure of this document.
+
+The ten epics are Platform Infrastructure 
+and DevOps, which covers repository setup, 
+environment configuration, continuous 
+integration and deployment, staging and 
+production environments, and monitoring, 
+Auth and Onboarding, which covers signup and 
+login, Google OAuth, and the onboarding 
+email flow, Student Profile and Assessment, 
+which covers profile management, assessment 
+submission, and readiness scoring, Design 
+System and UX, which covers design tokens, 
+the component library, wireframes, mockups, 
+and accessibility, Backend Foundation and 
+Data Model, which covers the FastAPI and 
+Next.js scaffolds, the SQLAlchemy and 
+Alembic setup, and the core Phase 1 models, 
+Admin and Notifications, which covers the 
+admin panel, its APIs and screens, and the 
+notification service, Platform Ops QA and 
+Compliance, which covers security review, 
+API documentation, legal pages, and 
+analytics instrumentation, Interview Prep, 
+which covers the entire Phase 2 question 
+bank, Mentorship Platform, which covers the 
+entire Phase 3 booking and communication 
+system, and AI and Personalization, which 
+covers the entire Phase 4 AI services.
+
+Every ticket also carries a fix version 
+corresponding to the phase it belongs to. 
+Version v0.1, labeled Phase 1 MVP, covers 
+the core MVP along with all of the cross 
+cutting admin, notification, DevOps, QA, and 
+compliance work described in Section 11, 
+since that work ships alongside Phase 1 
+rather than being deferred. Version v0.2, 
+labeled Phase 2 Interview Prep, covers the 
+question bank. Version v0.3, labeled Phase 3 
+Mentorship, covers the mentorship platform. 
+Version v0.4, labeled Phase 4 AI and 
+Expansion, covers the AI and personalization 
+work.
+
+Every ticket also carries a story point 
+estimate on a simple two, three, or five 
+point scale reflecting relative complexity, 
+using a custom field the site calls Story 
+point estimate, so that sprint capacity and 
+velocity can eventually be tracked 
+meaningfully once the team has completed a 
+few sprints and has real throughput data to 
+compare estimates against.
+
+Because Phase 1 alone contains roughly sixty 
+tickets and around one hundred seventy 
+combined story points, far too much for a 
+single two week sprint, it has been 
+deliberately split into three sequential, 
+dated sprints rather than tracked as one 
+undifferentiated backlog. The first, Phase 1 
+Sprint 1 Foundation, running from September 
+twenty second to October sixth, covers the 
+repository, infrastructure, both application 
+scaffolds, the core schema tickets, and the 
+design system tokens, meaning everything 
+that has no dependency on anything else and 
+can start immediately. The second, Phase 1 
+Sprint 2 Core Build, running from October 
+seventh to October twenty first, covers 
+authentication, profile, assessment, the 
+dashboard, and the remaining wireframes and 
+mockups, meaning the actual student facing 
+MVP loop. The third, Phase 1 Sprint 3 Launch 
+Prep, running from October twenty second to 
+November fifth, covers the admin panel, 
+notifications, the CI and CD pipelines, QA, 
+and legal and compliance pages, meaning 
+everything needed to responsibly launch what 
+was built in the first two sprints. Phases 
+2, 3, and 4 each currently run as a single 
+dated sprint following on from Phase 1, 
+though Phase 3 in particular, with roughly 
+seventy six combined story points across 
+twenty two tickets, is oversized for one 
+sprint and will likely need to be split 
+further once the team has real velocity data 
+from Phase 1 to plan against.
+
+The current team consists of two people. 
+Ayush Kumar owns the backend, database 
+schema, and the majority of the DevOps and 
+QA heavy tickets, along with the majority of 
+the ten epics themselves as their epic level 
+owner, reflecting his broader scope across 
+backend adjacent areas. Garv owns the 
+frontend, design, and UI facing product and 
+QA tickets, along with owning the Design 
+System and UX epic directly, reflecting his 
+focused ownership of that area.
+
+One deliberate limitation exists in how work 
+is tracked. Jira Components, which would 
+normally let the team tag tickets by area 
+such as Backend, Frontend, Design, DevOps, 
+QA, Admin, and Product through a dedicated, 
+structured field with optional component 
+leads, are not currently enabled on this 
+team managed project, and the toggle to 
+enable them lives in the project's own 
+settings inside the Jira web interface 
+rather than being available through any 
+automated interface the team has used so 
+far. In the meantime, every ticket instead 
+carries a plain label matching its area, 
+using the same seven category names that 
+Components would otherwise provide, which 
+supports the same basic filtering and 
+searching even without the more structured 
+Component feature. If Components are enabled 
+later, every ticket can be bulk updated to 
+carry the matching Component in addition to 
+its existing label.
+
+A small amount of Jira hygiene work has also 
+been completed alongside the main ticket 
+structure. Two orphaned sample tickets that 
+predated this project's real scope, one a 
+generic task and one a generic subtask, have 
+been moved to a Done status with an 
+explanatory comment, since they are 
+unrelated template content rather than real 
+work. One genuine duplicate ticket, a second 
+copy of the downloadable curated prep PDFs 
+UI ticket that already exists once in the 
+Phase 2 epic, has been renamed to clearly 
+flag it as a duplicate, moved to Done, and 
+cross referenced to the original ticket it 
+duplicates.
+
+SECTION 14. EXPLICIT NON GOALS ACROSS THE 
+WHOLE PROJECT
+
+Across every phase, a consistent set of 
+things are explicitly not being built right 
+now, and calling them out clearly here is 
+meant to prevent scope creep during 
+implementation. The platform does not 
+support any user type beyond student, 
+mentor, and admin at this time. There is no 
+fine grained permission system beyond those 
+three roles, and no concept of an 
+organization or multi tenant admin 
+structure. There is no support for group 
+mentorship sessions or webinars, and mentor 
+ratings or reviews are not currently scoped, 
+meaning they would require a fresh product 
+decision before any ticket exists for them. 
+There is no AI generated or AI curated 
+interview question content in the currently 
+ticketed work, even though the question 
+bank's data model would technically support 
+it later. There is no AI assisted feedback 
+on recorded or written mock interview 
+answers yet, even though the original 
+product requirements document describes it 
+as a natural, lower priority future 
+addition. Freshers and working employees, 
+the two additional user segments mentioned 
+as part of the long term vision, are not 
+touched by any ticket in Phases 1 through 3 
+and only enter the picture conceptually in 
+Phase 4, without dedicated tickets of their 
+own yet.
+
+SECTION 15. SUCCESS CRITERIA FOR THE PROJECT 
+AS A WHOLE
+
+The project succeeds at each phase boundary 
+if that phase's own explicit acceptance 
+criteria, listed in detail throughout 
+Sections 7 through 10 above, are met, and if 
+the phase can be demonstrated end to end as 
+a real, usable flow rather than a collection 
+of disconnected screens and endpoints. 
+Concretely, Phase 1 succeeds when a brand 
+new student can sign up, complete a profile, 
+take an assessment, and see an accurate, 
+correctly scored dashboard with zero manual 
+intervention from the team. Phase 2 succeeds 
+when that same student can find, bookmark, 
+and solve interview questions relevant to 
+their weakest skills and see their 
+improvement reflected as a trend rather than 
+a single point in time. Phase 3 succeeds 
+when a student can discover an approved 
+mentor, book a real session, join a video 
+call, chat around it, and see the mentor's 
+notes turn into an actionable item on their 
+dashboard, all while the platform's data 
+boundary rules hold up under testing. Phase 
+4 succeeds when the AI generated skill gap 
+explanation, next steps, resume feedback, 
+and personalized PDF are all demonstrably 
+grounded in a student's real data rather 
+than generic or hallucinated content, and 
+when they visibly coexist with mentor 
+authored guidance on the same dashboard 
+surface rather than fragmenting the 
+experience.
+
+Underneath all four phases, the project as a 
+whole succeeds if the core promise stated at 
+the very beginning of this document remains 
+true at every step: that a student can 
+always come back to one dashboard and get an 
+honest, structured, continuously improving 
+answer to the question of where they stand 
+and what they should do next.
+
+SECTION 16. CLOSING SUMMARY
+
+PrepSuccess begins as a simple self 
+assessment and dashboard for college 
+students and grows, phase by phase, into a 
+full preparation ecosystem covering targeted 
+practice content, human mentorship, and AI 
+personalized guidance, all built on a data 
+model that was designed from the very first 
+phase to support everything that comes after 
+it without requiring redesigns along the 
+way. Every piece of scope described in this 
+document has already been broken down into 
+epics, tickets, story points, fix versions, 
+and sprints inside the team's Jira project, 
+assigned to real owners, and sequenced so 
+that nothing later in the roadmap is started 
+before the foundation it depends on has been 
+built. This document is intended to remain 
+the single, plain language source of truth 
+for what the product is and why it is built 
+the way it is, cross referenced at every 
+section against the exact tickets that turn 
+this description into working software.
+
+END OF DOCUMENT

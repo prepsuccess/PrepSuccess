@@ -189,5 +189,6 @@ This PRD builds on:
   ordering (students → freshers → employees); this PRD adds feature depth
   for Phases 2–4 (AI, mentorship, PDFs) without redefining Phase 1.
 
-All three documents should be read together: overview for roadmap,
-context for the "why," and this PRD for the "what it looks like in detail."
+All documents should be read together: overview for roadmap,
+context for the "why," this PRD for the "what it looks like in detail," and `PRODUCTION_STANDARDS.md` for production architecture, security, and engineering rules.
+

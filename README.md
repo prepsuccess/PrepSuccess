@@ -55,8 +55,8 @@ cp .env.example .env.local    # then edit values
 npm run dev                   # http://localhost:3000
 ```
 
-> The backend and frontend scaffolds are tracked in SCRUM-8 and SCRUM-16.
-> Until those land, the folders are placeholders.
+> The backend scaffold is tracked in SCRUM-8; until it lands, `backend/` is a
+> placeholder. The frontend scaffold (SCRUM-16) is in place.
 
 ## Contributing
 

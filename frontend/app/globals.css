@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/*
+ * PrepSuccess color system.
+ * Semantic tokens map to a raw brand/neutral/status scale so components
+ * reference `--color-*` names (e.g. `bg-primary`) instead of hex values.
+ * Dark mode overrides the same semantic tokens under `prefers-color-scheme`.
+ */
+:root {
+  /* Brand */
+  --brand-50: #eef4ff;
+  --brand-100: #dbe6fe;
+  --brand-300: #a4c2fd;
+  --brand-500: #3b6ef6;
+  --brand-600: #2954d6;
+  --brand-700: #2140ab;
+
+  /* Neutral */
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-400: #94a3b8;
+  --neutral-600: #475569;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+
+  /* Status */
+  --status-success: #16a34a;
+  --status-warning: #d97706;
+  --status-danger: #dc2626;
+
+  /* Semantic tokens (light theme, default) */
+  --background: var(--neutral-0);
+  --foreground: var(--neutral-900);
+  --surface: var(--neutral-50);
+  --surface-muted: var(--neutral-100);
+  --border: var(--neutral-200);
+  --primary: var(--brand-500);
+  --primary-foreground: var(--neutral-0);
+  --primary-hover: var(--brand-600);
+  --muted-foreground: var(--neutral-600);
+  --success: var(--status-success);
+  --warning: var(--status-warning);
+  --danger: var(--status-danger);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--neutral-900);
+    --foreground: var(--neutral-50);
+    --surface: var(--neutral-800);
+    --surface-muted: #16213a;
+    --border: #29344a;
+    --primary: var(--brand-300);
+    --primary-foreground: var(--neutral-900);
+    --primary-hover: var(--brand-500);
+    --muted-foreground: var(--neutral-400);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

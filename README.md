@@ -63,5 +63,5 @@ npm run dev                   # http://localhost:3000
 - Work is tracked in Jira: project **SCRUM** (`preparationssuccess.atlassian.net`).
 - `main` is protected — no direct pushes. Open a branch, raise a PR, and get
   at least one review.
-- Branch naming: `SCRUM-<id>-short-description` (e.g. `SCRUM-8-fastapi-scaffold`).
+- Branch naming: `Prep-<ticket-no>-<short-description>` (e.g. `Prep-8-fastapi-scaffold`).
 - Fill in the PR template; link the Jira ticket in the PR title or body.

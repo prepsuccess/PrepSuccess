@@ -72,7 +72,18 @@ designed for reuse by the Phase 3 Mentor/Session tables.
   assessment flow, dashboard
 - Responsive pass + WCAG AA accessibility audit
 
+### 3.8 Production-Grade Engineering Standards (Backend & Infra)
+- **Primary Keys**: UUIDv4 across all models (`User`, `Skill`, `Assessment`, `AssessmentResult`) to prevent enumeration attacks.
+- **Async Architecture**: Async SQLAlchemy 2.0 with `asyncpg` driver and robust connection pooling (`pool_pre_ping=True`, `pool_recycle=1800`).
+- **Standardized API Envelope**: Unified response format (`success`, `data`, `error`, `request_id`, `timestamp`).
+- **Correlation ID Tracking**: `X-Request-ID` attached to all requests, logs, and outgoing responses.
+- **Dual Health Probes**: `/health/live` (process health) & `/health/ready` (DB ping & dependency check).
+- **Security & Rate Limiting**: Token rotation for Refresh tokens, strict password complexity, rate-limiting on auth endpoints via `slowapi`/Redis.
+- **Structured Logging & Sentry**: JSON-formatted logs with request context; Sentry integration for uncaught exception tracking.
+- (See `docs/PRODUCTION_STANDARDS.md` for full implementation specifications).
+
 ## 4. User Flow
+
 
 1. Student signs up (email/password or Google)
 2. Fills profile (college, branch, year, target role)

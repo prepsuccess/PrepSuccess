@@ -1,9 +1,9 @@
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 
@@ -47,7 +47,7 @@ async def root():
         "message": f"Welcome to {settings.PROJECT_NAME}",
         "environment": settings.ENVIRONMENT,
         "docs": "/docs",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -56,7 +56,7 @@ async def root():
 async def liveness_probe():
     return {
         "status": "alive",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -66,5 +66,5 @@ async def readiness_probe():
     # Note: DB check will be integrated in SCRUM-9
     return {
         "status": "ready",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

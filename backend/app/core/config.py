@@ -1,6 +1,6 @@
-from functools import lru_cache
-from typing import List, Union
 import json
+from functools import lru_cache
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,11 +13,15 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # Database
-    DATABASE_URL: str
-    SYNC_DATABASE_URL: str
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/prepsuccess_dev"
+    )
+    SYNC_DATABASE_URL: str = (
+        "postgresql://postgres:postgres@localhost:5432/prepsuccess_dev"
+    )
 
     # Security & JWT
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = "supersecretjwtkeychangeinproductionfortestingonly"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -28,16 +32,18 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = ""
 
     # CORS
-    ALLOWED_ORIGINS: Union[List[str], str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, str) and v.startswith("["):
             return json.loads(v)
-        return v
+        elif isinstance(v, list):
+            return [str(item) for item in v]
+        return []
 
     # Observability
     SENTRY_DSN: str = ""

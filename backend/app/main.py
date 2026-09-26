@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.auth import router as auth_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -39,7 +40,11 @@ async def add_correlation_id_and_timing(request: Request, call_next):
     return response
 
 
-# 3. Root Endpoint
+# 3. Include API Routers
+app.include_router(auth_router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Auth"])
+
+
+# 4. Root Endpoint
 @app.get("/", tags=["General"])
 async def root():
     return {
@@ -51,7 +56,7 @@ async def root():
     }
 
 
-# 4. Production Liveness Probe (Check if app process is running)
+# 5. Production Liveness Probe
 @app.get("/health/live", tags=["Health"])
 async def liveness_probe():
     return {
@@ -60,10 +65,9 @@ async def liveness_probe():
     }
 
 
-# 5. Production Readiness Probe (Check if dependencies are reachable)
+# 6. Production Readiness Probe
 @app.get("/health/ready", tags=["Health"])
 async def readiness_probe():
-    # Note: DB check will be integrated in SCRUM-9
     return {
         "status": "ready",
         "timestamp": datetime.now(UTC).isoformat(),

@@ -35,18 +35,22 @@ about prep material, mentors, or AI yet.
 ### 3.2 Data Model
 | Table | Key fields |
 |---|---|
-| `User` | id, name, email, password_hash (nullable), google_id (nullable), college, branch, year, target_role |
-| `Skill` | id, name, category (technical/soft) |
-| `Assessment` | id, user_id, type (technical/soft/aptitude), taken_at |
-| `AssessmentResult` | id, assessment_id, skill_id, score |
+| `User` | id (UUID), first_name, last_name, email, mobile_no, age, gender, student_year, profile_image_url, role (default STUDENT), auth_provider (LOCAL/GOOGLE), password_hash (nullable), google_id (nullable), is_verified, is_profile_completed, is_active |
+| `EmailOTP` | id (UUID), email, otp_hash, purpose (SIGNUP/PASSWORD_RESET), expires_at (10 mins), is_used, attempts |
+| `Skill` | id (UUID), name, category (technical/soft/aptitude), description |
+| `Assessment` | id (UUID), user_id, type (technical/soft/aptitude/comprehensive), status, taken_at |
+| `AssessmentResult` | id (UUID), assessment_id, skill_id, score |
 
 `Skill` is designed for reuse by the Phase 2 Question Bank. `User` is
 designed for reuse by the Phase 3 Mentor/Session tables.
 
-### 3.3 Auth
-- Email + password signup/login (bcrypt-hashed, JWT-issued)
-- Google OAuth login (redirect → callback → JWT)
-- `get_current_user` dependency protecting all authenticated routes
+### 3.3 Auth & Onboarding Flow
+- **Email OTP Verification**: User requests 6-digit OTP via `POST /api/v1/auth/send-otp` (dispatched via free Gmail SMTP in background), submits OTP with registration form via `POST /api/v1/auth/register`.
+- **Email + Password Login**: `POST /api/v1/auth/login` verifies bcrypt hash, issues Dual JWT Tokens (Access Token 30m, Refresh Token 7d).
+- **Google OAuth 2.0 Login/Signup**: `POST /api/v1/auth/google` verifies Google token, auto-creates pre-verified student account or links existing account without requiring OTP.
+- **Protected Dependencies**: `get_current_user` dependency protecting all authenticated routes.
+- *(See `docs/SYSTEM_ARCHITECTURE_FLOW.md` for full systematic diagrams).*
+
 
 ### 3.4 Profile
 - `GET/PATCH /api/v1/users/me` — college, branch, year, target_role

@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
 
+    # SMTP Configuration (Free Gmail SMTP for Email OTP)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "PrepSuccess<noreply@prepsucess.com>"
+    SMTP_TLS: bool = True
+    OTP_EXPIRE_MINUTES: int = 10
+
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 

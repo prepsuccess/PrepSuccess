@@ -59,9 +59,7 @@ mentors, payments, or a job portal yet.
 | `LearningResource` | id, skill_id, title, type (reference/example/lecture/practice), content_or_url, source |
 
 `Skill` is designed for reuse by the Phase 2 Question Bank. `User` is
-designed for reuse by the Phase 3 Mentor/Session tables. `UserProfile`'s
-JSON shape is deliberately schemaless — the AI agent's collected fields are
-expected to evolve without needing a migration every time.
+designed for reuse by the Phase 3 Mentor/Session tables.
 
 ### 3.3 Auth
 - Email + password signup/login (bcrypt-hashed, JWT-issued)

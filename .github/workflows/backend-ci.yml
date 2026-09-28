@@ -35,13 +35,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Format check (Ruff)
-        run: ruff format --check app tests
+        run: python -m ruff format --check app tests
 
       - name: Lint (Ruff)
-        run: ruff check app tests
+        run: python -m ruff check app tests
 
       - name: Typecheck (Mypy)
-        run: mypy app tests
+        run: python -m mypy app tests
 
       - name: Test (Pytest)
-        run: pytest
+        run: python -m pytest

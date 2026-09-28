@@ -1,83 +1,331 @@
 @import "tailwindcss";
 
-/*
- * PrepSuccess color system.
- * Semantic tokens map to a raw brand/neutral/status scale so components
- * reference `--color-*` names (e.g. `bg-primary`) instead of hex values.
- * Dark mode overrides the same semantic tokens under `prefers-color-scheme`.
- */
 :root {
-  /* Brand */
-  --brand-50: #eef4ff;
-  --brand-100: #dbe6fe;
-  --brand-300: #a4c2fd;
-  --brand-500: #3b6ef6;
-  --brand-600: #2954d6;
-  --brand-700: #2140ab;
+  color-scheme: light;
+  /* Cool neutral base — white page, cool greys; no warm cream tones. */
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #ffffff;
+  --color-surface-3: #f3f4f6;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+  --color-text: #4b5563;
+  --color-text-dim: #8b919c;
+  --color-heading: #0b0c0f;
+  /* The single accent: light sky blue — pale for highlights/fills, deeper for pencil strokes and marks. */
+  --color-marker: #cde9ff;
+  --color-accent: #2e8fe0;
+  --color-accent-ink: #1f6fb5;
+  /* Status colours for forms and alerts; deep enough to read as text on white. */
+  --color-danger: #b42318;
+  --color-success: #1f7a4d;
 
-  /* Neutral */
-  --neutral-0: #ffffff;
-  --neutral-50: #f8fafc;
-  --neutral-100: #f1f5f9;
-  --neutral-200: #e2e8f0;
-  --neutral-400: #94a3b8;
-  --neutral-600: #475569;
-  --neutral-800: #1e293b;
-  --neutral-900: #0f172a;
+  /* Layered, cool-tinted shadows: a tight contact shadow plus a soft ambient one. */
+  --shadow-card:
+    0 0 0 1px rgb(15 23 42 / 0.05), 0 1px 2px rgb(15 23 42 / 0.04),
+    0 8px 24px -12px rgb(15 23 42 / 0.1);
+  --shadow-card-hover:
+    0 0 0 1px rgb(15 23 42 / 0.07), 0 2px 4px rgb(15 23 42 / 0.04),
+    0 24px 48px -20px rgb(15 23 42 / 0.2);
+  --shadow-window:
+    0 0 0 1px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.05),
+    0 12px 32px -14px rgb(15 23 42 / 0.18);
 
-  /* Status */
-  --status-success: #16a34a;
-  --status-warning: #d97706;
-  --status-danger: #dc2626;
-
-  /* Semantic tokens (light theme, default) */
-  --background: var(--neutral-0);
-  --foreground: var(--neutral-900);
-  --surface: var(--neutral-50);
-  --surface-muted: var(--neutral-100);
-  --border: var(--neutral-200);
-  --primary: var(--brand-500);
-  --primary-foreground: var(--neutral-0);
-  --primary-hover: var(--brand-600);
-  --muted-foreground: var(--neutral-600);
-  --success: var(--status-success);
-  --warning: var(--status-warning);
-  --danger: var(--status-danger);
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-muted: var(--surface-muted);
-  --color-border: var(--border);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary-hover: var(--primary-hover);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-3: var(--color-surface-3);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text: var(--color-text);
+  --color-text-dim: var(--color-text-dim);
+  --color-heading: var(--color-heading);
+  --color-marker: var(--color-marker);
+  --color-accent: var(--color-accent);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-danger: var(--color-danger);
+  --color-success: var(--color-success);
+
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-marker: var(--font-caveat), "Comic Sans MS", cursive;
+
+  --radius-card: 14px;
+  --radius-card-lg: 20px;
+  --radius-panel: 20px;
+
+  --text-h1: clamp(2.6rem, 1.9rem + 3.2vw, 4.5rem);
+  --text-h1--line-height: 1.02;
+  --text-h2: clamp(2rem, 1.5238rem + 2.381vw, 3.25rem);
+  --text-h2--line-height: 1.08;
+  --text-h3: clamp(2.25rem, 1.9573rem + 1.4634vw, 3rem);
+  --text-h3--line-height: 1.05;
+  --text-h4: clamp(1.25rem, 1.0549rem + 0.9756vw, 1.75rem);
+  --text-h4--line-height: 1.15;
+  --text-h5: clamp(1.2rem, 1.1037rem + 0.5vw, 1.45rem);
+  --text-h5--line-height: 1.2;
+  --text-h6: clamp(1.1rem, 0.9787rem + 0.5vw, 1.3rem);
+  --text-h6--line-height: 1.25;
+
+  --animate-marquee: marquee var(--marquee-duration, 20s) linear infinite;
+  --animate-spin-slow: spin 30s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-dot: pulse-dot 2s ease-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--neutral-900);
-    --foreground: var(--neutral-50);
-    --surface: var(--neutral-800);
-    --surface-muted: #16213a;
-    --border: #29344a;
-    --primary: var(--brand-300);
-    --primary-foreground: var(--neutral-900);
-    --primary-hover: var(--brand-500);
-    --muted-foreground: var(--neutral-400);
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-100%, 0, 0);
   }
 }
 
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes chat-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse-dot {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes ink-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes marker-draw {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--color-bg);
+}
+
+/* Lenis owns smooth scrolling when it's active. */
+html.lenis {
+  scroll-behavior: auto;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-heading);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+}
+
+::selection {
+  background-color: var(--color-marker);
+  color: var(--color-heading);
+}
+
+/* Pencil underline that draws on hover of the nearest .group and erases on leave. */
+.hover-draw path {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.55s var(--ease-out-cubic);
+}
+.group:hover .hover-draw path,
+.group:focus-visible .hover-draw path,
+.hover-draw.is-active path {
+  stroke-dashoffset: 0;
+}
+
+@layer components {
+  /* Handwritten notes: Caveat runs small, so it is set a touch heavier. */
+  .font-marker {
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  /* Flat cool-grey panels — tinted sections without gradients or glows. */
+  .panel {
+    position: relative;
+    overflow: clip;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-3);
+  }
+
+  /* Card surface: soft layered shadow instead of a hard border. */
+  .card {
+    position: relative;
+    border-radius: var(--radius-card-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    transition:
+      box-shadow 0.5s var(--ease-out-cubic),
+      translate 0.5s var(--ease-out-cubic);
+  }
+
+  /* Interactive cards lift slightly on hover. */
+  .card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+    translate: 0 -4px;
+  }
+}
+
+/* Highlighter stroke behind a word; draws in as it scrolls into view where supported. */
+.marker {
+  padding: 0 0.1em;
+  margin: 0 -0.06em;
+  background-image: linear-gradient(
+    transparent 52%,
+    var(--color-marker) 52%,
+    var(--color-marker) 92%,
+    transparent 92%
+  );
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 100%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+@supports (animation-timeline: view()) {
+  .marker {
+    animation: marker-draw linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 100%;
+  }
+}
+
+/* Hand-drawn annotation strokes: drawn like a pen once their scope is in view (or immediately with .now). */
+.draw {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 1;
+  animation: draw var(--draw-dur, 0.9s) var(--ease-out-cubic) var(--d, 0s) forwards paused;
+}
+.ink {
+  opacity: 0;
+  animation: ink-in 0.5s var(--ease-out-cubic) var(--d, 0s) forwards paused;
+}
+.grow {
+  transform-origin: left;
+  animation: grow-x 0.9s var(--ease-out-cubic) var(--d, 0s) both paused;
+}
+[data-inview] .draw,
+[data-inview] .ink,
+[data-inview] .grow,
+.draw.now,
+.ink.now,
+.grow.now {
+  animation-play-state: running;
+}
+
+/* Pencil marks inside a headline wait until its line reveal has finished and been undone. */
+[data-split]:not([data-split-done]) .draw {
+  animation-play-state: paused !important;
+}
+
+/* GSAP owns these; hide them until it has run so nothing flashes on hydration. */
+html.js [data-reveal],
+html.js [data-split] {
+  visibility: hidden;
+}
+
+/* Phones: drop the SVG pencil filter — it re-rasterises every stroke and is costly on low-end GPUs. */
+@media (max-width: 1023px) {
+  [class*="url(#pencil)"] {
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  html.js [data-reveal],
+  html.js [data-split] {
+    visibility: visible;
+  }
+  .marker,
+  .draw,
+  .ink,
+  .grow {
+    animation: none;
+  }
+  .draw {
+    stroke-dashoffset: 0;
+  }
+  .ink {
+    opacity: 1;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

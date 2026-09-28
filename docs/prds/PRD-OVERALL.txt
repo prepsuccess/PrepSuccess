@@ -77,6 +77,43 @@ references those tickets throughout so that
 the plain language explanation here and the 
 tracked work there never drift apart.
 
+REVISION NOTICE (added 2026-09-27): Phase 1 as
+described in Section 7 below has been superseded
+in one major respect. The original Phase 1 was a
+static form-based profile followed by a static,
+multiple-choice self assessment. Phase 1 is now
+AI-first: an AI agent conversationally onboards
+the student, collecting the same kind of profile
+information (and more) through natural
+conversation rather than a form, and stores it as
+structured JSON rather than fixed columns. That
+same agent then runs an adaptive, per-skill
+assessment, generating diagnostic questions and
+small practical tasks, scoring the response, and
+comparing it against a mastery threshold to decide
+whether a topic is mastered or needs revision,
+serving curated learning material for anything
+below threshold. The skill-gap analysis and
+personalized next-steps capabilities that this
+document originally placed in Phase 4 (Section 10)
+have moved into Phase 1, because they are no
+longer separable from the onboarding/assessment
+agent itself. A new, currently unticketed Phase 5,
+a job portal integrated into the same platform, has
+also been added to the long-term roadmap. The
+platform remains free, and AI usage specifically is
+planned as a free trial for the student's first
+three to five months. Section 7, Section 10, and
+Section 13 below should be read together with this
+notice; ticket-level detail that has changed is
+called out inline where it appears, and the
+authoritative, current state of every ticket is
+Jira itself, not this narrative document, whenever
+the two disagree. See docs/PROJECT_CONTEXT.md,
+docs/project-overview.md, and docs/prds/PRD-01 and
+PRD-05 for the fully updated, shorter reference
+documents.
+
 SECTION 2. THE PROBLEM BEING SOLVED
 
 College students, particularly those 
@@ -304,11 +341,34 @@ panel, notifications, continuous integration
 and deployment pipelines, quality assurance, 
 and legal and compliance pages.
 
-The following paragraphs walk through every 
-ticket in Phase 1 individually, in the same 
-level of detail as the ticket itself carries 
-in Jira, so that this document alone is 
-sufficient to understand the full scope of 
+As of the 2026-09-27 revision above, Phase 1's
+student-facing loop is: sign up, then have an AI
+onboarding conversation (profile captured as JSON,
+not a form), then go through an AI adaptive
+assessment per claimed skill (question or small
+task, scored against a mastery threshold, revision
+material served for anything below it), then see a
+personalized AI dashboard covering skill level,
+learning progress, completed and revision topics,
+AI-recommended next steps, resources, tasks, and
+interview readiness. Several of the tickets
+described below (SCRUM-13, 14, 15, 19, 20, 21, 39,
+41, 42) have been rescoped in Jira to reflect this,
+and new tickets now exist to cover the AI agent and
+provider layer, the AIConversation, PracticalTask,
+UserTaskSubmission, and LearningResource schemas,
+practical-task and learning-resource APIs and UI,
+and AI free-trial usage tracking. The paragraphs
+below retain their original wording as a historical
+record of the first design pass; a short revision
+note has been inserted directly after each
+paragraph whose scope has materially changed.
+
+The following paragraphs walk through every
+ticket in Phase 1 individually, in the same
+level of detail as the ticket itself carries
+in Jira, so that this document alone is
+sufficient to understand the full scope of
 the first release.
 
 Ticket SCRUM-5, set up GitHub monorepo 
@@ -549,12 +609,23 @@ and rejects anonymous requests, that
 updating an unknown or invalid field returns 
 a clear validation error, and that changes 
 persist and are visible on the next read. 
-This ticket depends on the core database 
-models and the authentication API, and it 
-blocks the profile setup page on the 
+This ticket depends on the core database
+models and the authentication API, and it
+blocks the profile setup page on the
 frontend.
 
-Ticket SCRUM-14, assessment submission API. 
+[Revision note, 2026-09-27: SCRUM-13's scope
+described above (profile CRUD API) has been
+rescoped in Jira. It is now the AI onboarding
+conversation API — a turn-by-turn endpoint where
+the AI agent asks the student for age, location,
+education, skills, experience, interests, and
+goals, extracting each answer into a structured
+JSON UserProfile rather than accepting a flat form
+submission. A read/manual-edit endpoint remains as
+a fallback path.]
+
+Ticket SCRUM-14, assessment submission API.
 The goal is to let a student take and submit 
 a self assessment covering technical, soft, 
 or aptitude categories. The scope includes a 
@@ -570,9 +641,20 @@ same assessment twice is rejected, and that
 submitted results can be queried per user 
 and per skill. This ticket depends on the 
 core database models and the authentication 
-API, and it blocks both the assessment 
-taking flow on the frontend and the 
+API, and it blocks both the assessment
+taking flow on the frontend and the
 readiness scoring API.
+
+[Revision note, 2026-09-27: SCRUM-14's scope
+described above (a fixed technical/soft/aptitude
+quiz submission) has been rescoped in Jira. It is
+now the AI adaptive assessment API: for each skill
+the student claims, the AI agent generates
+diagnostic questions or a small practical task,
+scores the response, and compares it against a
+mastery threshold to flag the topic mastered or
+needing revision, then serves curated learning
+resources for anything below threshold.]
 
 Ticket SCRUM-15, readiness scoring logic and 
 dashboard API. The goal is to turn raw, per 
@@ -592,11 +674,22 @@ scoring logic can be unit tested in
 isolation from the HTTP layer, and that a 
 user with no assessments yet receives a 
 sensible empty response rather than an 
-error. This ticket depends on the assessment 
-submission API, and it blocks the readiness 
-dashboard UI on the frontend, the future AI 
-skill gap analysis service in Phase 4, and 
+error. This ticket depends on the assessment
+submission API, and it blocks the readiness
+dashboard UI on the frontend, the future AI
+skill gap analysis service in Phase 4, and
 the admin analytics API.
+
+[Revision note, 2026-09-27: SCRUM-15's scope has
+expanded. The "future AI skill gap analysis service
+in Phase 4" referenced above is no longer future or
+Phase 4 — it is now part of this same Phase 1
+dashboard API (SCRUM-60/61 moved to fix version
+v0.1). The dashboard endpoint now also returns
+topics completed, topics needing revision, an
+interview-readiness rollup, and AI-recommended next
+steps grounded strictly in the student's real
+AssessmentResult rows.]
 
 Ticket SCRUM-16, scaffold Next.js project 
 structure. The goal is to scaffold the 
@@ -680,9 +773,16 @@ criteria are that submitting the form saves
 the profile and routes the student into the 
 assessment flow or the dashboard, and that 
 revisiting the page later pre fills the 
-existing values. This ticket depends on the 
-profile CRUD API, the profile setup 
+existing values. This ticket depends on the
+profile CRUD API, the profile setup
 wireframe, and the Next.js scaffold.
+
+[Revision note, 2026-09-27: SCRUM-19's scope has
+been rescoped from a static profile form to an AI
+onboarding chat UI — a conversational interface that
+calls the rescoped SCRUM-13 onboarding API, with a
+manual-edit fallback view for the structured profile
+it produces.]
 
 Ticket SCRUM-20, assessment taking flow UI. 
 The goal is to build the flow that lets a 
@@ -699,10 +799,18 @@ progress is not lost on an accidental page
 refresh, using at minimum local state 
 persistence, and that submission errors are 
 shown clearly without losing the student's 
-already entered answers. This ticket depends 
-on the assessment submission API, the 
-assessment flow wireframe, the high fidelity 
+already entered answers. This ticket depends
+on the assessment submission API, the
+assessment flow wireframe, the high fidelity
 assessment mockups, and the Next.js scaffold.
+
+[Revision note, 2026-09-27: SCRUM-20's scope has
+been rescoped from a fixed question-and-answer quiz
+UI to an AI adaptive assessment UI — a conversational
+interface for the diagnostic questions plus a
+submission UI for practical tasks, calling the
+rescoped SCRUM-14 API, with a learning-resource view
+surfaced inline whenever a topic needs revision.]
 
 Ticket SCRUM-21, readiness dashboard UI. The 
 goal is to build the readiness dashboard, 
@@ -721,10 +829,19 @@ no data and for a user with real results,
 and that the displayed numbers always match 
 what the backend scoring service returns 
 rather than being recomputed on the client. 
-This ticket depends on the readiness scoring 
-and dashboard API, the dashboard wireframe, 
-the high fidelity dashboard mockups, and the 
+This ticket depends on the readiness scoring
+and dashboard API, the dashboard wireframe,
+the high fidelity dashboard mockups, and the
 Next.js scaffold.
+
+[Revision note, 2026-09-27: SCRUM-21's scope has
+expanded beyond an overall-score-plus-category-
+breakdown view. The dashboard UI now also needs
+sections for topics completed, topics needing
+revision, AI-recommended next steps, linked learning
+resources, practical tasks, and an interview-
+readiness indicator, all sourced from the rescoped
+SCRUM-15 dashboard API.]
 
 Ticket SCRUM-22, design system covering 
 color palette, typography, and spacing 
@@ -989,12 +1106,31 @@ key to skill, and a numeric score, with a
 unique constraint across the assessment and 
 skill pair. The acceptance criteria are that 
 the schema is documented and confirmed 
-sufficient for the readiness scoring service 
-to compute both category and overall scores. 
-This ticket blocks the core database models 
+sufficient for the readiness scoring service
+to compute both category and overall scores.
+This ticket blocks the core database models
 implementation ticket.
 
-Ticket SCRUM-48, design and implement the 
+[Revision note, 2026-09-27: SCRUM-39 (User),
+SCRUM-41 (Assessment), and SCRUM-42
+(AssessmentResult) all need small amendments for the
+AI-first design: User gains a role field and no
+longer carries college/branch/year/target_role
+directly (those move into the new schemaless
+UserProfile.profile_data JSON below); Assessment
+gains a skill_id and mode (diagnostic/task) instead
+of a fixed technical/soft/aptitude type; and
+AssessmentResult gains max_score, threshold, and
+mastery_status (mastered/needs_revision) instead of
+a bare score. Five new schema tickets are also
+needed and don't exist yet in the list above:
+UserProfile (JSONB profile_data), AIConversation
+(onboarding/assessment chat log), PracticalTask,
+UserTaskSubmission, and LearningResource. See Jira
+for the authoritative, current field list once this
+restructuring is applied.]
+
+Ticket SCRUM-48, design and implement the
 Notification schema. The goal is to design 
 the table used for both in app and email 
 notifications. The scope includes fields for 
@@ -1739,10 +1875,24 @@ Compliance, which covers security review,
 API documentation, legal pages, and 
 analytics instrumentation, Interview Prep, 
 which covers the entire Phase 2 question 
-bank, Mentorship Platform, which covers the 
-entire Phase 3 booking and communication 
-system, and AI and Personalization, which 
+bank, Mentorship Platform, which covers the
+entire Phase 3 booking and communication
+system, and AI and Personalization, which
 covers the entire Phase 4 AI services.
+
+[Revision note, 2026-09-27: AI and Personalization
+no longer covers only Phase 4. Its skill-gap-
+analysis and personalized-next-steps tickets
+(SCRUM-60, 61, 79) now carry fix version v0.1 and
+ship as part of Phase 1, because they are inseparable
+from the AI onboarding/adaptive-assessment agent. The
+epic itself still exists as a single feature-area
+grouping spanning both fix versions; only resume
+feedback and the personalized readiness PDF
+(SCRUM-62, 63, 81, 82) remain on v0.4. A new epic,
+Job Portal, has also been added for the not-yet-
+ticketed Phase 5 direction, with a placeholder fix
+version v0.5.]
 
 Every ticket also carries a fix version 
 corresponding to the phase it belongs to. 
@@ -1755,9 +1905,13 @@ rather than being deferred. Version v0.2,
 labeled Phase 2 Interview Prep, covers the 
 question bank. Version v0.3, labeled Phase 3 
 Mentorship, covers the mentorship platform. 
-Version v0.4, labeled Phase 4 AI and 
-Expansion, covers the AI and personalization 
-work.
+Version v0.4, labeled Phase 4 Expansion and
+Advanced AI, covers the remaining AI and
+personalization work (resume feedback, personalized
+readiness PDF) plus the freshers/employees
+expansion. A new version, v0.5, labeled Phase 5 Job
+Portal, is a placeholder for the not-yet-ticketed
+job-portal direction.
 
 Every ticket also carries a story point 
 estimate on a simple two, three, or five 
@@ -1900,11 +2054,18 @@ Sections 7 through 10 above, are met, and if
 the phase can be demonstrated end to end as 
 a real, usable flow rather than a collection 
 of disconnected screens and endpoints. 
-Concretely, Phase 1 succeeds when a brand 
-new student can sign up, complete a profile, 
-take an assessment, and see an accurate, 
-correctly scored dashboard with zero manual 
-intervention from the team. Phase 2 succeeds 
+Concretely, as revised 2026-09-27, Phase 1 succeeds
+when a brand new student can sign up, be
+conversationally onboarded by the AI agent with
+their profile captured as structured JSON, go
+through an adaptive per-skill assessment that
+correctly distinguishes mastered topics from ones
+needing revision, receive curated learning resources
+for anything below threshold, and see an accurate,
+personalized AI dashboard, all with zero manual
+intervention from the team and with every AI-
+generated claim grounded strictly in that student's
+own real data. Phase 2 succeeds 
 when that same student can find, bookmark, 
 and solve interview questions relevant to 
 their weakest skills and see their 

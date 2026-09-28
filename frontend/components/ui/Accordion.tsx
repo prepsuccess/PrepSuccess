@@ -27,7 +27,7 @@ export function AccordionItem({
           onClick={() => setOpen((o) => !o)}
           className="group flex w-full cursor-pointer items-baseline gap-5 py-6 text-left"
         >
-          <span className="text-text-dim w-6 flex-none font-mono text-[11px] font-normal tracking-normal">
+          <span className="text-text-dim w-6 flex-none text-[12px] font-normal tracking-normal tabular-nums">
             {String(index + 1).padStart(2, "0")}
           </span>
           <span className="flex-1 transition-transform duration-500 ease-[var(--ease-out-cubic)] group-hover:translate-x-1">

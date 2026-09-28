@@ -16,9 +16,7 @@ function FeaturedPreview() {
         {resources.items.map((item) => (
           <li key={item.type} className="flex items-center justify-between py-2 text-[12px]">
             <span className="text-heading">{item.title}</span>
-            <span className="text-text-dim font-mono text-[10px] tracking-wide uppercase">
-              {item.type}
-            </span>
+            <span className="text-text-dim text-[12px] tabular-nums">{item.type}</span>
           </li>
         ))}
       </ul>
@@ -28,7 +26,7 @@ function FeaturedPreview() {
 
 function Thumb({ index }: { index: number }) {
   return (
-    <div className="border-border-strong bg-surface flex h-full flex-col justify-center gap-2 rounded-[8px] border p-3 transition-transform duration-700 ease-[var(--ease-out-cubic)] group-hover:-translate-y-1">
+    <div className="bg-surface flex h-full flex-col justify-center gap-2 rounded-[10px] p-3 shadow-[var(--shadow-window)] transition-transform duration-700 ease-[var(--ease-out-cubic)] group-hover:-translate-y-1">
       <span className="bg-heading h-1.5 w-10" />
       <Line width="90%" />
       <Line width={index === 1 ? "60%" : "75%"} />
@@ -50,12 +48,12 @@ export function Resources() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <Reveal offset={12} className="h-full">
-          <article className="group border-border bg-surface hover:border-heading flex h-full flex-col rounded-[var(--radius-card-lg)] border p-3 transition-colors duration-500">
+          <article className="group card card-hover flex h-full flex-col p-3">
             <PreviewFrame tag={featured.type}>
               <FeaturedPreview />
             </PreviewFrame>
             <div className="flex flex-1 flex-col px-3 pt-6 pb-4">
-              <span className="text-text-dim font-mono text-[11px] tracking-[0.08em] uppercase">
+              <span className="text-text-dim text-[12px] tabular-nums">
                 {featured.meta[0]} · {featured.meta[1]}
               </span>
               <h3 className="text-h4 mt-3">
@@ -70,15 +68,13 @@ export function Resources() {
         <div className="flex flex-col gap-5">
           {items.map((item, i) => (
             <Reveal key={item.type} offset={12} delay={0.1 * (i + 1)} className="flex-1">
-              <article className="group border-border bg-surface hover:border-heading grid h-full grid-cols-1 items-center gap-6 rounded-[var(--radius-card-lg)] border p-3 pr-6 transition-colors duration-500 sm:grid-cols-[178px_1fr]">
+              <article className="group card card-hover grid h-full grid-cols-1 items-center gap-6 p-3 pr-6 sm:grid-cols-[178px_1fr]">
                 <div className="bg-surface-3 relative aspect-video h-full overflow-clip rounded-[10px] p-4 sm:aspect-auto sm:min-h-[140px]">
                   <Thumb index={i} />
                   <FocusReveal />
                 </div>
                 <div className="flex flex-col gap-2 px-3 pb-3 sm:px-0 sm:pb-0">
-                  <span className="text-text-dim font-mono text-[11px] tracking-[0.12em] uppercase">
-                    {item.type}
-                  </span>
+                  <span className="text-text-dim text-[12px] tabular-nums">{item.type}</span>
                   <h3 className="text-h5">
                     <HoverScribble>{item.title}</HoverScribble>
                   </h3>

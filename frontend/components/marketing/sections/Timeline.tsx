@@ -82,14 +82,14 @@ export function Timeline({ items, offset = 0 }: { items: TimelineItem[]; offset?
                 className="border-border-strong bg-bg [&.is-reached]:border-accent [&.is-reached]:bg-accent absolute top-[66px] -left-[36px] z-10 h-4 w-4 rounded-full border-2 transition-colors duration-500 lg:top-[98px] lg:left-[4px]"
               />
 
-              <p className="font-marker text-accent -rotate-2 text-[15px] leading-[1.15] whitespace-pre-line uppercase lg:pl-9">
+              <p className="font-marker text-accent -rotate-2 text-[20px] leading-[1.15] whitespace-pre-line lg:pl-9">
                 {item.when}
               </p>
 
               <div className="mt-5 grid items-center gap-24 lg:mt-0 lg:grid-cols-2 lg:gap-16">
                 <div className={visualFirst ? "lg:order-2" : ""}>
                   {item.eyebrow ? (
-                    <span className="text-text-dim mb-4 block font-mono text-[11px] tracking-[0.12em] uppercase">
+                    <span className="text-text-dim mb-4 block text-[12px] tabular-nums">
                       {item.eyebrow}
                     </span>
                   ) : null}

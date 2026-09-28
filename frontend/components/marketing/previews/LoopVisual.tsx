@@ -7,7 +7,7 @@ function SignUp() {
         <span className="border-border-strong bg-surface text-heading rounded-[6px] border py-2 text-center text-[12px] font-medium">
           Continue with Google
         </span>
-        <span className="text-text-dim text-center text-[10px] tracking-widest uppercase">or</span>
+        <span className="text-text-dim text-center text-[12px]">or</span>
         {["Name", "Email", "Password"].map((field) => (
           <span
             key={field}
@@ -75,7 +75,7 @@ function Improve() {
               className="border-border bg-surface text-heading flex items-center gap-2.5 rounded-[6px] border px-3 py-2 text-[12px]"
             >
               <span
-                className={`grid h-5 w-5 flex-none place-items-center rounded-[4px] font-mono text-[10px] ${i === 0 ? "bg-heading text-white" : "bg-surface-3 text-text"}`}
+                className={`grid h-5 w-5 flex-none place-items-center rounded-[4px] text-[12px] tabular-nums ${i === 0 ? "bg-heading text-white" : "bg-surface-3 text-text"}`}
               >
                 {i + 1}
               </span>

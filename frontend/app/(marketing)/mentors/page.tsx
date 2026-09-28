@@ -28,7 +28,7 @@ function Visibility() {
     <div className="grid max-w-[480px] gap-6 sm:grid-cols-2">
       {columns.map((column) => (
         <div key={column.title}>
-          <p className="border-heading text-heading border-b pb-2 font-mono text-[11px] tracking-[0.12em] uppercase">
+          <p className="border-heading text-heading border-b pb-2 text-[12px] tabular-nums">
             {column.title}
           </p>
           <ul className="mt-1 flex flex-col">

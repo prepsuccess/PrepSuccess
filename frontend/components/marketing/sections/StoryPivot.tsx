@@ -20,7 +20,7 @@ export function StoryPivot() {
             <p className="text-[17px]">{story.pivot.body}</p>
           </Reveal>
           <Reveal delay={0.35} className="relative mt-12">
-            <p className="font-marker text-heading -rotate-1 text-[22px] leading-snug">
+            <p className="font-marker text-heading -rotate-1 text-[29px] leading-snug">
               so we built the thing we wished we&apos;d had.
             </p>
           </Reveal>

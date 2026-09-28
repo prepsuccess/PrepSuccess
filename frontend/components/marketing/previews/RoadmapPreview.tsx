@@ -21,7 +21,7 @@ function Questions() {
             className="border-border bg-surface text-heading flex items-center justify-between gap-2 rounded-[6px] border px-2.5 py-2 text-[11px]"
           >
             <span className="truncate">{q}</span>
-            <span className="text-text-dim font-mono text-[10px]">
+            <span className="text-text-dim text-[12px] tabular-nums">
               {i < 2 ? "solved" : "saved"}
             </span>
           </li>

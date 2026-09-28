@@ -34,7 +34,7 @@ export function DataTable<T>({
                 key={col.key}
                 scope="col"
                 className={cn(
-                  "text-text-dim px-5 py-3.5 font-mono text-[11px] font-normal tracking-[0.12em] uppercase",
+                  "text-text-dim px-5 py-3.5 text-[12px] font-normal tabular-nums",
                   col.align === "right" && "text-right",
                   col.className,
                 )}

@@ -37,7 +37,7 @@ function PlanCard({ plan }: { plan: Plan }) {
         </>
       ) : null}
       <article
-        className={`card flex h-full flex-col p-6 ${plan.featured ? "border-heading lg:-rotate-[0.6deg] lg:transition-transform lg:duration-700 lg:group-hover:rotate-0" : ""}`}
+        className={`card flex h-full flex-col p-6 ${plan.featured ? "outline-heading/80 outline-[1.5px] -outline-offset-[1.5px] lg:-rotate-[0.6deg] lg:transition-transform lg:duration-700 lg:group-hover:rotate-0" : ""}`}
       >
         <MonoLabel>{plan.name}</MonoLabel>
         <p className="text-heading mt-5 text-[44px] leading-none font-semibold tracking-[-0.045em]">
@@ -65,9 +65,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 function Includes() {
   return (
     <DrawScope className="mt-16 flex flex-col items-center gap-6 text-center">
-      <p className="font-marker text-accent -rotate-1 text-[17px] tracking-wide uppercase">
-        every plan includes
-      </p>
+      <p className="font-marker text-accent -rotate-1 text-[22px]">every plan includes</p>
       <ul className="flex max-w-[900px] flex-wrap justify-center gap-x-8 gap-y-4">
         {pricing.includes.map((item, i) => {
           const delay = 0.3 + i * 0.3;

@@ -158,7 +158,7 @@ export function SignupForm() {
           onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
           error={otpError}
           hint={`Sent to ${details.email.trim()}. It expires in a few minutes.`}
-          className="font-mono text-[18px] tracking-[0.4em]"
+          className="text-[18px] tracking-[0.3em] tabular-nums"
           autoFocus
           required
         />

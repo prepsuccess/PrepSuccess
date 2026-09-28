@@ -370,7 +370,7 @@ export function Annotation({
       className={`pointer-events-none absolute z-20 hidden lg:flex ${layoutClasses[layout]} ${className}`}
     >
       <span
-        className={`ink ${now ? "now" : ""} font-marker text-accent block text-[17px] leading-[1.1] whitespace-pre uppercase opacity-90 ${tilt} ${labelClassName}`}
+        className={`ink ${now ? "now" : ""} font-marker text-accent block text-[22px] leading-[1.1] whitespace-pre opacity-90 ${tilt} ${labelClassName}`}
         style={drawStyle(delay + 0.75)}
       >
         {label}

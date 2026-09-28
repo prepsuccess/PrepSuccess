@@ -42,7 +42,7 @@ function PermissionsTable() {
       <table className="w-full min-w-[640px] text-left text-[15px]">
         <thead>
           <tr className="border-heading border-y">
-            <th className="text-text-dim py-3.5 pr-4 font-mono text-[11px] font-normal tracking-[0.12em] uppercase">
+            <th className="text-text-dim py-3.5 pr-4 text-[12px] font-normal tabular-nums">
               Capability
             </th>
             {roles.map((role) => (

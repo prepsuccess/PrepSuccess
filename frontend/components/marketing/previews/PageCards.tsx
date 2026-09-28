@@ -204,7 +204,7 @@ export function TopicsCard() {
           {columns.map((col) => (
             <div key={col.title}>
               <p className="border-heading text-heading border-b pb-1.5 text-[12px] font-medium">
-                {col.title} <span className="text-text-dim font-mono">{col.items.length}</span>
+                {col.title} <span className="text-text-dim tabular-nums">{col.items.length}</span>
               </p>
               <ul className="mt-1">
                 {col.items.map((item) => (
@@ -221,9 +221,7 @@ export function TopicsCard() {
           ))}
         </div>
         <p className="border-border bg-bg text-heading mt-4 rounded-[8px] border px-3 py-2.5 text-[12px]">
-          <span className="text-accent-ink font-mono text-[10px] tracking-wide uppercase">
-            Next ·{" "}
-          </span>
+          <span className="text-accent-ink text-[12px] tabular-nums">Next · </span>
           Study the event loop, then check it again
         </p>
       </MiniWindow>
@@ -262,7 +260,7 @@ function CoreCard() {
           <li key={row.label} className="flex items-center gap-3 py-2.5 text-[13px]">
             <LineIcon name={row.icon} className="text-text-dim h-4 w-4 flex-none" />
             <span className="text-heading flex-1">{row.label}</span>
-            <span className="text-accent-ink inline-flex items-center gap-1.5 font-mono text-[10px] tracking-wide uppercase">
+            <span className="text-accent-ink inline-flex items-center gap-1.5 text-[12px] tabular-nums">
               <span className="animate-pulse-dot bg-accent h-1.5 w-1.5 rounded-full" /> live
             </span>
           </li>
@@ -353,7 +351,7 @@ export function SessionBriefCard() {
           </div>
           <div className="text-text-dim flex items-center justify-between gap-4 py-2.5">
             <dt>Full test history</dt>
-            <dd className="font-mono text-[11px] uppercase">
+            <dd className="text-[12px] tabular-nums">
               <Circled delay={0.5}>not shared</Circled>
             </dd>
           </div>
@@ -387,7 +385,7 @@ export function MergedStepsCard() {
         <ol className="divide-border flex flex-col divide-y">
           {steps.map((step, i) => (
             <li key={step.text} className="flex items-center gap-3 py-3 text-[13px]">
-              <span className="text-accent-ink font-mono text-[11px]">0{i + 1}</span>
+              <span className="text-accent-ink text-[12px] tabular-nums">0{i + 1}</span>
               <span className="text-heading flex-1">{step.text}</span>
               <Chip status={step.from === "Mentor" ? "mastered" : "neutral"}>{step.from}</Chip>
             </li>

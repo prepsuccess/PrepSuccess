@@ -31,13 +31,13 @@ export function Tracks() {
       <div className="mt-[60px] grid gap-5 md:grid-cols-2">
         {tracks.map((track, i) => (
           <Reveal key={track.title} offset={12} delay={0.1 * (i % 2)} className="h-full">
-            <article className="group border-border bg-surface hover:border-heading flex h-full flex-col rounded-[var(--radius-card-lg)] border p-3 transition-colors duration-500">
+            <article className="group card card-hover flex h-full flex-col p-3">
               <PreviewFrame tag={track.category}>
                 <TrackPreview kind={track.preview} />
               </PreviewFrame>
 
               <div className="flex flex-1 flex-col px-3 pt-6 pb-4">
-                <span className="text-text-dim font-mono text-[11px] tracking-[0.08em] uppercase">
+                <span className="text-text-dim text-[12px] tabular-nums">
                   {track.modes[0]} · {track.modes[1]}
                 </span>
                 <h3 className="text-h4 mt-3">

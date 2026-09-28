@@ -13,12 +13,17 @@ export function MiniWindow({
 }) {
   return (
     <div
-      className={`border-border-strong bg-surface flex flex-col overflow-clip rounded-[10px] border ${className}`}
+      className={`bg-surface flex flex-col overflow-clip rounded-[14px] shadow-[var(--shadow-window)] ${className}`}
     >
-      <div className="border-border flex items-center justify-between gap-3 border-b px-3.5 py-2.5">
-        <span className="text-heading truncate text-[12px] font-medium">{title}</span>
+      <div className="border-border/70 flex items-center gap-3 border-b px-3.5 py-2.5">
+        <span aria-hidden className="flex flex-none gap-1.5">
+          <span className="bg-border-strong h-2 w-2 rounded-full" />
+          <span className="bg-border-strong h-2 w-2 rounded-full" />
+          <span className="bg-border-strong h-2 w-2 rounded-full" />
+        </span>
+        <span className="text-heading flex-1 truncate text-[12px] font-medium">{title}</span>
         {meta ? (
-          <span className="text-text-dim flex-none font-mono text-[10px] tracking-wide uppercase">
+          <span className="bg-surface-3 text-text flex-none rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums">
             {meta}
           </span>
         ) : null}
@@ -85,7 +90,7 @@ export function Bar({
     <div className="flex flex-col gap-1.5">
       <div className="text-text flex justify-between text-[11px]">
         <span>{label}</span>
-        <span className="text-heading font-mono">{value}</span>
+        <span className="text-heading tabular-nums">{value}</span>
       </div>
       <div className="bg-surface-3 relative h-1.5">
         <div
@@ -116,9 +121,5 @@ export function MonoLabel({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <span className={`text-text-dim font-mono text-[10px] tracking-[0.1em] uppercase ${className}`}>
-      {children}
-    </span>
-  );
+  return <span className={`text-text-dim text-[12px] tabular-nums ${className}`}>{children}</span>;
 }

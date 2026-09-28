@@ -20,6 +20,17 @@
   --color-danger: #b42318;
   --color-success: #1f7a4d;
 
+  /* Layered, cool-tinted shadows: a tight contact shadow plus a soft ambient one. */
+  --shadow-card:
+    0 0 0 1px rgb(15 23 42 / 0.05), 0 1px 2px rgb(15 23 42 / 0.04),
+    0 8px 24px -12px rgb(15 23 42 / 0.1);
+  --shadow-card-hover:
+    0 0 0 1px rgb(15 23 42 / 0.07), 0 2px 4px rgb(15 23 42 / 0.04),
+    0 24px 48px -20px rgb(15 23 42 / 0.2);
+  --shadow-window:
+    0 0 0 1px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.05),
+    0 12px 32px -14px rgb(15 23 42 / 0.18);
+
   --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 }
@@ -42,10 +53,10 @@
 
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-marker: var(--font-permanent-marker), "Comic Sans MS", cursive;
+  --font-marker: var(--font-caveat), "Comic Sans MS", cursive;
 
-  --radius-card: 12px;
-  --radius-card-lg: 14px;
+  --radius-card: 14px;
+  --radius-card-lg: 20px;
   --radius-panel: 20px;
 
   --text-h1: clamp(2.6rem, 1.9rem + 3.2vw, 4.5rem);
@@ -192,6 +203,12 @@ h6 {
 }
 
 @layer components {
+  /* Handwritten notes: Caveat runs small, so it is set a touch heavier. */
+  .font-marker {
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
   /* Flat cool-grey panels — tinted sections without gradients or glows. */
   .panel {
     position: relative;
@@ -200,16 +217,21 @@ h6 {
     background-color: var(--color-surface-3);
   }
 
-  /* Card surface: a hairline border and nothing else; hover just firms up the border. */
+  /* Card surface: soft layered shadow instead of a hard border. */
   .card {
     position: relative;
-    border: 1px solid var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-card-lg);
     background-color: var(--color-surface);
-    transition: border-color 0.4s var(--ease-out-cubic);
+    box-shadow: var(--shadow-card);
+    transition:
+      box-shadow 0.5s var(--ease-out-cubic),
+      translate 0.5s var(--ease-out-cubic);
   }
-  .card:hover {
-    border-color: var(--color-border-strong);
+
+  /* Interactive cards lift slightly on hover. */
+  .card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+    translate: 0 -4px;
   }
 }
 

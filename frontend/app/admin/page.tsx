@@ -19,11 +19,7 @@ export default function AdminOverviewPage() {
         <StatCard label="Avg readiness" value={null} icon="gauge" />
         <StatCard label="Mentors pending" value={null} icon="shield" />
       </div>
-      <Alert className="mt-6">
-        These fill in once{" "}
-        <code className="font-mono text-[13px] break-all">GET /api/v1/admin/analytics</code> is
-        available.
-      </Alert>
+      <Alert className="mt-6">These fill in once the admin analytics endpoint is available.</Alert>
     </>
   );
 }

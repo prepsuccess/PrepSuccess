@@ -32,9 +32,7 @@ function CardHead({
         {title}
       </span>
       {meta ? (
-        <span
-          className={`font-mono text-[10px] tracking-[0.12em] uppercase ${dark ? "text-white/45" : "text-text-dim"}`}
-        >
+        <span className={`text-[12px] tabular-nums ${dark ? "text-white/45" : "text-text-dim"}`}>
           {meta}
         </span>
       ) : null}
@@ -59,7 +57,7 @@ function SkillsCard() {
                     {ok ? "Mastered" : "Revise"}
                   </span>
                 </span>
-                <span className="text-heading font-mono">
+                <span className="text-heading tabular-nums">
                   {ok ? (
                     <CountUp value={score} delay={1.1 + 0.15 * i} />
                   ) : (
@@ -127,7 +125,7 @@ function Sparkline({ values }: { values: readonly number[] }) {
 function ReadinessCard() {
   const gain = bento.trend[bento.trend.length - 1] - bento.trend[0];
   return (
-    <div className="card border-heading bg-heading hover:border-heading flex h-full flex-col justify-between gap-8 overflow-clip p-5 text-white">
+    <div className="card bg-heading flex h-full flex-col justify-between gap-8 overflow-clip p-5 text-white">
       <CardHead icon="gauge" title="Readiness" meta={`+${gain} since first try`} dark />
       <div className="flex items-end justify-between gap-4">
         <p className="leading-none">
@@ -136,7 +134,7 @@ function ReadinessCard() {
             delay={1.3}
             className="text-[64px] font-semibold tracking-[-0.045em]"
           />
-          <span className="ml-1 font-mono text-sm text-white/45">/100</span>
+          <span className="ml-1 text-sm text-white/45 tabular-nums">/100</span>
         </p>
         <Sparkline values={bento.trend} />
       </div>

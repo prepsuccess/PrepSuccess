@@ -79,9 +79,7 @@ export function ThemePicker() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-heading text-[14px] font-medium">Accent colour</p>
-            <p className="text-text-dim mt-0.5 font-mono text-[10px] tracking-[0.12em] uppercase">
-              {current.name}
-            </p>
+            <p className="text-text-dim mt-0.5 text-[12px] tabular-nums">{current.name}</p>
           </div>
           <button
             type="button"

@@ -20,9 +20,7 @@ export default function NotFound() {
               className="text-accent h-20 w-20 -rotate-6"
             />
 
-            <p className="text-text-dim mt-6 font-mono text-[11px] tracking-[0.14em] uppercase">
-              Error 404
-            </p>
+            <p className="text-text-dim mt-6 text-[12px] tabular-nums">Error 404</p>
 
             <h1 className="text-h2 mt-4">
               This page isn&apos;t on the{" "}

@@ -56,10 +56,10 @@ export default function AdminUsersPage() {
         rowKey={(u) => u.id}
         empty={
           <EmptyState
-            className="border-0"
+            className="shadow-none"
             sketch="question"
             title="No users to show"
-            description="This list loads from GET /api/v1/admin/users once the endpoint ships."
+            description="Accounts appear here once the admin users endpoint ships."
           />
         }
       />

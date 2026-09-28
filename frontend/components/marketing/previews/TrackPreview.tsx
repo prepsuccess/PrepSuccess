@@ -43,9 +43,7 @@ function Task() {
         </div>
       </div>
       <div className="border-heading bg-surface-3 text-heading mt-3 border-l-2 px-3 py-2 text-[11px]">
-        <span className="text-text-dim font-mono text-[10px] tracking-wide uppercase">
-          AI feedback
-        </span>
+        <span className="text-text-dim text-[12px] tabular-nums">AI feedback</span>
         <p className="mt-0.5">Grid works. Add a breakpoint under 480px.</p>
       </div>
     </MiniWindow>
@@ -57,7 +55,7 @@ function Aptitude() {
     <MiniWindow title="Aptitude · Time & work" meta="00:42" className="h-full">
       <div className="flex items-center justify-between">
         <span className="text-text-dim text-[11px]">Question 3</span>
-        <span className="text-text-dim font-mono text-[11px]">Timed</span>
+        <span className="text-text-dim text-[12px] tabular-nums">Timed</span>
       </div>
       <p className="text-heading mt-2 text-[12px]">
         A finishes a job in 12 days and B in 18. Working together, how many days?

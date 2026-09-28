@@ -65,7 +65,7 @@ function Orbit() {
       <Reveal
         variant="fade"
         delay={0.1}
-        className="border-border-strong bg-surface absolute inset-[7%] flex flex-col items-center justify-center gap-5 overflow-clip rounded-full border"
+        className="bg-surface absolute inset-[7%] flex flex-col items-center justify-center gap-5 overflow-clip rounded-full shadow-[var(--shadow-card-hover)]"
       >
         <ScoreRing value={72} size={210} />
         <div className="flex flex-wrap justify-center gap-1.5 px-6">

@@ -34,7 +34,7 @@ function PrepCard() {
             <li key={row.label} className="flex items-center gap-3 py-3 text-[13px]">
               <LineIcon name={row.icon} className="text-text-dim h-4 w-4 flex-none" />
               <span className="text-heading flex-1 truncate">{row.label}</span>
-              <span className="text-text-dim flex-none font-mono text-[11px]">{row.meta}</span>
+              <span className="text-text-dim flex-none text-[12px] tabular-nums">{row.meta}</span>
             </li>
           ))}
         </ul>
@@ -72,7 +72,7 @@ function ApplicationCard() {
           {fields.map(([key, value]) => (
             <div key={key}>
               <dt className="text-text-dim text-[11px]">{key}</dt>
-              <dd className="border-border bg-bg text-heading mt-1 rounded-[6px] border px-2.5 py-1.5 font-mono text-[12px]">
+              <dd className="border-border bg-bg text-heading mt-1 rounded-[6px] border px-2.5 py-1.5 text-[12px] tabular-nums">
                 {value}
               </dd>
             </div>
@@ -108,12 +108,12 @@ function ShortlistCard() {
       <MiniWindow title="shortlist_round1.pdf" meta="Page 1 / 3">
         <div className="border-border-strong bg-bg flex items-center gap-2 rounded-[6px] border px-2.5 py-1.5 text-[12px]">
           <span className="text-text-dim">Find</span>
-          <span className="text-heading flex-1 font-mono">{ROLL}</span>
-          <span className="text-heading font-mono text-[11px]">
+          <span className="text-heading flex-1 tabular-nums">{ROLL}</span>
+          <span className="text-heading text-[12px] tabular-nums">
             <Circled delay={0.5}>0 of 0</Circled>
           </span>
         </div>
-        <p className="text-heading mt-4 text-center text-[11px] font-semibold tracking-[0.08em] uppercase">
+        <p className="text-heading mt-4 text-center text-[12px] font-semibold">
           Shortlisted for technical round
         </p>
         <table className="mt-3 w-full text-left text-[12px]">
@@ -127,8 +127,8 @@ function ShortlistCard() {
           <tbody>
             {rows.map((roll, i) => (
               <tr key={roll} className="border-border border-b">
-                <td className="text-text-dim py-1.5 font-mono">{i + 1}</td>
-                <td className="text-heading py-1.5 font-mono">{roll}</td>
+                <td className="text-text-dim py-1.5 tabular-nums">{i + 1}</td>
+                <td className="text-heading py-1.5 tabular-nums">{roll}</td>
                 <td className="text-text py-1.5 text-right">BCA</td>
               </tr>
             ))}

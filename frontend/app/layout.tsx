@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter_Tight, Geist_Mono, Permanent_Marker } from "next/font/google";
+import { Inter_Tight, Geist_Mono, Caveat } from "next/font/google";
 import "./globals.css";
 import { PencilDefs } from "@/components/ui/PencilDefs";
 import { accentBootScript } from "@/lib/themes";
@@ -11,10 +11,10 @@ const interTight = Inter_Tight({
   weight: ["400", "500", "600", "700"],
 });
 
-const permanentMarker = Permanent_Marker({
-  variable: "--font-permanent-marker",
+const caveat = Caveat({
+  variable: "--font-caveat",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["500", "600"],
 });
 
 const geistMono = Geist_Mono({
@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${interTight.variable} ${geistMono.variable} ${permanentMarker.variable}`}
+      className={`${interTight.variable} ${geistMono.variable} ${caveat.variable}`}
     >
       <body className="relative min-h-screen">
         {/* Before paint: flag JS (so GSAP-driven elements don't flash) and apply any saved accent colour. */}

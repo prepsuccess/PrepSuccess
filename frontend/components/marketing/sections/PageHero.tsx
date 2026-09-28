@@ -33,7 +33,7 @@ export function PageHero({
         <Container>
           <div className="relative mx-auto flex max-w-[860px] flex-col items-center text-center">
             <p
-              className="ink now font-marker text-accent -rotate-2 text-[18px] tracking-wide uppercase"
+              className="ink now font-marker text-accent -rotate-2 text-[23px]"
               style={{ "--d": "0.1s" } as CSSProperties}
             >
               {eyebrow}
@@ -52,9 +52,7 @@ export function PageHero({
             </Reveal>
             {meta ? (
               <Reveal onLoad delay={0.45} className="mt-6">
-                <p className="text-text-dim font-mono text-[11px] tracking-[0.1em] uppercase">
-                  {meta}
-                </p>
+                <p className="text-text-dim text-[12px] tabular-nums">{meta}</p>
               </Reveal>
             ) : null}
             {note}
@@ -93,7 +91,7 @@ export function PageIndex({
                 href={item.href}
                 className="group border-border flex items-baseline gap-2.5 border-b py-4 pr-3"
               >
-                <span className="text-text-dim font-mono text-[11px]">
+                <span className="text-text-dim text-[12px] tabular-nums">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span className="text-heading text-[15px]">

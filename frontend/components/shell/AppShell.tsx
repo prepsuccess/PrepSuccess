@@ -82,7 +82,7 @@ function UserMenu() {
         aria-label="Account menu"
         className="border-border bg-surface hover:border-border-strong flex items-center gap-2.5 rounded-full border py-1 pr-3 pl-1 transition-colors"
       >
-        <span className="bg-heading grid h-7 w-7 place-items-center rounded-full font-mono text-[11px] text-white">
+        <span className="bg-heading grid h-7 w-7 place-items-center rounded-full text-[12px] text-white tabular-nums">
           {initials}
         </span>
         <span className="text-heading hidden text-[14px] sm:block">{user.first_name}</span>
@@ -100,9 +100,7 @@ function UserMenu() {
             {user.first_name} {user.last_name}
           </p>
           <p className="text-text-dim truncate text-[12px]">{user.email}</p>
-          <p className="text-accent-ink mt-2 font-mono text-[10px] tracking-[0.12em] uppercase">
-            {user.role}
-          </p>
+          <p className="text-accent-ink mt-2 text-[12px] tabular-nums">{user.role}</p>
         </div>
         <button
           type="button"
@@ -143,9 +141,7 @@ export function AppShell({
   const brand = (
     <div className="flex items-end gap-3 px-3">
       <Logo />
-      <span className="text-text-dim mb-0.5 font-mono text-[10px] tracking-[0.14em] uppercase">
-        {area}
-      </span>
+      <span className="text-text-dim mb-0.5 text-[12px] tabular-nums">{area}</span>
     </div>
   );
 

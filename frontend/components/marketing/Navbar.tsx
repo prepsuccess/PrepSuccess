@@ -148,9 +148,7 @@ function ProductMenu({ pathname }: { pathname: string }) {
             href="/story"
             className="group border-border mt-1.5 flex items-center justify-between rounded-[12px] border-t px-3 pt-3 pb-1.5"
           >
-            <span className="font-marker text-accent -rotate-1 text-[14px] tracking-wide uppercase">
-              why we built it →
-            </span>
+            <span className="font-marker text-accent -rotate-1 text-[18px]">why we built it →</span>
             <span className="text-text group-hover:text-heading text-[13px] transition-colors">
               <HoverScribble>Read our story</HoverScribble>
             </span>
@@ -261,9 +259,7 @@ export function Navbar() {
           {mobileGroups.map((group, i) => (
             <div key={i} className={i ? "border-t border-white/15 pt-6" : ""}>
               {group.title ? (
-                <p className="mb-3 font-mono text-[10px] tracking-[0.14em] text-white/50 uppercase">
-                  {group.title}
-                </p>
+                <p className="mb-3 text-[12px] text-white/50 tabular-nums">{group.title}</p>
               ) : null}
               <ul className="flex flex-col gap-3">
                 {group.links.map((link) => (

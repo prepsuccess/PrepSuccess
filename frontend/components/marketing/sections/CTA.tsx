@@ -16,9 +16,7 @@ const checklist = [
 function Checklist() {
   return (
     <div className="-rotate-1">
-      <p className="font-marker text-text-dim text-[15px] tracking-wide uppercase">
-        before placements:
-      </p>
+      <p className="font-marker text-text-dim text-[20px]">before placements:</p>
       <ul className="mt-5 flex flex-col gap-[14px]">
         {checklist.map((item, i) => {
           const delay = 0.5 + i * 0.55;
@@ -36,7 +34,7 @@ function Checklist() {
                   className="text-accent absolute -top-1.5 left-0.5 h-8 w-8"
                 />
               </span>
-              <span className="font-marker text-heading/85 text-[19px] leading-none">{item}</span>
+              <span className="font-marker text-heading/85 text-[25px] leading-none">{item}</span>
             </li>
           );
         })}

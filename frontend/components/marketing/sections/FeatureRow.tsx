@@ -46,9 +46,7 @@ export function FeatureRow({
       <Container>
         <div className="grid items-center gap-24 lg:grid-cols-2 lg:gap-20">
           <div className={reverse ? "lg:order-2" : ""}>
-            <span className="text-text-dim font-mono text-[11px] tracking-[0.12em] uppercase">
-              {eyebrow}
-            </span>
+            <span className="text-text-dim text-[12px] tabular-nums">{eyebrow}</span>
             <SplitHeading className="text-h3 mt-4">{title}</SplitHeading>
             <Reveal delay={0.2} className="mt-5 max-w-[48ch]">
               <p className="text-[16px]">{body}</p>

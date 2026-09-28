@@ -17,12 +17,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <DrawScope
-      className={cn(
-        "border-border-strong bg-surface flex flex-col items-center rounded-[var(--radius-card-lg)] border border-dashed px-6 py-14 text-center",
-        className,
-      )}
-    >
+    <DrawScope className={cn("card flex flex-col items-center px-6 py-14 text-center", className)}>
       <SketchIcon name={sketch} delay={0.1} className="text-accent h-12 w-12 -rotate-3" />
       <h2 className="text-h6 mt-5">{title}</h2>
       {description ? <p className="mt-2 max-w-[46ch] text-[15px]">{description}</p> : null}

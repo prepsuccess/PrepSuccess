@@ -15,11 +15,7 @@ export function PageHeader({
   return (
     <div className="border-border mb-8 flex flex-wrap items-end justify-between gap-6 border-b pb-6">
       <div className="max-w-[640px]">
-        {eyebrow ? (
-          <p className="text-text-dim font-mono text-[11px] tracking-[0.12em] uppercase">
-            {eyebrow}
-          </p>
-        ) : null}
+        {eyebrow ? <p className="text-text-dim text-[12px] tabular-nums">{eyebrow}</p> : null}
         <h1 className="text-h4 mt-2">{title}</h1>
         {description ? <p className="mt-2 text-[15px]">{description}</p> : null}
       </div>

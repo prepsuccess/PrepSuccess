@@ -22,7 +22,7 @@ export function AuthCard({
       />
       <div className="card px-6 py-9 sm:px-10 sm:py-11">
         <p
-          className="ink now font-marker text-accent -rotate-2 text-[16px] tracking-wide uppercase"
+          className="ink now font-marker text-accent -rotate-2 text-[21px]"
           style={{ "--d": "0.1s" } as CSSProperties}
         >
           {eyebrow}

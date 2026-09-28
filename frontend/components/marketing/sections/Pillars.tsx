@@ -50,7 +50,7 @@ export function Pillars({
                 className="bg-accent absolute -top-px left-0 h-[3px] w-full origin-left scale-x-0 transition-transform duration-500 ease-[var(--ease-out-cubic)] group-hover:scale-x-100"
               />
               <div className="flex items-start justify-between">
-                <span className="text-text-dim font-mono text-[11px] tracking-[0.12em]">
+                <span className="text-text-dim text-[12px] tabular-nums">
                   {String(i + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}
                 </span>
                 <SketchIcon

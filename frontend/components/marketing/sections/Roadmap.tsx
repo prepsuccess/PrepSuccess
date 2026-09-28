@@ -29,7 +29,7 @@ export function Roadmap() {
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {roadmap.map((item, i) => (
           <Reveal key={item.title} offset={12} delay={0.1 * i} className="h-full">
-            <article className="group border-border bg-surface hover:border-heading flex h-full cursor-default flex-col rounded-[var(--radius-card-lg)] border p-3 transition-colors duration-500">
+            <article className="group card card-hover flex h-full cursor-default flex-col p-3">
               <div className="relative">
                 <PreviewFrame tag={item.phase} aspect="aspect-[424/380]">
                   <RoadmapPreview kind={item.preview} />
@@ -46,9 +46,7 @@ export function Roadmap() {
               </div>
 
               <div className="px-3 pt-6 pb-4">
-                <span className="text-text-dim font-mono text-[11px] tracking-[0.12em] uppercase">
-                  {item.phase}
-                </span>
+                <span className="text-text-dim text-[12px] tabular-nums">{item.phase}</span>
                 <h3 className="text-h5 mt-3">
                   <HoverScribble>{item.title}</HoverScribble>
                 </h3>

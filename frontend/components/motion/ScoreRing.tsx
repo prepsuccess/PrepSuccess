@@ -74,9 +74,7 @@ export function ScoreRing({
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-text-dim font-mono text-[10px] tracking-[0.12em] uppercase">
-          {label}
-        </span>
+        <span className="text-text-dim text-[12px] tabular-nums">{label}</span>
         <span className="mt-1 flex items-baseline gap-1">
           <span
             ref={num}
@@ -84,7 +82,7 @@ export function ScoreRing({
           >
             0
           </span>
-          <span className="text-text-dim font-mono text-sm">/100</span>
+          <span className="text-text-dim text-sm tabular-nums">/100</span>
         </span>
       </div>
     </div>

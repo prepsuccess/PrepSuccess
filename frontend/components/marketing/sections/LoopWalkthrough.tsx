@@ -66,7 +66,7 @@ export function LoopWalkthrough() {
                     className="group flex w-full cursor-pointer items-baseline gap-5 py-6 text-left"
                   >
                     <span
-                      className={`w-6 flex-none font-mono text-[11px] transition-colors ${isActive ? "text-accent" : "text-text-dim"}`}
+                      className={`w-6 flex-none text-[12px] tabular-nums transition-colors ${isActive ? "text-accent" : "text-text-dim"}`}
                     >
                       {step.step}
                     </span>
@@ -114,7 +114,7 @@ export function LoopWalkthrough() {
             aria-labelledby={`loop-tab-${active}`}
             className="bg-surface-3 relative min-h-[380px] overflow-clip rounded-[var(--radius-panel)] lg:min-h-[480px]"
           >
-            <span className="text-text-dim absolute top-4 left-6 z-10 font-mono text-[10px] tracking-[0.12em] uppercase">
+            <span className="text-text-dim absolute top-4 left-6 z-10 text-[12px] tabular-nums">
               Step {loopSteps[active].step} · {loopSteps[active].label}
             </span>
             {loopSteps.map((step, i) => {

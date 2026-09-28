@@ -36,12 +36,12 @@ export function OnboardingChat() {
           </span>
           <div className="leading-tight">
             <p className="text-heading text-[13px] font-medium">PrepSuccess agent</p>
-            <p className="text-text-dim font-mono text-[10px] tracking-wide uppercase">
+            <p className="text-text-dim text-[12px] tabular-nums">
               Onboarding · step {shown}/{onboardingChat.length}
             </p>
           </div>
         </div>
-        <span className="border-border text-heading inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-wide uppercase">
+        <span className="border-border text-heading inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[12px] tabular-nums">
           {done ? (
             <>
               <LineIcon name="check" className="h-3 w-3" /> Profile saved

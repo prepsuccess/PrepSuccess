@@ -101,7 +101,7 @@ export default function AboutPage() {
             <Reveal key={item.title} offset={10} delay={0.1 * i} className="h-full">
               <a
                 href={mailto(item.subject)}
-                className="group card hover:border-heading flex h-full flex-col p-6"
+                className="group card card-hover flex h-full flex-col p-6"
               >
                 <h3 className="text-h5">{item.title}</h3>
                 <p className="mt-2 flex-1">{item.description}</p>

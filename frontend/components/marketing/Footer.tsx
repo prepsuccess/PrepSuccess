@@ -24,7 +24,7 @@ export function Footer() {
             </a>
             <DrawScope className="flex -rotate-2 items-end gap-1.5">
               <span
-                className="ink font-marker text-accent text-[17px] leading-tight whitespace-pre"
+                className="ink font-marker text-accent text-[22px] leading-tight whitespace-pre"
                 style={{ "--d": "0.3s" } as React.CSSProperties}
               >
                 {"good luck with your\nplacements!"}

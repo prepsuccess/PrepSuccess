@@ -14,7 +14,7 @@ const agentBubble =
 
 export function AskVisual() {
   return (
-    <div className="border-border bg-surface relative overflow-clip rounded-[var(--radius-card-lg)] border p-5">
+    <div className="card relative overflow-clip p-5">
       <MiniWindow title="Ask the agent" meta="JavaScript" className="h-full">
         <div className="flex h-full flex-col justify-end gap-2.5">
           <p className="bg-heading max-w-[85%] self-end rounded-[12px_12px_3px_12px] px-3.5 py-2.5 text-[13px] text-white">

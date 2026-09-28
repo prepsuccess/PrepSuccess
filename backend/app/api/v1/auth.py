@@ -163,7 +163,7 @@ async def register_user(
         role=UserRole.STUDENT,
         auth_provider=AuthProvider.LOCAL,
         is_verified=True,
-        is_profile_completed=True,
+        is_profile_completed=bool(payload.student_year or payload.mobile_no),
     )
     db.add(new_user)
     await db.commit()

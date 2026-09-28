@@ -116,6 +116,63 @@ async def test_register_invalid_otp_rejected(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_minimal_registration_and_profile_update(async_client: AsyncClient):
+    """Test minimal registration and profile update via PATCH /api/v1/users/me."""
+    email = "minimal.student@example.com"
+    from datetime import UTC, datetime, timedelta
+
+    from tests.conftest import TestingSessionLocal
+
+    async with TestingSessionLocal() as session:
+        known_otp = "654321"
+        otp_rec = EmailOTP(
+            email=email,
+            otp_hash=hash_otp(known_otp),
+            purpose=OTPPurpose.SIGNUP,
+            expires_at=datetime.now(UTC) + timedelta(minutes=10),
+        )
+        session.add(otp_rec)
+        await session.commit()
+
+    # 1. Register with ONLY required fields (first_name, email, password, otp)
+    minimal_payload = {
+        "first_name": "Rohan",
+        "email": email,
+        "password": "MinimalPassword123!",
+        "otp": "654321",
+    }
+    reg_resp = await async_client.post("/api/v1/auth/register", json=minimal_payload)
+    assert reg_resp.status_code == 201
+    user_data = reg_resp.json()["user"]
+    assert user_data["first_name"] == "Rohan"
+    assert user_data["last_name"] is None
+    assert user_data["student_year"] is None
+    assert user_data["is_profile_completed"] is False
+
+    token = reg_resp.json()["access_token"]
+
+    # 2. Update profile using PATCH /api/v1/users/me
+    patch_payload = {
+        "last_name": "Sharma",
+        "student_year": 3,
+        "mobile_no": "9988776655",
+        "gender": "male",
+    }
+    patch_resp = await async_client.patch(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+        json=patch_payload,
+    )
+    assert patch_resp.status_code == 200
+    updated_data = patch_resp.json()
+    assert updated_data["last_name"] == "Sharma"
+    assert updated_data["student_year"] == 3
+    assert updated_data["mobile_no"] == "9988776655"
+    assert updated_data["gender"] == "male"
+    assert updated_data["is_profile_completed"] is True
+
+
+@pytest.mark.asyncio
 async def test_protected_route_without_token(async_client: AsyncClient):
     """Test that accessing /me without token returns 401 Unauthorized."""
     resp = await async_client.get("/api/v1/auth/me")

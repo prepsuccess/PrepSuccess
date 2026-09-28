@@ -1,30 +1,50 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
+import { Inter_Tight, Geist_Mono, Permanent_Marker } from "next/font/google";
 import "./globals.css";
+import { PencilDefs } from "@/components/ui/PencilDefs";
+import { accentBootScript } from "@/lib/themes";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const permanentMarker = Permanent_Marker({
+  variable: "--font-permanent-marker",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "PrepSuccess",
-  description: "Placement-readiness platform for college students.",
+  title: "PrepSuccess — Know where you stand for placements",
+  description:
+    "PrepSuccess is an AI placement coach for college students: chat with the AI, prove your skills, and see exactly what to work on next.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+      className={`${interTight.variable} ${geistMono.variable} ${permanentMarker.variable}`}
+    >
+      <body className="relative min-h-screen">
+        {/* Before paint: flag JS (so GSAP-driven elements don't flash) and apply any saved accent colour. */}
+        <Script id="boot" strategy="beforeInteractive">
+          {`document.documentElement.classList.add('js');${accentBootScript}`}
+        </Script>
+        <PencilDefs />
+        {children}
+      </body>
     </html>
   );
 }

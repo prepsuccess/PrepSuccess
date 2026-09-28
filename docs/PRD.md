@@ -13,11 +13,17 @@ placements.**
 This document extends `project-overview.md` (roadmap/phases) and
 `PROJECT_CONTEXT.md` (why this exists) with a deeper look at the
 AI-assisted, mentorship, and content features, the student dashboard, and
-how roles are managed across the platform. It does not contradict the
-phase numbering or MVP scope already defined in those two files — Phase 1
-is still the only in-scope build today; everything AI/mentorship-related
-below is a **future-phase** feature described here so it's designed
-consistently from day one.
+how roles are managed across the platform.
+
+> **Revision note (2026-09-27):** AI onboarding and AI adaptive assessment
+> are no longer future-phase — they are the core of Phase 1 (see
+> `PROJECT_CONTEXT.md` §4 and `prds/PRD-01-core-mvp.md`). Section 3 below
+> ("How AI Helps Students") should now be read as: skill-gap analysis and
+> personalized next steps are **Phase 1** capabilities (built directly into
+> the AI agent that runs onboarding + assessment); resume feedback,
+> interview-question curation from a not-yet-built Phase 2 bank, and
+> mock-interview feedback remain **future-phase** (Phase 4) as originally
+> described. Mentorship (Phase 3) is unchanged by this revision.
 
 ## 2. What PrepSuccess Covers
 
@@ -34,28 +40,44 @@ PrepSuccess is built in phases (see `project-overview.md` §6). This PRD
 focuses on making Phases 1–4 fit together as one coherent product rather
 than four disconnected features.
 
-## 3. How AI Helps Students (Future Capability)
+## 3. How AI Helps Students
 
-AI is not part of the Phase 1 MVP, but the platform is designed so AI can
-be layered in without redesigning the core data model. Planned AI-assisted
-features:
+AI is now part of the Phase 1 MVP — it's the engine behind onboarding and
+assessment, not a bolt-on. Feature status:
 
-- **Skill-gap analysis**: After an assessment, AI reviews the student's
-  per-skill scores (from `AssessmentResult`) and produces a plain-language
+- **Conversational onboarding** *(Phase 1)*: an AI agent chats with the
+  student to collect profile data (age, location, education, skills,
+  experience, interests, goals), storing it as structured JSON rather than
+  a static form submission.
+- **Adaptive skill assessment** *(Phase 1)*: for each skill the student
+  claims, AI generates diagnostic questions/practical tasks, scores the
+  response, and compares against a mastery threshold to flag "mastered" vs.
+  "needs revision" — replacing a static multiple-choice quiz.
+- **Skill-gap analysis** *(Phase 1)*: AI reviews the student's per-skill
+  results (from `AssessmentResult`) and produces a plain-language
   explanation of their weakest areas — not just a number, but *why* it
   matters and *what* to do about it.
-- **Personalized "next steps"**: Instead of a generic tip list, AI
-  generates a short, ranked action plan tailored to the student's target
-  role (e.g., "SDE" vs. "QA Engineer") and current gaps.
-- **Resume feedback**: AI reviews an uploaded resume against the student's
-  target role and flags missing sections, weak phrasing, or formatting
-  issues — feeding into the "soft skills" readiness category.
-- **Interview question curation**: AI selects or generates practice
-  questions relevant to the student's target role/company, drawing from
-  the Phase 2 Question Bank.
-- **Mock interview feedback** *(later)*: AI-assisted feedback on written or
-  recorded mock answers (tone, clarity, structure) as a lightweight
-  complement to human mentor sessions, not a replacement for them.
+- **Personalized "next steps"** *(Phase 1)*: Instead of a generic tip list,
+  AI generates a short, ranked action plan tailored to the student's target
+  role (e.g., "SDE" vs. "QA Engineer") and current gaps, and points at
+  curated `LearningResource` material for anything below threshold.
+- **Resume feedback** *(Phase 4 — future)*: AI reviews an uploaded resume
+  against the student's target role and flags missing sections, weak
+  phrasing, or formatting issues — feeding into the "soft skills" readiness
+  category.
+- **Interview question curation** *(Phase 4 — future)*: AI selects or
+  generates practice questions relevant to the student's target
+  role/company, drawing from the Phase 2 Question Bank.
+- **Mock interview feedback** *(Phase 4 — future)*: AI-assisted feedback on
+  written or recorded mock answers (tone, clarity, structure) as a
+  lightweight complement to human mentor sessions, not a replacement for
+  them.
+
+**AI provider & cost model**: starts on a free-tier LLM (Gemini), behind a
+provider-agnostic interface so it can be swapped or load-balanced across
+multiple providers later. The platform itself is free, and AI usage is a
+**3–5 month free trial** — the agent layer should track usage even while
+it's unmetered, so a paid tier can be introduced later without a rebuild.
 
 **Guiding principle**: AI augments the dashboard and prep material with
 personalization; it never replaces the human mentor connection in Phase 3 —

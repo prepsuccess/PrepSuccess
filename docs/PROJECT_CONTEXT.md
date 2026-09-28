@@ -63,32 +63,66 @@ dashboard) that later user types can reuse.
 
 ## 4. What Does the Platform Actually Do? (Product Behavior)
 
+> **Revision note (2026-09-27):** The MVP is now **AI-first**. The original
+> plan (static form profile → static multiple-choice quiz → numeric
+> dashboard) has been replaced by a conversational, adaptive loop driven by
+> an AI agent, described below. This supersedes the "AI is Phase 4 only"
+> framing that appears elsewhere in this document's history — AI is now
+> core to Phase 1.
+
 At a high level, in the MVP:
 
 1. A student **signs up** (email/password or Google OAuth).
-2. They **fill in a basic profile** — college, branch, year, and target role
-   (e.g., "SDE", "Data Analyst", "QA Engineer").
-3. They **take a self-assessment** covering:
-   - **Technical skills** (e.g., DSA, programming fundamentals, core CS
-     subjects)
-   - **Soft skills** (communication, resume quality)
-   - **Aptitude** (quantitative/logical reasoning, common in campus tests)
-4. The platform **computes a readiness score** from their answers/results.
-5. The student sees a **dashboard**: overall readiness score, a breakdown by
-   category (technical / soft / aptitude), and where their biggest gaps are.
+2. An **AI agent has an onboarding conversation** with the student instead
+   of a static form — collecting age, location, education, current skills,
+   experience, interests, and goals through natural back-and-forth. Every
+   answer is structured and persisted as JSON on the student's profile so it
+   can be reused by every later feature.
+3. Based on the skills the student claims (e.g., "I know HTML, CSS and
+   JavaScript"), the AI runs an **adaptive skill assessment**: it does not
+   hand out a fixed quiz, it generates diagnostic questions and small
+   practical tasks per skill/topic, scores the responses, and compares the
+   score against a **mastery threshold** (e.g. scoring below ~40% on a
+   40/50-style benchmark flags the topic as "needs revision" rather than
+   "mastered").
+4. For any topic below threshold, the platform serves **curated learning
+   resources** (references, explanations, examples — W3Schools-style
+   material) instead of just labeling the student "weak." The student
+   studies, then returns to continue the assessment/progress loop.
+5. The student sees a **personalized AI dashboard** showing: current skill
+   level per topic, learning progress, assessment scores, topics completed,
+   topics needing revision, AI-recommended next steps, learning resources,
+   practical tasks, interview readiness, and overall progress — all derived
+   from the student's own data, continuously updated as they keep
+   interacting with the AI.
 
-That's the entire MVP loop: **sign up → profile → assess → see where you
-stand.** No interview question bank, no mentorship booking, no payments —
-those come later.
+That's the MVP loop: **sign up → AI onboarding conversation → adaptive
+assessment (question/task → score → revise-or-advance) → personalized AI
+dashboard.** Interview question bank browsing, mentorship booking, and
+payments still come later (Phases 2–3); a future job portal is now on the
+long-term roadmap too (see §5).
+
+**Business model for now:** the platform and the AI features are **free**.
+The AI usage specifically is planned as a **free trial for the first 3–5
+months**, after which a paid tier may be introduced — the AI provider layer
+should be built so usage can be metered/flagged even while it's free.
 
 ## 5. Product Roadmap in Context
 
 | Phase | Focus | Why it comes at this point |
 |-------|-------|------------------------------|
-| **1 — Core MVP** | Auth, profile, self-assessment, readiness dashboard | Validates the core value prop — "tell me where I stand" — with the least amount of built infrastructure. |
-| **2 — Interview Prep** | Question bank by company/role/topic, progress tracking | Once a student knows their gaps (from Phase 1), the natural next step is targeted practice material. |
+| **1 — AI-First Core MVP** | Auth, AI conversational onboarding (JSON profile), AI adaptive skill assessment, learning resources for weak topics, personalized AI dashboard | Validates the core value prop — "tell me where I stand and what to do next" — with an AI agent doing the diagnosis instead of a static quiz. |
+| **2 — Interview Prep** | Question bank by company/role/topic, progress tracking | Once a student knows their gaps (from Phase 1's AI assessment), the natural next step is targeted practice material. |
 | **3 — Mentorship** | 1:1 developer session booking, mentor profiles, possibly payments | Some gaps (especially soft skills, career direction) are best closed with human guidance, not just content. |
-| **4 — Expansion** | Onboard freshers and employees, personalized/AI-driven recommendations | Once the core assessment + prep engine is proven on students, it generalizes to adjacent user segments. |
+| **4 — Expansion & Advanced AI** | Onboard freshers and employees at full depth, resume feedback, personalized readiness PDF, mock-interview AI feedback | Once the core AI assessment + prep engine is proven on students, it generalizes to adjacent user segments and grows deeper AI features beyond onboarding/assessment. |
+| **5 — Job Portal** *(future, not yet ticketed)* | Integrated job/internship listings and applications inside the same PrepSuccess ecosystem | So a student doesn't have to leave the platform to go from "ready" to "applying." Direction only — no tickets yet. |
+
+Note: the three long-term audiences (students, freshers, working
+professionals) are all part of the vision from the start — the phased
+rollout above is about *feature depth*, not about hiding the product from
+freshers/professionals. Phase 1 is built and tested against the student
+segment first because it's the narrowest, fastest segment to validate the
+AI agent and adaptive-assessment loop on.
 
 The guiding principle: **each phase should stand on its own as a usable
 product**, and each phase's data/infrastructure should make the next phase
@@ -123,19 +157,26 @@ Google OAuth ──▶ FastAPI auth endpoints ──▶ issues session/JWT to fr
 - Google OAuth is handled on the backend so secrets/tokens never sit
   exposed in frontend code.
 
-## 8. Core Data Model (Phase 1)
+## 8. Core Data Model (Phase 1 — AI-First)
 
 | Entity | Purpose | Key fields |
 |--------|---------|-----------|
-| **User** | A registered student | id, name, email, password_hash / google_id, college, branch, year |
-| **Skill** | A trackable skill (technical or soft) | id, name, category |
-| **Assessment** | An instance of a student taking a test | id, user_id, type (technical / soft / aptitude), taken_at |
-| **AssessmentResult** | A per-skill score within an assessment | id, assessment_id, skill_id, score |
-| **ReadinessSummary** | Computed, not stored — derived from results for the dashboard | (calculated on read) |
+| **User** | A registered student | id, name, email, password_hash / google_id, role, timestamps |
+| **UserProfile** | AI-collected profile data from the onboarding conversation | id, user_id, `profile_data` (JSONB: age, location, education, skills claimed, experience, interests, goals — schemaless, evolves without migrations) |
+| **AIConversation** | Turn-by-turn log of an AI chat (onboarding or assessment) | id, user_id, agent_type (onboarding / assessment / dashboard), messages (JSON), created_at |
+| **Skill** | A trackable skill/topic (technical or soft) | id, name, category, topic/subtopic |
+| **Assessment** | One adaptive assessment attempt on a skill | id, user_id, skill_id, mode (diagnostic / task), status |
+| **AssessmentResult** | Score + mastery outcome for that attempt | id, assessment_id, score, max_score, threshold, mastery_status (mastered / needs_revision) |
+| **PracticalTask** | A small hands-on task tied to a skill | id, skill_id, title, description, difficulty, evaluation_criteria |
+| **UserTaskSubmission** | A student's attempt at a practical task | id, user_id, task_id, submission_content, ai_feedback, passed |
+| **LearningResource** | Curated reference material for a skill/topic | id, skill_id, title, type (reference/example/lecture/practice), content_or_url, source |
+| **ReadinessSummary** | Computed, not stored — overall progress, interview readiness, next steps, derived from the above for the dashboard | (calculated on read) |
 
-This model is intentionally simple in Phase 1. `Skill` is designed to be
-reused later by the Phase 2 Question Bank (questions tagged by skill), and
-`User` is designed to be reused by the Phase 3 mentorship `Session` table.
+`Skill` is still designed to be reused later by the Phase 2 Question Bank
+(questions tagged by skill), and `User` is still designed to be reused by
+the Phase 3 mentorship `Session` table. The assessment side of the model is
+no longer a single static quiz — it's a repeatable, per-skill, adaptive loop
+that both the AI agent and (later) a human mentor can write into.
 
 ## 9. Project Structure
 
@@ -155,6 +196,9 @@ backend/
 │   │       ├── assessment.py  # take/submit assessment
 │   │       └── dashboard.py   # readiness score, summary
 │   └── services/            # business logic (scoring, etc.)
+│       └── ai_agent/         # provider-agnostic AI agent layer (Gemini
+│                             # first), onboarding conversation, adaptive
+│                             # assessment, next-step generation, resources
 ├── alembic/                 # DB migrations
 └── requirements.txt
 ```
@@ -177,18 +221,30 @@ frontend/
 | Decision | Choice | Why it's settled |
 |----------|--------|-------------------|
 | Assessment scope | Technical + soft skills (communication, resume) + aptitude | Covers the three axes that actually determine placement outcomes, not just coding ability. |
+| Assessment style | **AI-driven, conversational and adaptive** — questions/tasks generated per skill, scored against a mastery threshold — not a static multiple-choice quiz | A fixed quiz can't personalize follow-up or explain *why* a gap matters; an AI agent can. |
+| Onboarding | **AI conversation**, not a static form, collecting age/location/education/skills/experience/interests/goals as structured JSON | Matches how a student would actually describe themselves, and captures richer signal than dropdowns. |
+| AI provider | Start with a **free-tier LLM (Gemini)** behind a provider-agnostic interface so other providers can be swapped in | Keeps cost at zero during the free-trial window and avoids lock-in. |
+| Pricing | Platform is **free**; AI usage specifically is a **free trial for the first 3–5 months** | Lets the team validate the loop before deciding on monetization. |
 | Login method | Email + Password, and Google Auth | Balances convenience with a no-dependency fallback. |
 | Database | PostgreSQL | Relational fit + hosting maturity. |
-| MVP scope | Phase 1 only | Keeps first release small, shippable, and testable with real students quickly. |
+| MVP scope | Phase 1 only, now AI-first | Keeps first release small, shippable, and testable with real students quickly — but the AI agent is part of that first release, not deferred. |
 
 ## 11. What's Explicitly Out of Scope for MVP
 
 To keep Phase 1 focused, the following are **intentionally not built yet**:
 
-- Interview question banks or practice problems
-- Mentor booking or any payments
-- AI-generated feedback or personalized recommendations
-- Support for freshers or working employees as user types
+- Interview question banks or practice problems (Phase 2)
+- Mentor booking or any payments (Phase 3)
+- Resume feedback, auto-generated personalized readiness PDF, and
+  AI-assisted mock-interview feedback (Phase 4 — deeper AI features, not
+  the core onboarding/assessment agent, which *is* in Phase 1 now)
+- Dedicated onboarding/dashboard flows for freshers or working
+  professionals as distinct user types (Phase 4 — the AI agent's
+  architecture should not preclude this later, but no tickets exist yet)
+- A job portal / listings integration (Phase 5 — direction only, not
+  ticketed)
+- Enforcing payment for AI usage (it's a free trial for now; only the
+  metering/flagging needs to exist, not a paywall)
 - Any analytics beyond the basic readiness dashboard
 
 These are valuable, but building them now would delay validating the core
@@ -198,16 +254,28 @@ understand and improve their placement readiness?*
 ## 12. Open Questions / Next Steps
 
 - Design the detailed database schema (tables, columns, relationships,
-  constraints) from the conceptual entities above.
-- Scaffold the actual FastAPI and Next.js project folders with starter code.
-- Define the concrete scoring logic that turns raw assessment answers into
-  the readiness score shown on the dashboard.
+  constraints) for the AI-first entities above (`UserProfile`,
+  `AIConversation`, `PracticalTask`, `UserTaskSubmission`,
+  `LearningResource`) alongside the original Phase 1 tables.
+- Define exact mastery thresholds per skill/topic (e.g. is "below 40%"
+  universal, or does it vary by topic difficulty?).
+- Decide the source of curated learning resources (hand-authored by admins
+  vs. AI-generated on the fly vs. links to existing sites like W3Schools)
+  and how `LearningResource` content gets seeded before real students
+  arrive.
+- Design the AI provider abstraction (Gemini first) including fallback
+  behavior if the free-tier API is rate-limited or unavailable.
 - Decide on a hosting/deployment approach for Postgres (e.g., Supabase,
   Railway, Neon) and for the frontend/backend apps themselves.
+- Decide the trigger/mechanism for the AI free-trial window (time-boxed
+  from signup? from platform launch date?) and what happens after it ends.
 
 ## 13. One-Line Summary (for quick recall)
 
-> A phased platform that starts by giving college students a clear, scored
-> picture of their placement readiness (technical + soft + aptitude), then
-> grows into interview prep, mentorship, and eventually serves freshers and
-> employees too.
+> An AI-first platform that gives college students (and eventually
+> freshers and professionals) a clear, continuously-updated picture of
+> their placement readiness — via a conversational AI agent that onboards
+> them, adaptively assesses their real skill level, serves them the exact
+> learning material they're missing, and personalizes their entire
+> dashboard and journey — then grows into interview prep, mentorship, and
+> eventually a built-in job portal.

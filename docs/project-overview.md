@@ -11,8 +11,17 @@ College students (starting with BCA and similar backgrounds) often don't know wh
 
 A platform that helps a student answer: **"Where do I stand, and where can I go?"**
 
-Starting point: college students.
-Future expansion: freshers, then working employees.
+> **Revision note (2026-09-27):** the platform is now **AI-first** from
+> Phase 1 onward — an AI agent conversationally onboards the user, adaptively
+> assesses their real skill level, and personalizes their dashboard and
+> learning journey. This replaces the earlier plan where AI was deferred to
+> Phase 4. See §6 and §8 below for the updated scope.
+
+Audiences: students, freshers, and working professionals all sit within the
+long-term vision from day one — the phased rollout is about feature depth,
+not about excluding two of the three segments. Phase 1 is validated on
+college students first because it's the fastest segment to prove the AI
+agent and adaptive-assessment loop on.
 
 ## 3. Target Users (Phased Rollout)
 
@@ -38,11 +47,25 @@ Next.js (frontend) → FastAPI (backend) → PostgreSQL (database)
 
 ## 6. Product Roadmap (Phases)
 
-### Phase 1 — Core MVP
+### Phase 1 — AI-First Core MVP
 - Auth: signup/login (email + password, Google)
-- Student profile: college, branch, year, target role
-- Self-assessment: **technical + soft skills** (communication, resume, aptitude)
-- Dashboard: shows readiness score and skill gaps
+- **AI conversational onboarding**: an AI agent (Gemini first, pluggable)
+  chats with the student and collects age, location, education, skills,
+  experience, interests, goals — stored as structured JSON, not a static
+  form
+- **AI adaptive skill assessment**: per skill/topic, the AI generates
+  diagnostic questions and small practical tasks, scores the response, and
+  compares against a mastery threshold to decide "mastered" vs. "needs
+  revision" — not a fixed multiple-choice quiz
+- **Learning resources for weak topics**: curated references/examples
+  (W3Schools-style) served for anything below threshold, so a gap comes
+  with a fix, not just a label
+- **Personalized AI dashboard**: current skill level, learning progress,
+  assessment scores, topics completed, topics needing revision,
+  AI-recommended next steps, learning resources, practical tasks, interview
+  readiness, overall progress
+- Platform and AI are **free**; AI specifically as a **3–5 month free
+  trial**
 
 ### Phase 2 — Interview Prep
 - Question bank (by company/role/topic)
@@ -54,19 +77,38 @@ Next.js (frontend) → FastAPI (backend) → PostgreSQL (database)
 - Mentor profiles and scheduling
 - Possibly payments
 
-### Phase 4 — Expansion
-- Onboard freshers and employees as new segments
-- Personalized recommendations
-- Deeper analytics, possibly AI-driven feedback
+### Phase 4 — Expansion & Advanced AI
+- Onboard freshers and employees as new segments, at full depth
+- Resume feedback, personalized readiness PDF, AI-assisted mock-interview
+  feedback (deeper AI features beyond the Phase 1 onboarding/assessment
+  agent)
+- Deeper analytics
 
-> **MVP scope = Phase 1 only.** Students can sign up, complete an assessment, and see a dashboard of where they stand. This alone is a usable, launchable product.
+### Phase 5 — Job Portal *(future, not yet ticketed)*
+- Integrated job/internship listings and applications inside the same
+  PrepSuccess ecosystem, so a student never has to leave the platform to go
+  from "ready" to "applying"
+
+> **MVP scope = Phase 1 only, and Phase 1 is now AI-first.** Students can
+> sign up, be conversationally onboarded and adaptively assessed by the AI
+> agent, and see a personalized AI dashboard of where they stand and what to
+> do next. This alone is a usable, launchable product.
 
 ## 7. Phase 1 — Core Entities (Conceptual)
 
-- **User** — id, name, email, password_hash / google_id, college, branch, year
-- **Skill** — id, name, category (technical / soft)
-- **Assessment** — id, user_id, type (technical / soft / aptitude), taken_at
-- **AssessmentResult** — id, assessment_id, skill_id, score
+- **User** — id, name, email, password_hash / google_id, role
+- **UserProfile** — id, user_id, profile_data (JSONB: college/branch/year,
+  target role, age, location, education, skills, experience, interests,
+  goals — collected by the AI onboarding conversation)
+- **AIConversation** — id, user_id, agent_type, messages (JSON), created_at
+- **Skill** — id, name, category (technical / soft), topic/subtopic
+- **Assessment** — id, user_id, skill_id, mode (diagnostic/task), status
+- **AssessmentResult** — id, assessment_id, score, max_score, threshold,
+  mastery_status (mastered / needs_revision)
+- **PracticalTask** — id, skill_id, title, description, difficulty
+- **UserTaskSubmission** — id, user_id, task_id, submission_content,
+  ai_feedback, passed
+- **LearningResource** — id, skill_id, title, type, content_or_url, source
 - **ReadinessSummary** — derived/computed from results, shown on dashboard (not a stored table)
 
 *(Phase 2 adds Question Bank tables tied to Skill; Phase 3 adds a Session table tied to User for mentorship.)*
@@ -74,9 +116,14 @@ Next.js (frontend) → FastAPI (backend) → PostgreSQL (database)
 ## 8. Phase 1 — User Flow
 
 1. Student signs up (email/password or Google)
-2. Fills basic profile (college, branch, year)
-3. Takes assessment (technical + soft skills + aptitude)
-4. Dashboard shows scores by category and overall readiness
+2. AI agent conversationally onboards the student — profile captured as
+   structured JSON, not a static form
+3. AI runs an adaptive skill assessment per claimed skill: diagnostic
+   question/task → score → mastered or flagged for revision
+4. Below-threshold topics get curated learning resources; student studies
+   and resumes the loop
+5. Dashboard shows skill levels, progress, completed/revision topics,
+   AI-recommended next steps, resources, tasks, and interview readiness
 
 ## 9. Project Structure
 
@@ -96,6 +143,8 @@ backend/
 │   │       ├── assessment.py  # take/submit assessment
 │   │       └── dashboard.py   # readiness score, summary
 │   └── services/            # business logic (scoring, etc.)
+│       └── ai_agent/         # provider-agnostic AI agent (Gemini first),
+│                             # onboarding, adaptive assessment, next steps
 ├── alembic/                 # DB migrations
 └── requirements.txt
 ```
@@ -118,15 +167,24 @@ frontend/
 | Decision | Choice |
 |----------|--------|
 | Assessment scope | Technical + soft skills (communication, resume, aptitude) |
+| Assessment style | AI-driven, conversational, adaptive (question/task → score → threshold) — not a static quiz |
+| Onboarding | AI conversation collecting structured JSON profile, not a static form |
+| AI provider | Gemini first, behind a pluggable provider interface |
+| Pricing | Platform free; AI free for a 3–5 month trial window |
 | Login method | Email + Password, and Google Auth |
 | Database | PostgreSQL |
-| MVP scope | Phase 1 only |
+| MVP scope | Phase 1 only, now AI-first |
 
 ## 11. Open / Next Steps
 
-- Design detailed database schema (tables, columns, relationships)
+- Design detailed database schema for the AI-first entities (`UserProfile`,
+  `AIConversation`, `PracticalTask`, `UserTaskSubmission`,
+  `LearningResource`) alongside the original tables
 - Scaffold actual FastAPI + Next.js project folders and starter code
-- Define scoring logic for the readiness dashboard
+- Define mastery thresholds per skill/topic and the AI provider
+  abstraction/fallback behavior
+- Decide the source of curated learning resources (admin-authored vs.
+  AI-generated vs. external links)
 - Decide hosting/deployment approach (e.g., Postgres on Supabase/Railway/Neon)
 
 ## 12. Jira Project Tracking
@@ -139,33 +197,35 @@ structure mirrors the phase roadmap in §6:
 | Epic | Covers |
 |------|--------|
 | Platform Infrastructure & DevOps | Repo, env config, CI/CD, staging/prod, monitoring |
-| Auth & Onboarding | Signup/login, Google OAuth, onboarding email |
-| Student Profile & Assessment | Profile CRUD, assessment submission, readiness scoring |
+| Auth & AI Onboarding | Signup/login, Google OAuth, **AI conversational onboarding + JSON profile capture** |
+| AI Profile & Adaptive Assessment *(renamed from "Student Profile & Assessment")* | **AI adaptive assessment engine, practical tasks, learning resources**, readiness scoring |
 | Design System & UX | Tokens, component library, wireframes, mockups, a11y |
-| Backend Foundation & Data Model | FastAPI/Next.js scaffolds, SQLAlchemy/Alembic, core models |
+| Backend Foundation & Data Model | FastAPI/Next.js scaffolds, SQLAlchemy/Alembic, core models, **AI agent/provider integration layer** |
 | Admin & Notifications | Admin APIs/UI, notification service |
-| Platform Ops, QA & Compliance | Security review, API docs, ToS/Privacy, analytics instrumentation |
+| Platform Ops, QA & Compliance | Security review, API docs, ToS/Privacy, analytics instrumentation, **AI free-trial/usage tracking** |
 | Interview Prep (Question Bank) | Phase 2 question bank, bookmarks, progress tracking |
 | Mentorship Platform | Phase 3 booking, video, chat, payments |
-| AI & Personalization | Phase 4 AI services, personalized PDF |
+| AI & Personalization | **Phase 1 core AI services (skill-gap analysis, next-steps) now live here with fixVersion v0.1**; resume feedback + personalized PDF remain Phase 4 (v0.4) |
+| Job Portal *(new, future, no tickets yet)* | Phase 5 direction — job/internship listings integrated into the platform |
 
 ### Fix Versions (one per phase)
-`v0.1 - Phase 1 MVP`, `v0.2 - Phase 2 Interview Prep`,
-`v0.3 - Phase 3 Mentorship`, `v0.4 - Phase 4 AI & Expansion`.
+`v0.1 - Phase 1 MVP (AI-First)`, `v0.2 - Phase 2 Interview Prep`,
+`v0.3 - Phase 3 Mentorship`, `v0.4 - Phase 4 Expansion & Advanced AI`,
+`v0.5 - Phase 5 Job Portal (future, placeholder)`.
 
 ### Sprints
 Phase 1 is split into three timeboxed sprints (its ticket volume was too
 large for one sprint):
 1. **Phase 1 Sprint 1 — Foundation** (Sep 22–Oct 6): infra, scaffolds, core
-   schemas, design tokens.
-2. **Phase 1 Sprint 2 — Core Build** (Oct 7–21): auth, profile, assessment,
-   dashboard, wireframes/mockups.
+   schemas (including the new AI-first entities), design tokens.
+2. **Phase 1 Sprint 2 — Core Build** (Oct 7–21): auth, **AI onboarding
+   conversation, AI adaptive assessment engine**, dashboard, wireframes/mockups.
 3. **Phase 1 Sprint 3 — Launch Prep** (Oct 22–Nov 5): admin, notifications,
-   CI/CD, QA, compliance.
+   CI/CD, QA, compliance, **AI free-trial/usage tracking**.
 
 Phases 2–4 each currently run as one dated sprint (Phase 3's is oversized
 and will likely need splitting once real velocity data exists after Phase 1
-ships).
+ships). Phase 5 (Job Portal) has no sprint yet — it's roadmap-only.
 
 ### Team & Assignment
 - **Ayush Kumar** — backend, schema, and DevOps/QA-heavy tickets.

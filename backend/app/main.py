@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.users import router as users_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -42,6 +43,9 @@ async def add_correlation_id_and_timing(request: Request, call_next):
 
 # 3. Include API Routers
 app.include_router(auth_router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Auth"])
+app.include_router(
+    users_router, prefix=f"{settings.API_V1_PREFIX}/users", tags=["Users"]
+)
 
 
 # 4. Root Endpoint

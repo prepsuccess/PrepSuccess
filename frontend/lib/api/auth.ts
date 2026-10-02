@@ -4,11 +4,24 @@ export type UserRole = "student" | "mentor" | "admin";
 
 /**
  * Everything the AI onboarding has collected (`user_profiles.profile_data` on the backend).
- * Schemaless: known keys are typed, anything else may appear as onboarding evolves.
+ * Known keys mirror `profileFields` in backend/src/modules/users/users.schemas.ts;
+ * anything else may appear as onboarding evolves.
  */
 export interface StudentProfile {
+  college?: string;
+  degree?: string;
+  branch?: string;
   student_year?: number;
+  graduation_year?: number;
+  target_role?: string;
   mobile_no?: string;
+  age?: number;
+  gender?: "male" | "female" | "other" | "prefer_not_to_say";
+  location?: string;
+  skills?: string[];
+  interests?: string[];
+  goals?: string[];
+  experience?: string;
   [key: string]: unknown;
 }
 

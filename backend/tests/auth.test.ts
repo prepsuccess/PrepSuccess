@@ -12,7 +12,7 @@ import { signAccessToken, verifyAccessToken } from "../src/modules/auth/tokens.j
 
 // These tests cover everything that doesn't need a database: validation,
 // tokens and the auth guard. The full signup → login → refresh flow is
-// exercised against a real Postgres (see backend/README.md).
+// checked manually against a real Postgres.
 
 const app = createApp();
 const USER_ID = "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d";

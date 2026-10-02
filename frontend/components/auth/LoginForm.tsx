@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { Input, PasswordInput } from "@/components/ui/form";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
@@ -13,12 +14,12 @@ import { isValid, validateEmail, validateRequired } from "@/lib/utils/validation
 
 type Errors = { email?: string; password?: string };
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, error }: { next?: string; error?: string | null }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Errors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(error ?? null);
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -46,6 +47,7 @@ export function LoginForm({ next }: { next?: string }) {
 
   return (
     <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
+      <GoogleSignIn next={safeNext(next)} />
       {formError ? <Alert tone="error">{formError}</Alert> : null}
       <Input
         label="Email"

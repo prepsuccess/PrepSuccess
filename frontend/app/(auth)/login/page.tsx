@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Underlined } from "@/components/ui/Annotation";
+import { authErrorMessage } from "@/lib/auth/google";
 
 export const metadata: Metadata = { title: "Log in — PrepSuccess" };
 
@@ -11,7 +12,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
 
   return (
     <AuthCard
@@ -35,7 +36,10 @@ export default async function LoginPage({
         </>
       }
     >
-      <LoginForm next={typeof next === "string" ? next : undefined} />
+      <LoginForm
+        next={typeof next === "string" ? next : undefined}
+        error={authErrorMessage(typeof error === "string" ? error : undefined)}
+      />
     </AuthCard>
   );
 }

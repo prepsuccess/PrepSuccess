@@ -7,6 +7,7 @@ import { AppError } from "../../lib/http.js";
 import { logger } from "../../lib/logger.js";
 import { sendOtpEmail } from "../../services/email/email.service.js";
 import { toAuthUser } from "./auth.dto.js";
+import type { GoogleIdentity } from "./google.client.js";
 import type { LoginInput, RegisterInput } from "./auth.schemas.js";
 import { issueTokens } from "./tokens.js";
 
@@ -235,4 +236,78 @@ export async function getMe(userId: string) {
     throw new AppError(401, "UNAUTHORIZED", "Sign in to continue.");
   }
   return toAuthUser(user);
+}
+
+/**
+ * Google sign-in (SYSTEM_ARCHITECTURE_FLOW §3.2), given an identity whose ID
+ * token was already verified:
+ *   1. a user with this google_id exists → log in
+ *   2. a user with this email exists → link Google to that account (safe because
+ *      Google has verified the email), then log in
+ *   3. otherwise → create a GOOGLE user with an empty profile for onboarding
+ */
+export async function loginWithGoogle(identity: GoogleIdentity) {
+  if (!identity.emailVerified) {
+    throw new AppError(403, "GOOGLE_EMAIL_UNVERIFIED", "Your Google email isn't verified.");
+  }
+
+  let user = await prisma.user.findUnique({
+    where: { googleId: identity.googleId },
+    include: withProfile,
+  });
+
+  if (!user) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: identity.email },
+      include: withProfile,
+    });
+
+    if (byEmail) {
+      if (byEmail.googleId && byEmail.googleId !== identity.googleId) {
+        throw new AppError(
+          409,
+          "GOOGLE_ACCOUNT_CONFLICT",
+          "This email is linked to a different Google account.",
+        );
+      }
+      user = await prisma.user.update({
+        where: { id: byEmail.id },
+        data: {
+          googleId: identity.googleId,
+          isVerified: true,
+          profileImageUrl: byEmail.profileImageUrl ?? identity.picture,
+        },
+        include: withProfile,
+      });
+    } else {
+      try {
+        user = await prisma.user.create({
+          data: {
+            firstName: (identity.firstName || identity.email.split("@")[0]!).slice(0, 100),
+            lastName: identity.lastName?.slice(0, 100) || null,
+            email: identity.email,
+            googleId: identity.googleId,
+            authProvider: "GOOGLE",
+            isVerified: true,
+            profileImageUrl: identity.picture,
+            profile: { create: {} },
+          },
+          include: withProfile,
+        });
+      } catch (error) {
+        // Two callbacks for the same new account racing each other.
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw new AppError(409, "GOOGLE_ACCOUNT_CONFLICT", "Please try signing in again.");
+        }
+        throw error;
+      }
+    }
+  }
+
+  if (user.isDeleted || !user.isActive) {
+    throw new AppError(403, "ACCOUNT_DEACTIVATED", "This account has been deactivated.");
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  return { ...(await issueTokens(user.id, user.role)), user: toAuthUser(user) };
 }

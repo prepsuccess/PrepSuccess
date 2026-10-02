@@ -20,6 +20,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
     "openapi:export": "tsx scripts/export-openapi.ts"
   },
   "dependencies": {

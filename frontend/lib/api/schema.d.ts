@@ -1046,6 +1046,432 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai/assessment/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start (or resume) a skill check
+         * @description Resumes an unfinished check on the skill if there is one. Otherwise one AI call writes a pool of multiple-choice questions (easy, medium, hard) and the first — a medium one — is returned. Correct answers never leave the server until a question is answered. Nothing is saved if the AI call fails.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["StartAssessmentRequest"];
+                };
+            };
+            responses: {
+                /** @description The check, with the question to answer. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AssessmentState"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student; `AI_TRIAL_ENDED` (only when enforced). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_BAD_RESPONSE` — try again. */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/assessment/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a skill check
+         * @description The check so far: the current question, answered ones, and the result once complete.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Assessment id. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The check. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AssessmentState"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `ASSESSMENT_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/assessment/{id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer the current question
+         * @description The server marks the answer (no AI call). The next question is harder after a right answer and easier after a wrong one. After the last question the check is scored: points (easy 1, medium 2, hard 3) as a percentage of a perfect run, mastered at or above the skill's pass mark.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Assessment id. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AssessmentAnswerRequest"];
+                };
+            };
+            responses: {
+                /** @description The check after this answer; `result` is set once complete. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AssessmentState"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `ASSESSMENT_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `ASSESSMENT_COMPLETE`, or `QUESTION_ALREADY_ANSWERED` (stale question id or double submit). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the skill catalogue
+         * @description Every active skill — technical, aptitude and soft skills.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Active skills, grouped by topic. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["SkillList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My skills and latest results
+         * @description Every active skill, marked `claimed` when the student named it in the onboarding chat (matched by name and common aliases — never guessed by AI), with any unfinished check and the latest result. Students only.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The student's skills. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["MySkills"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1120,6 +1546,16 @@ export interface components {
         OnboardingMessageRequest: {
             /** @example Final year BCA. I know HTML, CSS and a bit of SQL. */
             content: string;
+        };
+        StartAssessmentRequest: {
+            /** Format: uuid */
+            skill_id: string;
+        };
+        AssessmentAnswerRequest: {
+            /** @example q5 */
+            question_id: string;
+            /** @description 0-based index of the chosen option. */
+            choice_index: number;
         };
         ErrorResponse: {
             /** @constant */
@@ -1247,6 +1683,120 @@ export interface components {
         OnboardingReply: {
             onboarding: components["schemas"]["OnboardingState"];
             user: components["schemas"]["AuthUser"];
+        };
+        AssessmentState: {
+            /** Format: uuid */
+            id: string;
+            skill: components["schemas"]["Skill"];
+            /** @enum {string} */
+            status: "in_progress" | "completed";
+            /** @example 5 */
+            total_questions: number;
+            answered: number;
+            /** @description The question to answer now; null once complete. */
+            current_question: components["schemas"]["AssessmentQuestion"] | null;
+            /** @description Answered questions in order, with the right answer and why. */
+            answers: components["schemas"]["AssessmentAnsweredQuestion"][];
+            result: {
+                score: number;
+                max_score: number;
+                percent: number;
+                threshold: number;
+                /** @enum {string} */
+                mastery: "mastered" | "needs_revision";
+            } | null;
+            /** Format: date-time */
+            started_at: string;
+            completed_at: string | null;
+        };
+        Skill: {
+            /** Format: uuid */
+            id: string;
+            /** @example dsa */
+            slug: string;
+            /** @example Data structures & algorithms */
+            name: string;
+            /** @enum {string} */
+            category: "technical" | "soft" | "aptitude";
+            /** @example CS fundamentals */
+            topic: string | null;
+            description: string | null;
+            /**
+             * @description Percentage needed to count as mastered.
+             * @example 40
+             */
+            mastery_threshold: number;
+        };
+        AssessmentQuestion: {
+            /** @example q5 */
+            id: string;
+            /** @description 1-based position in this check. */
+            number: number;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            question: string;
+            options: string[];
+        };
+        AssessmentAnsweredQuestion: {
+            /** @example q5 */
+            id: string;
+            /** @description 1-based position in this check. */
+            number: number;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            question: string;
+            options: string[];
+            chosen_index: number;
+            correct_index: number;
+            correct: boolean;
+            explanation: string;
+        };
+        SkillList: components["schemas"]["Skill"][];
+        MySkills: {
+            skills: components["schemas"]["MySkill"][];
+            /**
+             * @description Skills from the onboarding chat that aren't in the catalogue yet.
+             * @example [
+             *       "Kotlin"
+             *     ]
+             */
+            unmatched_claims: string[];
+        };
+        MySkill: {
+            /** Format: uuid */
+            id: string;
+            /** @example dsa */
+            slug: string;
+            /** @example Data structures & algorithms */
+            name: string;
+            /** @enum {string} */
+            category: "technical" | "soft" | "aptitude";
+            /** @example CS fundamentals */
+            topic: string | null;
+            description: string | null;
+            /**
+             * @description Percentage needed to count as mastered.
+             * @example 40
+             */
+            mastery_threshold: number;
+            /** @description The student said they know this in the onboarding chat. */
+            claimed: boolean;
+            /** @description An unfinished check on this skill, to resume. */
+            in_progress_id: string | null;
+            /** @description The latest finished check. */
+            last_result: components["schemas"]["SkillLastResult"] | null;
+            /** @description Finished checks on this skill. */
+            attempts: number;
+        };
+        SkillLastResult: {
+            /** Format: uuid */
+            assessment_id: string;
+            /** @example 64 */
+            percent: number;
+            /** @enum {string} */
+            mastery: "mastered" | "needs_revision";
+            /** Format: date-time */
+            completed_at: string;
         };
     };
     responses: never;

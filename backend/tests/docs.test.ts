@@ -7,6 +7,7 @@ import { buildOpenApiDocument } from "../src/docs/openapi.js";
 import { authUserSchema } from "../src/modules/auth/auth.schemas.js";
 import { aiRouter } from "../src/modules/ai/ai.routes.js";
 import { authRouter } from "../src/modules/auth/auth.routes.js";
+import { skillsRouter } from "../src/modules/skills/skills.routes.js";
 import { usersRouter } from "../src/modules/users/users.routes.js";
 import { toAuthUser } from "../src/modules/auth/auth.dto.js";
 
@@ -18,13 +19,16 @@ const MOUNTED: [prefix: string, router: Router][] = [
   ["/api/v1/auth", authRouter],
   ["/api/v1/users", usersRouter],
   ["/api/v1/ai", aiRouter],
+  ["/api/v1/skills", skillsRouter],
 ];
 
 function routesOf(prefix: string, router: Router) {
   return router.stack.flatMap((layer) => {
     const route = layer.route as { path: string; methods: Record<string, boolean> } | undefined;
     if (!route) return [];
-    return Object.keys(route.methods).map((method) => ({ method, path: prefix + route.path }));
+    // Express writes params as :id and "/" for the prefix itself; OpenAPI uses {id} and no slash.
+    const path = (prefix + route.path).replace(/\/$/, "").replace(/:(\w+)/g, "{$1}");
+    return Object.keys(route.methods).map((method) => ({ method, path }));
   });
 }
 

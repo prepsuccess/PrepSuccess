@@ -30,6 +30,8 @@ export interface AiRequest {
   temperature?: number;
   maxOutputTokens?: number;
   thinking?: boolean;
+  /** Overall deadline for all attempts; defaults to AI_TIMEOUT_MS. */
+  timeoutMs?: number;
 }
 
 export interface AiResult<T> {
@@ -95,7 +97,7 @@ async function run<T>(
   // Main model twice (overload is often momentary), then each fallback once.
   const [main, ...fallbacks] = provider.models;
   const attempts = [main!, main!, ...fallbacks];
-  const deadline = AbortSignal.timeout(env.AI_TIMEOUT_MS);
+  const deadline = AbortSignal.timeout(request.timeoutMs ?? env.AI_TIMEOUT_MS);
   let lastError: AiProviderError | null = null;
 
   for (const [index, model] of attempts.entries()) {

@@ -31,3 +31,12 @@ export type OnboardingState = Omit<Schemas["OnboardingState"], "profile"> & {
 };
 export type OnboardingMessage = OnboardingState["messages"][number];
 export type OnboardingReply = { onboarding: OnboardingState; user: AuthUser };
+
+export type Skill = Schemas["Skill"];
+export type SkillCategory = Skill["category"];
+export type MySkill = Schemas["MySkill"];
+export type MySkills = Schemas["MySkills"];
+export type AssessmentState = Schemas["AssessmentState"];
+export type AssessmentQuestion = Schemas["AssessmentQuestion"];
+export type AnsweredQuestion = Schemas["AssessmentAnsweredQuestion"];
+export type AnswerRequest = Schemas["AssessmentAnswerRequest"];

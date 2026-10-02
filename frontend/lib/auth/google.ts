@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/lib/api/client";
+import { API_BASE_URL } from "@/lib/api/config";
 
 /**
  * Google sign-in is a full-page redirect through the backend (it keeps the

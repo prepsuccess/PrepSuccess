@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AiTrialCard } from "@/components/app/AiTrialCard";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCard } from "@/components/ui/StatCard";
@@ -20,6 +21,7 @@ export default function DashboardPage() {
         <StatCard label="Topics mastered" value={null} icon="check" />
         <StatCard label="Need revision" value={null} icon="resume" />
       </div>
+      <AiTrialCard className="mt-4" />
       <EmptyState
         className="mt-6"
         sketch="target"

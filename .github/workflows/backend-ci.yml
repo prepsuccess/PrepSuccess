@@ -50,3 +50,8 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: OpenAPI spec is up to date
+        run: |
+          npm run openapi:export
+          git diff --exit-code openapi.json || (echo "::error::backend/openapi.json is stale. Run 'npm run openapi:export' in backend/ and commit it." && exit 1)

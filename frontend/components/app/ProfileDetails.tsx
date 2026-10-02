@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Loading } from "@/components/ui/Skeleton";
+import { DetailListSkeleton } from "@/components/ui/skeletons";
 import { useSession } from "@/lib/auth/useSession";
 import { ProfileForm } from "./ProfileForm";
 
@@ -10,6 +12,13 @@ const list = (items: string[] | undefined) => (items?.length ? items.join(", ") 
 export function ProfileDetails() {
   const session = useSession();
   const [editing, setEditing] = useState(false);
+  if (session.status === "loading") {
+    return (
+      <Loading label="Loading your details…">
+        <DetailListSkeleton rows={8} />
+      </Loading>
+    );
+  }
   if (session.status !== "authenticated") return null;
   const { user } = session;
 

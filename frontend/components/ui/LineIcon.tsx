@@ -19,6 +19,7 @@ const paths = {
   logout: "M6.5 2.5h-3v11h3M10 5l3 3-3 3M13 8H6",
   grid: "M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z",
   menu: "M2.5 4.5h11M2.5 8h11M2.5 11.5h11",
+  alert: "M8 2.5 14 13H2zM8 6.5v3M8 11.25v.01",
 } as const;
 
 export type LineIconName = keyof typeof paths;

@@ -7,7 +7,7 @@ import { Logo } from "@/components/ui/Logo";
 import { LineIcon } from "@/components/ui/LineIcon";
 import { ThemePicker } from "@/components/ui/ThemePicker";
 import { useDismiss } from "@/lib/hooks/useDismiss";
-import { signOut, useSession } from "@/lib/auth/useSession";
+import { useSession, useSignOut } from "@/lib/auth/useSession";
 import { cn } from "@/lib/utils/cn";
 import type { ShellNavItem } from "./nav";
 
@@ -59,6 +59,7 @@ function NavList({
 
 function UserMenu() {
   const session = useSession();
+  const signOut = useSignOut();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);

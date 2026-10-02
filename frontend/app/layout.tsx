@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Inter_Tight, Geist_Mono, Caveat } from "next/font/google";
 import "./globals.css";
 import { PencilDefs } from "@/components/ui/PencilDefs";
+import { StoreProvider } from "@/lib/store/StoreProvider";
 import { accentBootScript } from "@/lib/themes";
 
 const interTight = Inter_Tight({
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`document.documentElement.classList.add('js');${accentBootScript}`}
         </Script>
         <PencilDefs />
-        {children}
+        <StoreProvider>{children}</StoreProvider>
       </body>
     </html>
   );

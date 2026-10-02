@@ -1,69 +1,65 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
-import { getCurrentUser, type AuthUser, type TokenResponse } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
-import { clearTokens, getAccessToken, saveTokens, type SessionState } from "./session";
+import { useCallback } from "react";
+import { baseApi } from "@/lib/api/baseApi";
+import { authApi, useGetMeQuery } from "@/lib/api/endpoints/auth";
+import type { TokenResponse } from "@/lib/api/types";
+import type { AppDispatch } from "@/lib/store/store";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { signedIn, signedOut } from "./authSlice";
+import { clearTokens, getRefreshToken, saveTokens, type SessionState } from "./session";
 
 const LOADING: SessionState = { status: "loading", user: null };
 const SIGNED_OUT: SessionState = { status: "unauthenticated", user: null };
 
-let state: SessionState = LOADING;
-let pending: Promise<void> | null = null;
-const listeners = new Set<() => void>();
-
-function set(next: SessionState) {
-  state = next;
-  listeners.forEach((listener) => listener());
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-/** Resolves the current user from the stored token, once per page load. */
-function load() {
-  if (state.status !== "loading" || pending) return;
-  if (!getAccessToken()) {
-    set(SIGNED_OUT);
-    return;
-  }
-  pending = getCurrentUser()
-    .then((user) => set({ status: "authenticated", user }))
-    .catch((error: unknown) => {
-      // A rejected token is dead; a network blip shouldn't wipe a good one.
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        clearTokens();
-      }
-      set(SIGNED_OUT);
-    })
-    .finally(() => {
-      pending = null;
-    });
-}
-
-export function signIn({ access_token, refresh_token, user }: TokenResponse) {
-  saveTokens(access_token, refresh_token);
-  set({ status: "authenticated", user });
-}
-
-/** Replaces the signed-in user after a profile edit, without touching the tokens. */
-export function updateSessionUser(user: AuthUser) {
-  if (state.status === "authenticated") set({ status: "authenticated", user });
-}
-
-export function signOut() {
-  clearTokens();
-  set(SIGNED_OUT);
-}
-
+/**
+ * The current session. The user comes from the cached `getMe` query, so it is
+ * fetched once per tab and shared by every component that calls this hook.
+ */
 export function useSession(): SessionState {
-  const snapshot = useSyncExternalStore(
-    subscribe,
-    () => state,
-    () => LOADING,
+  const status = useAppSelector((state) => state.auth.status);
+  const me = useGetMeQuery(undefined, { skip: status !== "signedIn" });
+
+  if (status === "unknown") return LOADING;
+  if (status === "signedOut") return SIGNED_OUT;
+  if (me.data) return { status: "authenticated", user: me.data };
+  // A dead session is signed out by the base query; a network failure lands here too.
+  if (me.isError) return SIGNED_OUT;
+  return LOADING;
+}
+
+/**
+ * Stores the tokens and seeds the user cache, so no extra /me request is needed.
+ * Clears anything cached for a previous user in this tab first.
+ */
+export function startSession(dispatch: AppDispatch, session: TokenResponse) {
+  dispatch(baseApi.util.resetApiState());
+  saveTokens(session.access_token, session.refresh_token);
+  // Synchronous, so the user is in the cache before the next render.
+  dispatch(
+    authApi.util.upsertQueryEntries([
+      { endpointName: "getMe", arg: undefined, value: session.user },
+    ]),
   );
-  useEffect(load, []);
-  return snapshot;
+  dispatch(signedIn());
+}
+
+export function useStartSession() {
+  const dispatch = useAppDispatch();
+  return useCallback((session: TokenResponse) => startSession(dispatch, session), [dispatch]);
+}
+
+/** Revokes the refresh token on the server, then forgets everything locally. */
+export function useSignOut() {
+  const dispatch = useAppDispatch();
+  return useCallback(() => {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      // Fire and forget: signing out locally must not wait for (or depend on) the network.
+      void dispatch(authApi.endpoints.logout.initiate({ refresh_token: refreshToken }));
+    }
+    clearTokens();
+    dispatch(signedOut());
+    dispatch(baseApi.util.resetApiState());
+  }, [dispatch]);
 }

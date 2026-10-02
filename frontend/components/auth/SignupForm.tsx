@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { Checkbox, Input, PasswordInput, Select } from "@/components/ui/form";
-import { register, sendSignupOtp } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
+import { useRegisterMutation, useSendOtpMutation } from "@/lib/api/endpoints/auth";
+import { errorMessage } from "@/lib/api/errors";
 import { homeFor } from "@/lib/auth/session";
-import { signIn } from "@/lib/auth/useSession";
+import { useStartSession } from "@/lib/auth/useSession";
 import {
   isValid,
   validateEmail,
@@ -36,10 +36,6 @@ type Details = {
 };
 
 type DetailErrors = Partial<Record<keyof Details, string>>;
-
-function errorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : "Couldn't reach PrepSuccess. Try again.";
-}
 
 /** Seconds left on a countdown, and a function that (re)starts it. */
 function useCountdown(seconds: number) {
@@ -82,24 +78,25 @@ export function SignupForm() {
   const [otpError, setOtpError] = useState<string>();
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [sendOtp, { isLoading: sendingCode }] = useSendOtpMutation();
+  const [register, { isLoading: registering, isSuccess: registered }] = useRegisterMutation();
+  // Stays true after a successful register while the page navigates away.
+  const submitting = sendingCode || registering || registered;
+  const startSession = useStartSession();
   const [resendIn, startResendTimer] = useCountdown(RESEND_SECONDS);
 
   const update = <K extends keyof Details>(key: K, value: Details[K]) =>
     setDetails((d) => ({ ...d, [key]: value }));
 
   async function sendCode() {
-    setSubmitting(true);
     setFormError(null);
     try {
-      const res = await sendSignupOtp(details.email.trim());
+      const res = await sendOtp({ email: details.email.trim() }).unwrap();
       setNotice(res.message);
       startResendTimer();
       setStep("verify");
     } catch (error) {
       setFormError(errorMessage(error));
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -122,7 +119,6 @@ export function SignupForm() {
     setFormError(null);
     if (found) return;
 
-    setSubmitting(true);
     try {
       const session = await register({
         first_name: details.firstName.trim(),
@@ -131,12 +127,11 @@ export function SignupForm() {
         password: details.password,
         student_year: details.year ? Number(details.year) : undefined,
         otp,
-      });
-      signIn(session);
+      }).unwrap();
+      startSession(session);
       router.replace(homeFor(session.user.role));
     } catch (error) {
       setFormError(errorMessage(error));
-      setSubmitting(false);
     }
   }
 

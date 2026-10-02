@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import type { UserRole } from "@/lib/api/auth";
+import type { UserRole } from "@/lib/api/types";
 import { homeFor } from "@/lib/auth/session";
 import { useSession } from "@/lib/auth/useSession";
 import { Spinner } from "@/components/ui/Spinner";

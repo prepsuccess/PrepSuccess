@@ -4,10 +4,9 @@ import { useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/form";
-import type { AuthUser } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
-import { updateMe, type UpdateMePayload } from "@/lib/api/users";
-import { updateSessionUser } from "@/lib/auth/useSession";
+import { useUpdateMeMutation } from "@/lib/api/endpoints/users";
+import { errorMessage, fieldErrors } from "@/lib/api/errors";
+import type { AuthUser, UpdateMeRequest } from "@/lib/api/types";
 import { isValid, validateRequired } from "@/lib/utils/validation";
 
 const yearOptions = [1, 2, 3, 4, 5, 6].map((year) => ({
@@ -64,7 +63,7 @@ function validate(v: Values): Errors {
 }
 
 /** Empty inputs clear the field (`null`), so a student can remove what they no longer want shown. */
-function toPayload(v: Values): UpdateMePayload {
+function toPayload(v: Values): UpdateMeRequest {
   const text = (value: string) => value.trim() || null;
   const number = (value: string) => (value.trim() ? Number(value) : null);
   return {
@@ -82,7 +81,7 @@ export function ProfileForm({ user, onDone }: { user: AuthUser; onDone: () => vo
   const [values, setValues] = useState(() => initialValues(user));
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [updateMe, { isLoading: saving }] = useUpdateMeMutation();
 
   const field = (name: keyof Values) => ({
     name,
@@ -99,15 +98,15 @@ export function ProfileForm({ user, onDone }: { user: AuthUser; onDone: () => vo
     setFormError(null);
     if (!isValid(found)) return;
 
-    setSaving(true);
     try {
-      updateSessionUser(await updateMe(toPayload(values)));
+      // The mutation writes the updated user into the cache, so the details view refreshes itself.
+      await updateMe(toPayload(values)).unwrap();
       onDone();
     } catch (error) {
-      setFormError(
-        error instanceof ApiError ? error.message : "Couldn't reach PrepSuccess. Try again.",
-      );
-      setSaving(false);
+      // Server-side validation lands on the matching field; anything else goes in the banner.
+      const byField = fieldErrors(error) as Errors;
+      if (Object.keys(byField).length > 0) setErrors(byField);
+      else setFormError(errorMessage(error));
     }
   }
 

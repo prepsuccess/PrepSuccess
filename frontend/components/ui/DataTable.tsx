@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { TableRowsSkeleton } from "@/components/ui/skeletons";
 import { cn } from "@/lib/utils/cn";
 
 export type Column<T> = {
@@ -9,22 +10,27 @@ export type Column<T> = {
   className?: string;
 };
 
-/** Ruled table in the site's style. Renders `empty` in place of the body when there are no rows. */
+/**
+ * Ruled table in the site's style. Renders `empty` in place of the body when there are no rows,
+ * and skeleton rows (same columns) while `loading`.
+ */
 export function DataTable<T>({
   columns,
   rows,
   rowKey,
   empty,
   caption,
+  loading = false,
 }: {
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
   empty?: ReactNode;
   caption?: string;
+  loading?: boolean;
 }) {
   return (
-    <div className="card overflow-x-auto">
+    <div className="card overflow-x-auto" aria-busy={loading || undefined}>
       <table className="w-full min-w-[640px] text-left text-[14px]">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
@@ -45,7 +51,9 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 ? (
+          {loading ? (
+            <TableRowsSkeleton columns={columns.length} />
+          ) : rows.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="p-4">
                 {empty}

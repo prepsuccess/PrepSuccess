@@ -1,17 +1,21 @@
 import { LineIcon, type LineIconName } from "@/components/ui/LineIcon";
+import { StatCardSkeleton } from "@/components/ui/skeletons";
 
-/** One headline number. Pass `value={null}` while there's no data yet. */
+/** One headline number. `value={null}` means no data yet; `loading` shows a skeleton. */
 export function StatCard({
   label,
   value,
   icon,
   note,
+  loading = false,
 }: {
   label: string;
   value: string | number | null;
   icon: LineIconName;
   note?: string;
+  loading?: boolean;
 }) {
+  if (loading) return <StatCardSkeleton />;
   return (
     <div className="card flex flex-col gap-5 p-5">
       <div className="flex items-center justify-between gap-3">

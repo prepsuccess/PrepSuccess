@@ -3,7 +3,7 @@ import { DataTable, type Column } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Chip } from "@/components/ui/MiniUI";
 import { PageHeader } from "@/components/shell/PageHeader";
-import type { AuthUser } from "@/lib/api/auth";
+import type { AuthUser } from "@/lib/api/types";
 
 export const metadata: Metadata = { title: "Users" };
 

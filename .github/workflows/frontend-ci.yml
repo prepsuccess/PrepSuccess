@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "frontend/**"
+      - "backend/openapi.json"
       - ".github/workflows/frontend-ci.yml"
   push:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/openapi.json"
       - ".github/workflows/frontend-ci.yml"
 
 defaults:
@@ -30,6 +32,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: API types match the backend spec
+        run: |
+          npm run api:types
+          git diff --exit-code lib/api/schema.d.ts || (echo "::error::frontend/lib/api/schema.d.ts is stale. Run 'npm run api:types' in frontend/ and commit it." && exit 1)
 
       - name: Format check (Prettier)
         run: npm run format:check

@@ -19,6 +19,9 @@
   /* Status colours for forms and alerts; deep enough to read as text on white. */
   --color-danger: #b42318;
   --color-success: #1f7a4d;
+  /* Loading skeletons: the resting block and the highlight that sweeps across it. */
+  --color-skeleton: #eef0f3;
+  --color-shimmer: rgb(255 255 255 / 0.7);
 
   /* Layered, cool-tinted shadows: a tight contact shadow plus a soft ambient one. */
   --shadow-card:
@@ -50,6 +53,8 @@
   --color-accent-ink: var(--color-accent-ink);
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
+  --color-skeleton: var(--color-skeleton);
+  --color-shimmer: var(--color-shimmer);
 
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -76,6 +81,7 @@
   --animate-spin-slow: spin 30s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-dot: pulse-dot 2s ease-out infinite;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
 }
 
 @keyframes marquee {
@@ -84,6 +90,15 @@
   }
   to {
     transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
   }
 }
 

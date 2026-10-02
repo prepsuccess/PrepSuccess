@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Spinner } from "@/components/ui/Spinner";
-import { getCurrentUser } from "@/lib/api/auth";
+import { authApi } from "@/lib/api/endpoints/auth";
+import { signedIn } from "@/lib/auth/authSlice";
 import { clearTokens, homeFor, safeNext, saveTokens } from "@/lib/auth/session";
-import { signIn } from "@/lib/auth/useSession";
+import { useAppDispatch } from "@/lib/store/hooks";
 
 /**
  * Landing page after Google sign-in. The backend puts the tokens in the URL
@@ -14,6 +15,7 @@ import { signIn } from "@/lib/auth/useSession";
  */
 export function GoogleCallback() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const started = useRef(false);
 
   useEffect(() => {
@@ -32,16 +34,17 @@ export function GoogleCallback() {
     }
 
     saveTokens(access_token, refresh_token);
-    getCurrentUser()
+    dispatch(authApi.endpoints.getMe.initiate())
+      .unwrap()
       .then((user) => {
-        signIn({ access_token, refresh_token, token_type: "bearer", expires_in: 0, user });
+        dispatch(signedIn());
         router.replace(safeNext(params.get("next")) ?? homeFor(user.role));
       })
       .catch(() => {
         clearTokens();
         router.replace("/login?error=google_failed");
       });
-  }, [router]);
+  }, [dispatch, router]);
 
   return (
     <div className="text-text-dim flex flex-col items-center gap-4 py-16 text-[15px]" role="status">

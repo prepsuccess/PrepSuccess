@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { Input, PasswordInput } from "@/components/ui/form";
-import { login } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
+import { useLoginMutation } from "@/lib/api/endpoints/auth";
+import { errorMessage } from "@/lib/api/errors";
 import { homeFor, safeNext } from "@/lib/auth/session";
-import { signIn } from "@/lib/auth/useSession";
+import { useStartSession } from "@/lib/auth/useSession";
 import { isValid, validateEmail, validateRequired } from "@/lib/utils/validation";
 
 type Errors = { email?: string; password?: string };
@@ -20,7 +20,10 @@ export function LoginForm({ next, error }: { next?: string; error?: string | nul
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(error ?? null);
-  const [submitting, setSubmitting] = useState(false);
+  const [login, { isLoading, isSuccess }] = useLoginMutation();
+  // Stays true after success while the page navigates away.
+  const submitting = isLoading || isSuccess;
+  const startSession = useStartSession();
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,16 +35,12 @@ export function LoginForm({ next, error }: { next?: string; error?: string | nul
     setFormError(null);
     if (!isValid(found)) return;
 
-    setSubmitting(true);
     try {
-      const session = await login({ email: email.trim(), password });
-      signIn(session);
+      const session = await login({ email: email.trim(), password }).unwrap();
+      startSession(session);
       router.replace(safeNext(next) ?? homeFor(session.user.role));
     } catch (error) {
-      setFormError(
-        error instanceof ApiError ? error.message : "Couldn't reach PrepSuccess. Try again.",
-      );
-      setSubmitting(false);
+      setFormError(errorMessage(error));
     }
   }
 

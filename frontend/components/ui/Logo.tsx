@@ -6,7 +6,7 @@ export function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
     <svg viewBox="0 0 28 28" className={className} aria-hidden>
       <rect x="2" y="17" width="6.5" height="9" fill="var(--color-heading)" />
       <rect x="10.75" y="10" width="6.5" height="16" fill="var(--color-heading)" />
-      <rect x="19.5" y="2" width="6.5" height="24" fill="var(--color-accent)" />
+      <rect x="19.5" y="2" width="6.5" height="24" fill="var(--color-brand)" />
     </svg>
   );
 }

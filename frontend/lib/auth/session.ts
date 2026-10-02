@@ -1,18 +1,21 @@
-import type { AuthUser, UserRole } from "@/lib/api/auth";
+import type { AuthUser, UserRole } from "@/lib/api/types";
 
 // The backend issues bearer tokens in the response body (no cookies yet), so they live in
 // localStorage. Move to httpOnly cookies once the API sets them.
 const ACCESS_KEY = "ps-access-token";
 const REFRESH_KEY = "ps-refresh-token";
 
-export function getAccessToken(): string | null {
+function read(key: string): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(ACCESS_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
+
+export const getAccessToken = () => read(ACCESS_KEY);
+export const getRefreshToken = () => read(REFRESH_KEY);
 
 export function saveTokens(access: string, refresh: string) {
   try {

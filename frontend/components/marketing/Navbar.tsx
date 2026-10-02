@@ -148,7 +148,7 @@ function ProductMenu({ pathname }: { pathname: string }) {
             href="/story"
             className="group border-border mt-1.5 flex items-center justify-between rounded-[12px] border-t px-3 pt-3 pb-1.5"
           >
-            <span className="font-marker text-accent -rotate-1 text-[18px]">why we built it →</span>
+            <span className="font-marker text-brand -rotate-1 text-[18px]">why we built it →</span>
             <span className="text-text group-hover:text-heading text-[13px] transition-colors">
               <HoverScribble>Read our story</HoverScribble>
             </span>

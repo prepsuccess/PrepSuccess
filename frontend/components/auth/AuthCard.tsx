@@ -18,11 +18,11 @@ export function AuthCard({
     <div className="relative w-full max-w-[460px]">
       <span
         aria-hidden
-        className="bg-accent/20 absolute -top-3 left-1/2 z-10 h-7 w-28 -translate-x-1/2 -rotate-2"
+        className="bg-brand/20 absolute -top-3 left-1/2 z-10 h-7 w-28 -translate-x-1/2 -rotate-2"
       />
       <div className="card px-6 py-9 sm:px-10 sm:py-11">
         <p
-          className="ink now font-marker text-accent -rotate-2 text-[21px]"
+          className="ink now font-marker text-brand -rotate-2 text-[21px]"
           style={{ "--d": "0.1s" } as CSSProperties}
         >
           {eyebrow}

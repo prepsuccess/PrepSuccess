@@ -26,11 +26,11 @@ export const THEME_STORAGE_KEY = "ps-accent";
 export function applyAccentTheme(theme: AccentTheme) {
   const root = document.documentElement.style;
   root.setProperty("--color-marker", theme.marker);
-  root.setProperty("--color-accent", theme.accent);
-  root.setProperty("--color-accent-ink", theme.ink);
+  root.setProperty("--color-brand", theme.accent);
+  root.setProperty("--color-brand-ink", theme.ink);
 }
 
 /** Inline script run before paint so a saved accent never flashes the default first. */
 export const accentBootScript = `(function(){try{var t=${JSON.stringify(
   Object.fromEntries(accentThemes.map((t) => [t.id, [t.marker, t.accent, t.ink]])),
-)}[localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})];if(t){var s=document.documentElement.style;s.setProperty('--color-marker',t[0]);s.setProperty('--color-accent',t[1]);s.setProperty('--color-accent-ink',t[2]);}}catch(e){}})();`;
+)}[localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})];if(t){var s=document.documentElement.style;s.setProperty('--color-marker',t[0]);s.setProperty('--color-brand',t[1]);s.setProperty('--color-brand-ink',t[2]);}}catch(e){}})();`;

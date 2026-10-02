@@ -8,9 +8,9 @@ function Code() {
         Find the length of the longest subarray whose sum equals k.
       </p>
       <pre className="bg-surface-3 text-text mt-3 rounded-[6px] p-3 font-mono text-[11px] leading-relaxed">
-        <span className="text-accent-ink">function</span> longest(nums, k) {"{"}
-        {"\n"} <span className="text-accent-ink">const</span> seen ={" "}
-        <span className="text-accent-ink">new</span> Map();
+        <span className="text-brand-ink">function</span> longest(nums, k) {"{"}
+        {"\n"} <span className="text-brand-ink">const</span> seen ={" "}
+        <span className="text-brand-ink">new</span> Map();
         {"\n"} <span className="text-text-dim">{"// your approach…"}</span>
         {"\n"}
         {"}"}

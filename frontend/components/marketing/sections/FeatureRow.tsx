@@ -13,7 +13,7 @@ export function PointList({ points }: { points: string[] }) {
           key={point}
           className="border-border text-heading flex items-center gap-3 border-b py-3 text-[15px]"
         >
-          <PencilAsterisk className="text-accent h-3.5 w-3.5" />
+          <PencilAsterisk className="text-brand h-3.5 w-3.5" />
           {point}
         </li>
       ))}

@@ -226,7 +226,7 @@ function ReadyCard() {
               <StatusGlyph status={row.ok ? "mastered" : "revision"} />
               <span className="text-heading flex-1">{row.topic}</span>
               <span
-                className={`text-[12px] ${row.ok ? "text-text-dim" : "text-accent-ink font-medium"}`}
+                className={`text-[12px] ${row.ok ? "text-text-dim" : "text-brand-ink font-medium"}`}
               >
                 {row.state}
               </span>

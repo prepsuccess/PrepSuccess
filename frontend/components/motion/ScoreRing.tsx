@@ -66,7 +66,7 @@ export function ScoreRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="var(--color-accent)"
+          stroke="var(--color-brand)"
           strokeWidth={stroke}
           strokeLinecap="butt"
           strokeDasharray={circumference}

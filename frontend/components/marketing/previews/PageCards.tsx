@@ -4,8 +4,7 @@ import { Bar, Chip, MiniWindow, MonoLabel, StatusGlyph } from "@/components/ui/M
 import { LineIcon, type LineIconName } from "@/components/ui/LineIcon";
 import { PreviewFrame } from "@/components/ui/PreviewFrame";
 import { TrackPreview } from "@/components/marketing/previews/TrackPreview";
-import { RoadmapPreview } from "@/components/marketing/previews/RoadmapPreview";
-import { type RoadmapVisual, type TrackPreview as TrackKind } from "@/lib/content";
+import { type TrackPreview as TrackKind } from "@/lib/content";
 
 /* ── How it works ─────────────────────────────────────────── */
 
@@ -38,7 +37,7 @@ export function ProfileCard() {
           <span className="text-text-dim">{"{"}</span>
           {lines.map(([key, value], i) => (
             <span key={key} className="block pl-4">
-              <span className="text-accent-ink">&quot;{key}&quot;</span>
+              <span className="text-brand-ink">&quot;{key}&quot;</span>
               <span className="text-text-dim">: </span>
               <span className="text-heading">{value}</span>
               {i < lines.length - 1 ? <span className="text-text-dim">,</span> : null}
@@ -131,7 +130,7 @@ export function ThresholdCard() {
           })}
         </div>
         <p className="border-border text-text-dim mt-4 flex items-center gap-2 border-t pt-3 text-[11px]">
-          <span aria-hidden className="bg-accent h-2.5 w-px" /> The tick marks the pass mark
+          <span aria-hidden className="bg-brand h-2.5 w-px" /> The tick marks the pass mark
         </p>
       </MiniWindow>
     </Taped>
@@ -221,7 +220,7 @@ export function TopicsCard() {
           ))}
         </div>
         <p className="border-border bg-bg text-heading mt-4 rounded-[8px] border px-3 py-2.5 text-[12px]">
-          <span className="text-accent-ink text-[12px] tabular-nums">Next · </span>
+          <span className="text-brand-ink text-[12px] tabular-nums">Next · </span>
           Study the event loop, then check it again
         </p>
       </MiniWindow>
@@ -241,75 +240,6 @@ export function TrackCard({ kind, tag, tilt }: { kind: TrackKind; tag: string; t
       </div>
     </Taped>
   );
-}
-
-/* ── Roadmap ──────────────────────────────────────────────── */
-
-function CoreCard() {
-  const rows: { icon: LineIconName; label: string }[] = [
-    { icon: "person", label: "Sign up · email or Google" },
-    { icon: "chat", label: "AI onboarding chat" },
-    { icon: "checklist", label: "Skill checks" },
-    { icon: "resume", label: "Study material for weak topics" },
-    { icon: "gauge", label: "Readiness dashboard" },
-  ];
-  return (
-    <MiniWindow title="PrepSuccess" meta="Live now">
-      <ul className="divide-border flex flex-col divide-y">
-        {rows.map((row) => (
-          <li key={row.label} className="flex items-center gap-3 py-2.5 text-[13px]">
-            <LineIcon name={row.icon} className="text-text-dim h-4 w-4 flex-none" />
-            <span className="text-heading flex-1">{row.label}</span>
-            <span className="text-accent-ink inline-flex items-center gap-1.5 text-[12px] tabular-nums">
-              <span className="animate-pulse-dot bg-accent h-1.5 w-1.5 rounded-full" /> live
-            </span>
-          </li>
-        ))}
-      </ul>
-    </MiniWindow>
-  );
-}
-
-function JobsCard() {
-  const jobs = [
-    { role: "Software Engineer Trainee", kind: "Full-time · Campus" },
-    { role: "Frontend Intern", kind: "Internship · 6 months" },
-  ];
-  return (
-    <MiniWindow title="Jobs & internships" meta="Coming later">
-      <ul className="flex flex-col gap-2.5">
-        {jobs.map((job) => (
-          <li
-            key={job.role}
-            className="border-border bg-bg flex items-center justify-between gap-3 rounded-[8px] border px-3 py-2.5"
-          >
-            <span>
-              <span className="text-heading block text-[13px]">{job.role}</span>
-              <MonoLabel>{job.kind}</MonoLabel>
-            </span>
-            <span className="border-heading text-heading rounded-full border px-3 py-1 text-[11px] font-medium">
-              Apply
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="text-text-dim mt-3 text-[11px]">
-        Apply with the same readiness profile you built.
-      </p>
-    </MiniWindow>
-  );
-}
-
-export function RoadmapCard({ visual, tilt }: { visual: RoadmapVisual; tilt: string }) {
-  const body =
-    visual === "core" ? (
-      <CoreCard />
-    ) : visual === "jobs" ? (
-      <JobsCard />
-    ) : (
-      <RoadmapPreview kind={visual} />
-    );
-  return <Taped tilt={tilt}>{body}</Taped>;
 }
 
 /* ── Mentors ──────────────────────────────────────────────── */
@@ -385,7 +315,7 @@ export function MergedStepsCard() {
         <ol className="divide-border flex flex-col divide-y">
           {steps.map((step, i) => (
             <li key={step.text} className="flex items-center gap-3 py-3 text-[13px]">
-              <span className="text-accent-ink text-[12px] tabular-nums">0{i + 1}</span>
+              <span className="text-brand-ink text-[12px] tabular-nums">0{i + 1}</span>
               <span className="text-heading flex-1">{step.text}</span>
               <Chip status={step.from === "Mentor" ? "mastered" : "neutral"}>{step.from}</Chip>
             </li>

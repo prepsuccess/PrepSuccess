@@ -17,7 +17,7 @@ export function TopicMarquee() {
               key={topic}
               className="text-heading/45 mr-12 flex items-center gap-3 text-2xl font-medium tracking-[-0.03em] whitespace-nowrap"
             >
-              <PencilAsterisk className="text-accent/80 h-4 w-4" />
+              <PencilAsterisk className="text-brand/80 h-4 w-4" />
               {topic}
             </span>
           ))}

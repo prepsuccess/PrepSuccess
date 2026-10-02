@@ -65,7 +65,7 @@ export function Timeline({ items, offset = 0 }: { items: TimelineItem[]; offset?
           aria-hidden
           className="bg-border absolute top-16 bottom-16 left-[11px] w-[2px] [filter:url(#pencil)]"
         >
-          <div ref={fill} className="bg-accent h-full w-full origin-top scale-y-0" />
+          <div ref={fill} className="bg-brand h-full w-full origin-top scale-y-0" />
         </div>
 
         {items.map((item, i) => {
@@ -79,10 +79,10 @@ export function Timeline({ items, offset = 0 }: { items: TimelineItem[]; offset?
               <span
                 data-node
                 aria-hidden
-                className="border-border-strong bg-bg [&.is-reached]:border-accent [&.is-reached]:bg-accent absolute top-[66px] -left-[36px] z-10 h-4 w-4 rounded-full border-2 transition-colors duration-500 lg:top-[98px] lg:left-[4px]"
+                className="border-border-strong bg-bg [&.is-reached]:border-brand [&.is-reached]:bg-brand absolute top-[66px] -left-[36px] z-10 h-4 w-4 rounded-full border-2 transition-colors duration-500 lg:top-[98px] lg:left-[4px]"
               />
 
-              <p className="font-marker text-accent -rotate-2 text-[20px] leading-[1.15] whitespace-pre-line lg:pl-9">
+              <p className="font-marker text-brand -rotate-2 text-[20px] leading-[1.15] whitespace-pre-line lg:pl-9">
                 {item.when}
               </p>
 

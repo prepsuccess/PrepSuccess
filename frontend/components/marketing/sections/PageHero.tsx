@@ -33,7 +33,7 @@ export function PageHero({
         <Container>
           <div className="relative mx-auto flex max-w-[860px] flex-col items-center text-center">
             <p
-              className="ink now font-marker text-accent -rotate-2 text-[23px]"
+              className="ink now font-marker text-brand -rotate-2 text-[23px]"
               style={{ "--d": "0.1s" } as CSSProperties}
             >
               {eyebrow}

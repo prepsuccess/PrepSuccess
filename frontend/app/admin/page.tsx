@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Alert } from "@/components/ui/Alert";
-import { StatCard } from "@/components/ui/StatCard";
+import { Info, ListChecks, Gauge, ShieldCheck, UserPlus } from "lucide-react";
+import { StatCards } from "@/components/app/StatCards";
+import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -9,17 +10,24 @@ export default function AdminOverviewPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Admin"
-        title="Platform overview"
-        description="Aggregate numbers only. Individual students' results are never browsable from here."
+        title="Overview"
+        description="Platform-wide numbers. Aggregates only — never an individual student's results."
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Signups" value={null} icon="person" />
-        <StatCard label="Skill checks taken" value={null} icon="checklist" />
-        <StatCard label="Avg readiness" value={null} icon="gauge" />
-        <StatCard label="Mentors pending" value={null} icon="shield" />
-      </div>
-      <Alert className="mt-6">These fill in once the admin analytics endpoint is available.</Alert>
+      <StatCards
+        stats={[
+          { label: "Signups", icon: UserPlus, value: null },
+          { label: "Skill checks taken", icon: ListChecks, value: null },
+          { label: "Average readiness", icon: Gauge, value: null },
+          { label: "Mentors pending", icon: ShieldCheck, value: null },
+        ]}
+      />
+      <Alert className="mt-4">
+        <Info />
+        <AlertTitle>Waiting on the analytics endpoint</AlertTitle>
+        <AlertDescription>
+          These fill in once GET /api/v1/admin/analytics is built.
+        </AlertDescription>
+      </Alert>
     </>
   );
 }

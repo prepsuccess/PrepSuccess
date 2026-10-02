@@ -15,7 +15,7 @@ export function Taped({
     <DrawScope className="group relative">
       <span
         aria-hidden
-        className="bg-accent/20 absolute -top-3 left-1/2 z-20 h-7 w-28 -translate-x-1/2 -rotate-2"
+        className="bg-brand/20 absolute -top-3 left-1/2 z-20 h-7 w-28 -translate-x-1/2 -rotate-2"
       />
       <div
         className={`transition-transform duration-700 ease-[var(--ease-out-cubic)] group-hover:rotate-0 ${tilt} max-lg:rotate-0`}

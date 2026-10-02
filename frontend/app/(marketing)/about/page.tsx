@@ -56,7 +56,7 @@ export default function AboutPage() {
 
       <Section>
         <DrawScope className="relative mx-auto flex max-w-[820px] flex-col items-center text-center">
-          <SketchIcon name="question" delay={0.2} className="text-accent h-14 w-14 -rotate-6" />
+          <SketchIcon name="question" delay={0.2} className="text-brand h-14 w-14 -rotate-6" />
           <SplitHeading className="text-h2 mt-6">
             Most students prepare hard — and <Mark>still guess</Mark>.
           </SplitHeading>

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Sign up — PrepSuccess" };
 export default function SignupPage() {
   return (
     <AuthCard
-      eyebrow="first month free"
+      eyebrow="free to start"
       title={
         <>
           Find out where you{" "}

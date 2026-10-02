@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { StatCard } from "@/components/ui/StatCard";
+import Link from "next/link";
+import { CircleCheck, Gauge, ListChecks, NotebookPen, Target } from "lucide-react";
+import { AiTrialCard } from "@/components/app/AiTrialCard";
+import { EmptyPanel } from "@/components/app/EmptyPanel";
+import { StatCards } from "@/components/app/StatCards";
+import { Button } from "@/components/shadcn/button";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 export const metadata: Metadata = { title: "Dashboard — PrepSuccess" };
@@ -10,22 +13,55 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Dashboard"
         title="Where you stand"
         description="Your readiness score, mastered topics and next steps appear here after your first skill check."
-        actions={<Button href="/assessment" label="Start a skill check" size="sm" />}
+        actions={
+          <Button asChild>
+            <Link href="/assessment">
+              <ListChecks />
+              Start a skill check
+            </Link>
+          </Button>
+        }
       />
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Readiness" value={null} icon="gauge" note="Out of 100" />
-        <StatCard label="Topics mastered" value={null} icon="check" />
-        <StatCard label="Need revision" value={null} icon="resume" />
-      </div>
-      <EmptyState
-        className="mt-6"
-        sketch="target"
+
+      {/* No skill checks exist yet (the assessment API is next), so values are null.
+          They will come from GET /api/v1/dashboard. */}
+      <StatCards
+        stats={[
+          {
+            label: "Readiness",
+            icon: Gauge,
+            value: null,
+            note: "Out of 100, across every skill you've checked",
+          },
+          {
+            label: "Topics mastered",
+            icon: CircleCheck,
+            value: null,
+            note: "At or above the pass mark of 40",
+          },
+          {
+            label: "Need revision",
+            icon: NotebookPen,
+            value: null,
+            note: "Below the pass mark, with study material",
+          },
+        ]}
+      />
+
+      <AiTrialCard className="mt-4" />
+
+      <EmptyPanel
+        className="mt-4"
+        icon={Target}
         title="No results yet"
         description="Take a skill check for anything you claim to know. Each topic is scored against a pass mark of 40."
-        action={<Button href="/assessment" label="Take your first check" />}
+        action={
+          <Button asChild variant="outline">
+            <Link href="/assessment">Take your first check</Link>
+          </Button>
+        }
       />
     </>
   );

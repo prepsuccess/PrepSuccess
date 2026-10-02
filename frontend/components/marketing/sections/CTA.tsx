@@ -6,7 +6,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { SplitHeading } from "@/components/motion/SplitHeading";
 
 const checklist = [
-  "sign up — first month free",
+  "sign up · it's free",
   "chat with the AI agent",
   "take your first skill check",
   "see where you stand",
@@ -31,7 +31,7 @@ function Checklist() {
                 <SketchIcon
                   name="tick"
                   delay={delay + 0.35}
-                  className="text-accent absolute -top-1.5 left-0.5 h-8 w-8"
+                  className="text-brand absolute -top-1.5 left-0.5 h-8 w-8"
                 />
               </span>
               <span className="font-marker text-heading/85 text-[25px] leading-none">{item}</span>
@@ -51,16 +51,16 @@ export function CTA() {
         <DrawScope className="relative mx-auto max-w-[1040px]">
           <span
             aria-hidden
-            className="bg-accent/20 absolute -top-3.5 left-1/2 z-20 h-8 w-32 -translate-x-1/2 -rotate-3"
+            className="bg-brand/20 absolute -top-3.5 left-1/2 z-20 h-8 w-32 -translate-x-1/2 -rotate-3"
           />
           <div className="border-border bg-surface relative -rotate-[0.4deg] overflow-clip rounded-[6px] border bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--color-border)_35px,var(--color-border)_36px)] bg-[position:0_22px]">
             <span
               aria-hidden
-              className="bg-accent/40 absolute inset-y-0 left-10 w-px sm:left-[72px]"
+              className="bg-brand/40 absolute inset-y-0 left-10 w-px sm:left-[72px]"
             />
             <span
               aria-hidden
-              className="bg-accent/25 absolute inset-y-0 left-[42px] w-px sm:left-[75px]"
+              className="bg-brand/25 absolute inset-y-0 left-[42px] w-px sm:left-[75px]"
             />
             {[18, 50, 82].map((top) => (
               <span
@@ -77,7 +77,7 @@ export function CTA() {
                   Stop guessing. Start knowing your <Circled delay={0.1}>readiness</Circled>.
                 </SplitHeading>
                 <Reveal delay={0.2} className="mt-5 max-w-[46ch]">
-                  <p>Your first month is free. Your first skill check takes one chat.</p>
+                  <p>PrepSuccess is free, and the AI coach is free for your first 4 months.</p>
                 </Reveal>
                 <div className="relative mt-10 inline-flex">
                   <Reveal delay={0.3}>

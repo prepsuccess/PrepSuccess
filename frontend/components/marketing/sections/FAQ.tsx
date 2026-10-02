@@ -55,7 +55,7 @@ export function FAQ({
                     <SketchIcon
                       name="question"
                       delay={0.6}
-                      className="text-accent h-16 w-16 rotate-12"
+                      className="text-brand h-16 w-16 rotate-12"
                     />
                   </DrawScope>
                 }

@@ -14,6 +14,8 @@ export default defineConfig({
       GOOGLE_CLIENT_SECRET: "test-client-secret",
       API_PUBLIC_URL: "http://localhost:8000",
       FRONTEND_URL: "http://localhost:3000",
+      // Scripted AI replies; tests never call Gemini.
+      AI_PROVIDER: "fake",
       // Empty SMTP: emails are logged, never sent, during tests.
       SMTP_USER: "",
       SMTP_PASS: "",

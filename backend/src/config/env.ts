@@ -4,7 +4,8 @@ import { z } from "zod";
 /**
  * Validated, typed environment. The app refuses to boot with a bad config
  * instead of failing later on first use. Optional keys belong to features
- * that aren't built yet (AI) — tighten them as each one lands.
+ * that aren't fully built yet — tighten them as each one lands.
+ * Without GEMINI_API_KEY, AI endpoints answer 503 AI_NOT_CONFIGURED.
  * SMTP is optional outside production: without it, OTP emails are logged.
  * Google keys are optional: without them, /auth/google answers 503.
  */
@@ -30,7 +31,19 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
+  // ---- AI (services/ai-agent) ----
+  /** "fake" returns scripted replies (tests); "gemini" calls Google. */
+  AI_PROVIDER: z.enum(["gemini", "fake"]).default("gemini"),
   GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
+  /** Tried when the main model is overloaded or rate-limited. Empty disables it. */
+  GEMINI_FALLBACK_MODEL: z.string().default("gemini-3.1-flash-lite"),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  /** Free-trial length from signup. Metered from day one; only blocks when enforced. */
+  AI_TRIAL_DAYS: z.coerce.number().int().positive().default(120),
+  AI_TRIAL_ENFORCED: z.enum(["true", "false"]).default("false"),
+  /** Successful AI calls per user per day — protects the shared free-tier quota. */
+  AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(200),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   /** Serve Swagger UI at /docs. Defaults to on outside production. */
   API_DOCS_ENABLED: z.enum(["true", "false"]).optional(),

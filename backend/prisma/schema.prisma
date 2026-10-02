@@ -14,6 +14,7 @@
 //   assessment_results score + mastery verdict for an attempt
 //   ai_conversations   turn-by-turn AI chat log
 //   practical_tasks / user_task_submissions / learning_resources
+//   ai_usage           one row per AI call — the free-trial meter (SCRUM-129)
 
 generator client {
   provider = "prisma-client"
@@ -116,6 +117,7 @@ model User {
   conversations   AIConversation[]
   assessments     Assessment[]
   taskSubmissions UserTaskSubmission[]
+  aiUsage         AiUsage[]
 
   @@map("users")
 }
@@ -313,4 +315,30 @@ model LearningResource {
 
   @@index([skillId])
   @@map("learning_resources")
+}
+
+// ---------------------------------------------------------------------------
+// AI usage metering (SCRUM-129)
+// ---------------------------------------------------------------------------
+
+/// One row per call to the AI provider, written even while AI is free, so the
+/// 3–5 month free trial (and any later paid tier) can be enforced without a rebuild.
+model AiUsage {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  /// What the call was for, e.g. "onboarding", "assessment".
+  feature      String   @db.VarChar(50)
+  provider     String   @db.VarChar(30)
+  model        String   @db.VarChar(100)
+  inputTokens  Int      @default(0) @map("input_tokens")
+  outputTokens Int      @default(0) @map("output_tokens")
+  latencyMs    Int      @map("latency_ms")
+  success      Boolean
+  errorCode    String?  @map("error_code") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("ai_usage")
 }

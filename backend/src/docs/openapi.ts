@@ -1,5 +1,6 @@
 import { createDocument, type ZodOpenApiPathsObject } from "zod-openapi";
 
+import { aiPaths } from "../modules/ai/ai.docs.js";
 import { authPaths } from "../modules/auth/auth.docs.js";
 import { healthPaths } from "../modules/health/health.docs.js";
 import { usersPaths } from "../modules/users/users.docs.js";
@@ -14,6 +15,7 @@ const paths: ZodOpenApiPathsObject = {
   ...healthPaths,
   ...authPaths,
   ...usersPaths,
+  ...aiPaths,
 };
 
 export function buildOpenApiDocument() {
@@ -40,6 +42,7 @@ export function buildOpenApiDocument() {
           "Email + password signup with OTP, login, token refresh (SCRUM-11) and Google sign-in (SCRUM-12).",
       },
       { name: "Users", description: "The signed-in user's own account and profile (SCRUM-13)." },
+      { name: "AI", description: "AI trial status now; onboarding and assessment next." },
     ],
     components: {
       securitySchemes: {

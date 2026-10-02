@@ -58,7 +58,7 @@ backend/
 │   │   ├── dashboard/       # readiness dashboard (SCRUM-15)
 │   │   └── admin/           # admin users/content/analytics
 │   ├── services/            # cross-module logic, no HTTP
-│   │   ├── ai-agent/        # provider-agnostic AI layer (Gemini first)
+│   │   ├── ai-agent/        # provider-agnostic AI layer (Gemini first) — see "AI calls"
 │   │   ├── scoring/         # mastery threshold + readiness scoring
 │   │   └── email/           # Gmail SMTP (OTP emails)
 │   └── types/               # Express type augmentations
@@ -81,6 +81,19 @@ modules/<feature>/
 Then mount the router in `src/routes/v1.ts`, add its paths in `src/docs/openapi.ts`, and add it to
 `MOUNTED` in `tests/docs.test.ts`. **Every endpoint ships with docs** — that test fails CI for any
 mounted route missing from the OpenAPI document.
+
+## AI calls
+
+All AI goes through `src/services/ai-agent/ai.service.ts` — never call a provider SDK directly:
+
+- `generateText({ userId, feature, system, messages })` for chat replies.
+- `generateJson(request, zodSchema)` for structured output: the schema is sent to the model and the
+  reply is validated against it (another try if it doesn't match).
+
+Every call checks the user's trial + daily limit, tries `GEMINI_MODEL` twice and then
+`GEMINI_FALLBACK_MODEL`, and records each attempt in `ai_usage` (tokens, latency, errors). Tests run
+with `AI_PROVIDER=fake` (`providers/fake.provider.ts`) and never call Gemini. **Grounding rule:** put
+the student's real data in the prompt and never ask the model to invent skills or scores.
 
 ## Conventions
 

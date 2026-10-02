@@ -1472,6 +1472,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My readiness dashboard
+         * @description Computed on read from the student's latest finished check per skill — no AI call. Readiness is a weighted average of the category scores the student has (technical 50, aptitude 30, soft 20, re-weighted over the categories checked so far). Next steps are rule-based and always point at the student's own data.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The dashboard. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["Dashboard"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/insight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My AI coach's take
+         * @description A short AI read of the student's results: summary, the gaps that matter for their target role, and a plan for the week. Cached until the student's results change, so repeat calls are free. Gaps about skills the student hasn't been checked on are dropped (grounding). Returns `status: empty` without an AI call until the first check is finished.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The coach's take. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AiInsight"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_BAD_RESPONSE` — try again. */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1797,6 +1960,102 @@ export interface components {
             mastery: "mastered" | "needs_revision";
             /** Format: date-time */
             completed_at: string;
+        };
+        Dashboard: {
+            onboarding_completed: boolean;
+            readiness: {
+                /**
+                 * @description 0-100, a weighted average of the category scores the student has; null before any check.
+                 * @example 58
+                 */
+                score: number | null;
+                /**
+                 * @example {
+                 *       "technical": 50,
+                 *       "aptitude": 30,
+                 *       "soft": 20
+                 *     }
+                 */
+                weights: {
+                    [key: string]: number;
+                };
+                categories: {
+                    /** @enum {string} */
+                    category: "technical" | "aptitude" | "soft";
+                    score: number | null;
+                    /** @description Skills checked in this category. */
+                    checked: number;
+                }[];
+            };
+            counts: {
+                checked: number;
+                mastered: number;
+                needs_revision: number;
+                /** @description Skills named in the onboarding chat. */
+                claimed: number;
+                claimed_checked: number;
+                in_progress: number;
+            };
+            /** @description Latest result per checked skill. */
+            skills: components["schemas"]["DashboardSkillResult"][];
+            /** @description Up to 3 skills below the pass mark, weakest first. */
+            gaps: components["schemas"]["DashboardSkillResult"][];
+            next_steps: {
+                id: string;
+                /** @enum {string} */
+                kind: "onboarding" | "resume" | "check" | "revise" | "aptitude";
+                title: string;
+                detail: string;
+                /** @description App path for the step's action. */
+                href: string;
+            }[];
+        };
+        DashboardSkillResult: {
+            /** Format: uuid */
+            skill_id: string;
+            /** @example dsa */
+            slug: string;
+            /** @example Data structures & algorithms */
+            name: string;
+            /** @enum {string} */
+            category: "technical" | "aptitude" | "soft";
+            /**
+             * Format: uuid
+             * @description The latest finished check, to review answers.
+             */
+            assessment_id: string;
+            /** @example 64 */
+            percent: number;
+            /** @enum {string} */
+            mastery: "mastered" | "needs_revision";
+            /** Format: date-time */
+            completed_at: string;
+            attempts: number;
+            /**
+             * @description Percentage points since the previous attempt; null on a first attempt.
+             * @example 14
+             */
+            change: number | null;
+        };
+        AiInsight: {
+            /**
+             * @description `empty` until the student has finished a check — no AI call is made.
+             * @enum {string}
+             */
+            status: "ready" | "empty";
+            summary: string | null;
+            gaps: {
+                /** Format: uuid */
+                skill_id: string;
+                name: string;
+                why: string;
+                how: string;
+            }[];
+            plan: {
+                title: string;
+                detail: string;
+            }[];
+            generated_at: string | null;
         };
     };
     responses: never;

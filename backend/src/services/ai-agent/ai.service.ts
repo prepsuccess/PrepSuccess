@@ -41,6 +41,28 @@ export interface AiResult<T> {
 }
 
 const RETRY_DELAY_MS = env.NODE_ENV === "test" ? 0 : 700;
+
+/**
+ * Models that hit a rate limit, and when to try them again. The free tier's
+ * daily quota is per project, so once the main model is out every request
+ * would rediscover it; skipping it until the provider's retry time goes
+ * straight to the fallback instead. In memory: a restart just re-learns it.
+ */
+const coolingDown = new Map<string, number>();
+const DEFAULT_COOLDOWN_MS = 60_000;
+const MAX_COOLDOWN_MS = 60 * 60_000;
+
+export function resetModelCooldowns() {
+  coolingDown.clear();
+}
+
+function isCooling(model: string) {
+  const until = coolingDown.get(model);
+  if (until === undefined) return false;
+  if (Date.now() < until) return true;
+  coolingDown.delete(model);
+  return false;
+}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Free-text reply (chat). */
@@ -95,7 +117,9 @@ async function run<T>(
   }
 
   // Main model twice (overload is often momentary), then each fallback once.
-  const [main, ...fallbacks] = provider.models;
+  // Rate-limited models are skipped, unless every model is (then try anyway).
+  const available = provider.models.filter((model) => !isCooling(model));
+  const [main, ...fallbacks] = available.length ? available : provider.models;
   const attempts = [main!, main!, ...fallbacks];
   const deadline = AbortSignal.timeout(request.timeoutMs ?? env.AI_TIMEOUT_MS);
   let lastError: AiProviderError | null = null;
@@ -135,6 +159,14 @@ async function run<T>(
       );
       lastError = failure;
       if (!failure.retryable) break;
+      if (failure.code === "AI_RATE_LIMITED") {
+        // Retrying a rate-limited model straight away won't help: rest it, move on.
+        coolingDown.set(
+          model,
+          Date.now() + Math.min(failure.retryAfterMs ?? DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS),
+        );
+        while (attempts[index + 1] === model) attempts.splice(index + 1, 1);
+      }
     }
   }
 

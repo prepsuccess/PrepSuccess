@@ -40,3 +40,8 @@ export type AssessmentState = Schemas["AssessmentState"];
 export type AssessmentQuestion = Schemas["AssessmentQuestion"];
 export type AnsweredQuestion = Schemas["AssessmentAnsweredQuestion"];
 export type AnswerRequest = Schemas["AssessmentAnswerRequest"];
+
+export type Dashboard = Schemas["Dashboard"];
+export type DashboardSkillResult = Schemas["DashboardSkillResult"];
+export type NextStep = Dashboard["next_steps"][number];
+export type AiInsight = Schemas["AiInsight"];

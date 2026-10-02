@@ -3,6 +3,7 @@ import { Router } from "express";
 import { rateLimitPerMinute } from "../../middleware/rate-limit.js";
 import { requireAuth } from "../../middleware/require-auth.js";
 import * as assessment from "../assessment/assessment.controller.js";
+import * as dashboard from "../dashboard/dashboard.controller.js";
 import * as onboarding from "../onboarding/onboarding.controller.js";
 import * as ai from "./ai.controller.js";
 
@@ -20,3 +21,6 @@ const student = requireAuth("STUDENT");
 aiRouter.post("/assessment/start", student, rateLimitPerMinute(10), assessment.start);
 aiRouter.get("/assessment/:id", student, assessment.get);
 aiRouter.post("/assessment/:id/answer", student, rateLimitPerMinute(60), assessment.answer);
+
+// The coach's take on the dashboard (SCRUM-15); cached until results change.
+aiRouter.get("/insight", student, rateLimitPerMinute(20), dashboard.insight);

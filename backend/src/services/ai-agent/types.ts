@@ -49,6 +49,8 @@ export class AiProviderError extends Error {
     message: string,
     public readonly code: string,
     public readonly retryable: boolean,
+    /** For rate limits: how long the provider says to wait before using this model again. */
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "AiProviderError";

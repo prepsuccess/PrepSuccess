@@ -76,7 +76,21 @@ function toProviderError(error: unknown, signal: AbortSignal): AiProviderError {
         : error.status >= 500
           ? "AI_OVERLOADED"
           : `AI_HTTP_${error.status}`;
-    return new AiProviderError(error.message, code, retryable);
+    return new AiProviderError(
+      error.message,
+      code,
+      retryable,
+      error.status === 429 ? retryDelayMs(error.message) : undefined,
+    );
   }
   return new AiProviderError(String(error), "AI_NETWORK_ERROR", true);
+}
+
+/**
+ * Gemini's 429 body says how long to wait, e.g. `"retryDelay":"22951s"` once
+ * the free tier's daily quota is used up, or a few seconds for a per-minute limit.
+ */
+function retryDelayMs(message: string): number | undefined {
+  const match = /"retryDelay":\s*"(\d+(?:\.\d+)?)s"/.exec(message);
+  return match ? Math.round(Number(match[1]) * 1000) : undefined;
 }

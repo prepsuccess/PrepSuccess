@@ -3,6 +3,7 @@ import { createDocument, type ZodOpenApiPathsObject } from "zod-openapi";
 import { aiPaths } from "../modules/ai/ai.docs.js";
 import { assessmentPaths } from "../modules/assessment/assessment.docs.js";
 import { authPaths } from "../modules/auth/auth.docs.js";
+import { dashboardPaths } from "../modules/dashboard/dashboard.docs.js";
 import { healthPaths } from "../modules/health/health.docs.js";
 import { onboardingPaths } from "../modules/onboarding/onboarding.docs.js";
 import { skillsPaths } from "../modules/skills/skills.docs.js";
@@ -22,6 +23,7 @@ const paths: ZodOpenApiPathsObject = {
   ...onboardingPaths,
   ...assessmentPaths,
   ...skillsPaths,
+  ...dashboardPaths,
 };
 
 export function buildOpenApiDocument() {
@@ -50,9 +52,11 @@ export function buildOpenApiDocument() {
       { name: "Users", description: "The signed-in user's own account and profile (SCRUM-13)." },
       {
         name: "AI",
-        description: "AI trial status, the onboarding chat and adaptive skill checks.",
+        description:
+          "AI trial status, the onboarding chat, adaptive skill checks and the coach's take.",
       },
       { name: "Skills", description: "The skill catalogue and the student's skills (SCRUM-14)." },
+      { name: "Dashboard", description: "The student's readiness at a glance (SCRUM-15)." },
     ],
     components: {
       securitySchemes: {

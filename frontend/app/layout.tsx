@@ -5,6 +5,7 @@ import "./globals.css";
 import { PencilDefs } from "@/components/ui/PencilDefs";
 import { StoreProvider } from "@/lib/store/StoreProvider";
 import { accentBootScript } from "@/lib/themes";
+import { appThemeBootScript } from "@/lib/theme/themeScript";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
@@ -38,6 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${interTight.variable} ${geistMono.variable} ${caveat.variable}`}
     >
+      <head>
+        {/* Inline and blocking on purpose: sets .dark on app pages before first paint so
+            dark-mode users never see a white flash. (next/script runs too late for this.) */}
+        <script dangerouslySetInnerHTML={{ __html: appThemeBootScript }} />
+      </head>
       <body className="relative min-h-screen">
         {/* Before paint: flag JS (so GSAP-driven elements don't flash) and apply any saved accent colour. */}
         <Script id="boot" strategy="beforeInteractive">

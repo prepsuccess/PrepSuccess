@@ -87,6 +87,21 @@
 }
 
 .dark {
+  /* Only ever set inside the logged-in app (see lib/theme/appTheme.ts). */
+  color-scheme: dark;
+  --color-bg: oklch(0.145 0 0);
+  --color-surface: oklch(0.205 0 0);
+  --color-surface-2: oklch(0.205 0 0);
+  --color-surface-3: oklch(0.269 0 0);
+  --color-border: oklch(1 0 0 / 10%);
+  --color-border-strong: oklch(1 0 0 / 20%);
+  --color-text: oklch(0.82 0 0);
+  --color-text-dim: oklch(0.68 0 0);
+  --color-heading: oklch(0.985 0 0);
+  --color-brand-ink: #7cc0f5;
+  --color-skeleton: oklch(0.269 0 0);
+  --color-shimmer: rgb(255 255 255 / 0.06);
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

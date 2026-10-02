@@ -1,4 +1,4 @@
-# ---- Node / Next.js (frontend/) ----
+# ---- Node (frontend/ Next.js, backend/ Express) ----
 node_modules/
 .next/
 out/
@@ -11,20 +11,10 @@ yarn-error.log*
 .pnpm-debug.log*
 coverage/
 
-# ---- Python / FastAPI (backend/) ----
-__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-htmlcov/
-.coverage
+# ---- Build output (backend/) ----
 dist/
 build/
+backend/src/generated/
 
 # ---- Environment & secrets ----
 .env

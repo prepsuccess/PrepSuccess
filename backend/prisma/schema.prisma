@@ -1,0 +1,14 @@
+// PrepSuccess database schema (PostgreSQL on Supabase).
+// Connection URLs live in prisma.config.ts; models are added per ticket
+// (SCRUM-10 core models, SCRUM-119..123 AI-first entities).
+// Conventions (docs/PRODUCTION_STANDARDS.md §2): UUID primary keys,
+// created_at/updated_at timestamps, snake_case table and column names via @@map/@map.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

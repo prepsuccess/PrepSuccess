@@ -101,6 +101,7 @@
   --color-brand-ink: #7cc0f5;
   --color-skeleton: oklch(0.269 0 0);
   --color-shimmer: rgb(255 255 255 / 0.06);
+  --color-success: #4cc38a;
 
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

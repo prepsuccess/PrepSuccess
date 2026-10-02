@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { aiRouter } from "../modules/ai/ai.routes.js";
 import { authRouter } from "../modules/auth/auth.routes.js";
+import { skillsRouter } from "../modules/skills/skills.routes.js";
 import { usersRouter } from "../modules/users/users.routes.js";
 
 /**
@@ -14,4 +15,5 @@ export const apiV1 = Router();
 
 apiV1.use("/auth", authRouter);
 apiV1.use("/users", usersRouter);
+apiV1.use("/skills", skillsRouter);
 apiV1.use("/ai", aiRouter);

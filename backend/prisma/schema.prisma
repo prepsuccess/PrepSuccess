@@ -206,6 +206,10 @@ model Assessment {
   skillId     String           @map("skill_id") @db.Uuid
   mode        AssessmentMode   @default(DIAGNOSTIC)
   status      AssessmentStatus @default(IN_PROGRESS)
+  /// The AI-generated question pool and every answer given (assessment.logic.ts):
+  /// [{ id, difficulty, question, options, answer_index, explanation,
+  ///    asked_order, chosen_index, correct, answered_at }]. answer_index never leaves the server.
+  questions   Json             @default("[]")
   startedAt   DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
   completedAt DateTime?        @map("completed_at") @db.Timestamptz(6)
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)

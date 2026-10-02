@@ -86,6 +86,6 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, ApiError> = async (arg
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery,
-  tagTypes: ["Me", "AiStatus", "Onboarding"],
+  tagTypes: ["Me", "AiStatus", "Onboarding", "MySkills", "Assessment"],
   endpoints: () => ({}),
 });

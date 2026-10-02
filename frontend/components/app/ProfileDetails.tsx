@@ -6,12 +6,13 @@ export function ProfileDetails() {
   const session = useSession();
   if (session.status !== "authenticated") return null;
   const { user } = session;
+  const { student_year, mobile_no } = user.profile;
 
   const rows: [string, string][] = [
     ["Name", [user.first_name, user.last_name].filter(Boolean).join(" ")],
     ["Email", user.email],
-    ["Year of study", user.student_year ? `Year ${user.student_year}` : "Not set"],
-    ["Mobile", user.mobile_no ?? "Not set"],
+    ["Year of study", student_year ? `Year ${student_year}` : "Not set"],
+    ["Mobile", mobile_no ?? "Not set"],
     ["Member since", new Date(user.created_at).toLocaleDateString("en-IN", { dateStyle: "long" })],
   ];
 

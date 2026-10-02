@@ -15,8 +15,8 @@ export class ApiError extends Error {
 type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
 
 /**
- * Pulls a readable message out of an error body. Handles FastAPI's `detail`
- * (a string, or a list of validation errors) and the planned `{ error: { message } }` envelope.
+ * Pulls a readable message out of an error body: the backend's `{ error: { message } }`
+ * envelope, or a bare `detail` string/list from other services.
  */
 function messageFrom(body: unknown, fallback: string): string {
   if (typeof body !== "object" || body === null) return fallback;
@@ -57,7 +57,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  // The backend wraps every success in `{ success, data, request_id, timestamp }`; callers get `data`.
+  const json: unknown = await response.json();
+  if (typeof json === "object" && json !== null && "success" in json && "data" in json) {
+    return (json as { data: T }).data;
+  }
+  return json as T;
 }
 
 export const apiClient = {

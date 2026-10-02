@@ -4,7 +4,8 @@ import { z } from "zod";
 /**
  * Validated, typed environment. The app refuses to boot with a bad config
  * instead of failing later on first use. Optional keys belong to features
- * that aren't built yet (OAuth, SMTP, AI) — tighten them as each one lands.
+ * that aren't built yet (OAuth, AI) — tighten them as each one lands.
+ * SMTP is optional outside production: without it, OTP emails are logged.
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -15,8 +16,9 @@ const envSchema = z.object({
     .transform((value) => value.split(",").map((origin) => origin.trim())),
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().optional(),
-  JWT_ACCESS_SECRET: z.string().min(1).optional(),
-  JWT_REFRESH_SECRET: z.string().min(1).optional(),
+  JWT_ACCESS_SECRET: z.string().min(32, "Use at least 32 random characters."),
+  /** Also keys the HMAC used to hash refresh tokens and OTP codes at rest. */
+  JWT_REFRESH_SECRET: z.string().min(32, "Use at least 32 random characters."),
   JWT_ACCESS_TTL: z.string().default("30m"),
   JWT_REFRESH_TTL: z.string().default("7d"),
   GOOGLE_CLIENT_ID: z.string().optional(),

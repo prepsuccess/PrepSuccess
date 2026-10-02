@@ -1,0 +1,229 @@
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  buildSystemPrompt,
+  isComplete,
+  mergeProfile,
+  missingFields,
+  sanitizeExtracted,
+} from "../src/modules/onboarding/onboarding.logic.js";
+
+// In-memory stand-ins for the rows an onboarding turn touches.
+const db = vi.hoisted(() => {
+  const state = {
+    user: null as null | Record<string, unknown>,
+    conversation: null as null | { id: string; messages: unknown[] },
+  };
+  const userRow = () => ({ ...state.user, profile: state.user?.profile ?? null });
+  return {
+    state,
+    reset() {
+      const now = new Date();
+      state.user = {
+        id: "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d",
+        firstName: "Asha",
+        lastName: "Verma",
+        email: "asha@college.edu",
+        profileImageUrl: null,
+        role: "STUDENT",
+        authProvider: "LOCAL",
+        isVerified: true,
+        isActive: true,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+        profile: { profileData: {}, onboardingCompletedAt: null },
+      };
+      state.conversation = null;
+    },
+    prisma: {
+      user: {
+        findUnique: vi.fn(async () => userRow()),
+        update: vi.fn(async ({ data }) => {
+          const upsert = data.profile?.upsert?.update;
+          if (upsert) state.user!.profile = { ...upsert };
+          return userRow();
+        }),
+      },
+      aIConversation: {
+        findFirst: vi.fn(async () => state.conversation),
+        create: vi.fn(
+          async ({ data }) =>
+            (state.conversation = {
+              id: "c0ffee00-0000-4000-8000-000000000001",
+              messages: data.messages,
+            }),
+        ),
+        update: vi.fn(
+          async ({ data }) =>
+            (state.conversation = { ...state.conversation!, messages: data.messages }),
+        ),
+      },
+      aiUsage: { count: vi.fn(async () => 0), create: vi.fn(async () => ({})) },
+      $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(db.prisma)),
+    },
+  };
+});
+
+vi.mock("../src/db/prisma.js", () => ({ prisma: db.prisma }));
+
+const { createApp } = await import("../src/app.js");
+const { signAccessToken } = await import("../src/modules/auth/tokens.js");
+const { fakeAi } = await import("../src/services/ai-agent/providers/fake.provider.js");
+
+const app = createApp();
+const auth = () => ({
+  Authorization: `Bearer ${signAccessToken("4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d", "STUDENT")}`,
+});
+const send = (content: string) =>
+  request(app).post("/api/v1/ai/onboarding/messages").set(auth()).send({ content });
+
+beforeEach(() => {
+  // Call counts must start at zero, so "not called" assertions mean this test only.
+  vi.clearAllMocks();
+  db.reset();
+  fakeAi.reset();
+});
+
+describe("onboarding rules", () => {
+  it("knows what's still missing and when it's complete", () => {
+    expect(missingFields({})).toEqual(["degree", "student_year", "skills", "target_role", "goals"]);
+    const full = {
+      degree: "BCA",
+      student_year: 3,
+      skills: ["HTML"],
+      target_role: "SDE",
+      goals: ["Get placed"],
+    };
+    expect(isComplete(full)).toBe(true);
+    expect(isComplete({ ...full, skills: [] })).toBe(false);
+  });
+
+  it("drops extracted values that fail the profile rules, field by field", () => {
+    expect(
+      sanitizeExtracted({
+        degree: "BCA",
+        student_year: 9,
+        skills: ["HTML", ""],
+        favourite_food: "dosa",
+      }),
+    ).toEqual({ degree: "BCA" });
+  });
+
+  it("unions skills case-insensitively and replaces single values", () => {
+    const merged = mergeProfile(
+      { skills: ["HTML", "CSS"], degree: "BCA" },
+      { skills: ["css", "SQL"], degree: "BCA (Hons)" },
+    );
+    expect(merged).toEqual({ skills: ["HTML", "CSS", "SQL"], degree: "BCA (Hons)" });
+  });
+
+  it("tells the model what's known and what's still needed", () => {
+    const prompt = buildSystemPrompt("Asha", { degree: "BCA", skills: ["HTML"] });
+    expect(prompt).toContain("Still needed, ask in this order: student_year, target_role, goals");
+    expect(prompt).toContain('"degree":"BCA"');
+    expect(prompt).toContain("Never guess");
+  });
+});
+
+describe("GET /api/v1/ai/onboarding", () => {
+  it("starts the chat with a greeting, without calling the AI", async () => {
+    const res = await request(app).get("/api/v1/ai/onboarding").set(auth());
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.messages).toHaveLength(1);
+    expect(res.body.data.messages[0]).toMatchObject({ role: "assistant" });
+    expect(res.body.data.messages[0].content).toContain("Hi Asha!");
+    expect(res.body.data.progress).toMatchObject({ collected: 0, total: 5 });
+    expect(fakeAi.calls).toHaveLength(0);
+  });
+});
+
+describe("POST /api/v1/ai/onboarding/messages", () => {
+  it("replies, saves both messages and merges what it extracted", async () => {
+    fakeAi.reply({
+      reply: "Nice! Which skills would you put on your resume?",
+      extracted: { degree: "BCA", student_year: 3 },
+      done: false,
+    });
+
+    const res = await send("Final year BCA");
+
+    expect(res.status).toBe(200);
+    const { onboarding, user } = res.body.data;
+    expect(onboarding.messages.map((m: { role: string }) => m.role)).toEqual([
+      "assistant",
+      "user",
+      "assistant",
+    ]);
+    expect(onboarding.messages[2].content).toBe("Nice! Which skills would you put on your resume?");
+    expect(onboarding.profile).toEqual({ degree: "BCA", student_year: 3 });
+    expect(onboarding.progress.collected).toBe(2);
+    expect(onboarding.completed).toBe(false);
+    expect(user.onboarding_completed).toBe(false);
+    // The model saw the student's message and the rules for what's still needed.
+    expect(fakeAi.calls[0]!.messages.at(-1)).toEqual({ role: "user", content: "Final year BCA" });
+    expect(fakeAi.calls[0]!.system).toContain("Still needed");
+  });
+
+  it("completes once every required detail is in — decided by the server", async () => {
+    db.state.user!.profile = {
+      profileData: {
+        degree: "BCA",
+        student_year: 3,
+        skills: ["HTML"],
+        target_role: "Frontend developer",
+      },
+      onboardingCompletedAt: null,
+    };
+    // The model forgets to say done; the server still completes it.
+    fakeAi.reply({
+      reply: "Great goal!",
+      extracted: { goals: ["Get placed in a product company"] },
+      done: false,
+    });
+
+    const res = await send("I want to get placed in a product company");
+
+    expect(res.body.data.onboarding.completed).toBe(true);
+    expect(res.body.data.user.onboarding_completed).toBe(true);
+  });
+
+  it("does not complete just because the model says done", async () => {
+    fakeAi.reply({ reply: "All set!", extracted: { degree: "BCA" }, done: true });
+    const res = await send("BCA");
+    expect(res.body.data.onboarding.completed).toBe(false);
+  });
+
+  it("saves nothing when the AI fails, so the student can just send again", async () => {
+    fakeAi.fail();
+    fakeAi.fail();
+    fakeAi.fail();
+
+    const res = await send("Final year BCA");
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("AI_UNAVAILABLE");
+    expect(db.prisma.aIConversation.update).not.toHaveBeenCalled();
+    expect(db.prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses new messages once onboarding is complete", async () => {
+    db.state.user!.profile = { profileData: {}, onboardingCompletedAt: new Date() };
+    const res = await send("hello again");
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("ONBOARDING_COMPLETE");
+    expect(fakeAi.calls).toHaveLength(0);
+  });
+
+  it("rejects an empty message", async () => {
+    const res = await send("   ");
+    expect(res.status).toBe(422);
+  });
+
+  it("requires a token", async () => {
+    const res = await request(app).post("/api/v1/ai/onboarding/messages").send({ content: "hi" });
+    expect(res.status).toBe(401);
+  });
+});

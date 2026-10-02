@@ -25,7 +25,7 @@
     },
     {
       "name": "AI",
-      "description": "AI trial status now; onboarding and assessment next."
+      "description": "AI trial status and the onboarding chat; adaptive assessment next."
     }
   ],
   "paths": {
@@ -961,6 +961,211 @@
           }
         }
       }
+    },
+    "/api/v1/ai/onboarding": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Get my onboarding chat",
+        "description": "Returns the conversation so far and which details are collected. The first call starts the chat with a fixed greeting (no AI call).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The onboarding conversation and progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OnboardingState"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "description": "Echoes the X-Request-ID response header."
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "request_id",
+                    "timestamp"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHORIZED` or `INVALID_TOKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/onboarding/messages": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Send a message in the onboarding chat",
+        "description": "One turn: the AI replies and extracts profile facts from the message. Extracted facts are validated with the same rules as a manual profile edit and merged in (skills and goals accumulate). Onboarding completes once degree, year, skills, target role and goals are collected — decided by the server, not the AI. Nothing is saved if the AI call fails.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The AI's reply, updated progress and the updated user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OnboardingReply"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "description": "Echoes the X-Request-ID response header."
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "request_id",
+                    "timestamp"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`ONBOARDING_TOO_LONG` — the chat hit its turn limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHORIZED` or `INVALID_TOKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`AI_TRIAL_ENDED` (only when the trial is enforced).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`ONBOARDING_COMPLETE` — already done; edit the profile instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_ERROR` — request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "`AI_BAD_RESPONSE` — try again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1297,6 +1502,20 @@
         },
         "additionalProperties": false
       },
+      "OnboardingMessageRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "example": "Final year BCA. I know HTML, CSS and a bit of SQL."
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -1585,6 +1804,127 @@
           "reason",
           "trial",
           "today"
+        ],
+        "additionalProperties": false
+      },
+      "OnboardingState": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "role",
+                "content",
+                "created_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "True once every required detail is collected."
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "collected": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "total": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "example": "skills"
+                    },
+                    "label": {
+                      "type": "string",
+                      "example": "Skills you know"
+                    },
+                    "done": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "label",
+                    "done"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "collected",
+              "total",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "profile": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Everything collected so far (user_profiles.profile_data)."
+          }
+        },
+        "required": [
+          "conversation_id",
+          "messages",
+          "completed",
+          "progress",
+          "profile"
+        ],
+        "additionalProperties": false
+      },
+      "OnboardingReply": {
+        "type": "object",
+        "properties": {
+          "onboarding": {
+            "$ref": "#/components/schemas/OnboardingState"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          }
+        },
+        "required": [
+          "onboarding",
+          "user"
         ],
         "additionalProperties": false
       }

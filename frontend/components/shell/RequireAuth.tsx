@@ -21,7 +21,7 @@ export function RequireAuth({ roles, children }: { roles: UserRole[]; children: 
     if (session.status === "unauthenticated") {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     } else if (session.status === "authenticated" && !roles.includes(session.user.role)) {
-      router.replace(homeFor(session.user.role));
+      router.replace(homeFor(session.user));
     }
   }, [session, roles, router, pathname]);
 

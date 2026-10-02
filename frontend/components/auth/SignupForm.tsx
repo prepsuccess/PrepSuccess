@@ -129,7 +129,7 @@ export function SignupForm() {
         otp,
       }).unwrap();
       startSession(session);
-      router.replace(homeFor(session.user.role));
+      router.replace(homeFor(session.user));
     } catch (error) {
       setFormError(errorMessage(error));
     }

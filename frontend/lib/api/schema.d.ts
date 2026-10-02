@@ -861,6 +861,191 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get my onboarding chat
+         * @description Returns the conversation so far and which details are collected. The first call starts the chat with a fixed greeting (no AI call).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The onboarding conversation and progress. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["OnboardingState"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/onboarding/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a message in the onboarding chat
+         * @description One turn: the AI replies and extracts profile facts from the message. Extracted facts are validated with the same rules as a manual profile edit and merged in (skills and goals accumulate). Onboarding completes once degree, year, skills, target role and goals are collected — decided by the server, not the AI. Nothing is saved if the AI call fails.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OnboardingMessageRequest"];
+                };
+            };
+            responses: {
+                /** @description The AI's reply, updated progress and the updated user. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["OnboardingReply"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `ONBOARDING_TOO_LONG` — the chat hit its turn limit. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_TRIAL_ENDED` (only when the trial is enforced). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `ONBOARDING_COMPLETE` — already done; edit the profile instead. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_BAD_RESPONSE` — try again. */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -931,6 +1116,10 @@ export interface components {
             interests?: string[] | null;
             goals?: string[] | null;
             experience?: string | null;
+        };
+        OnboardingMessageRequest: {
+            /** @example Final year BCA. I know HTML, CSS and a bit of SQL. */
+            content: string;
         };
         ErrorResponse: {
             /** @constant */
@@ -1026,6 +1215,38 @@ export interface components {
                 /** @example 200 */
                 limit: number;
             };
+        };
+        OnboardingState: {
+            /** Format: uuid */
+            conversation_id: string;
+            messages: {
+                /** @enum {string} */
+                role: "user" | "assistant";
+                content: string;
+                /** Format: date-time */
+                created_at: string;
+            }[];
+            /** @description True once every required detail is collected. */
+            completed: boolean;
+            progress: {
+                collected: number;
+                total: number;
+                items: {
+                    /** @example skills */
+                    field: string;
+                    /** @example Skills you know */
+                    label: string;
+                    done: boolean;
+                }[];
+            };
+            /** @description Everything collected so far (user_profiles.profile_data). */
+            profile: {
+                [key: string]: unknown;
+            };
+        };
+        OnboardingReply: {
+            onboarding: components["schemas"]["OnboardingState"];
+            user: components["schemas"]["AuthUser"];
         };
     };
     responses: never;

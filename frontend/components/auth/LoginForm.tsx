@@ -38,7 +38,7 @@ export function LoginForm({ next, error }: { next?: string; error?: string | nul
     try {
       const session = await login({ email: email.trim(), password }).unwrap();
       startSession(session);
-      router.replace(safeNext(next) ?? homeFor(session.user.role));
+      router.replace(safeNext(next) ?? homeFor(session.user));
     } catch (error) {
       setFormError(errorMessage(error));
     }

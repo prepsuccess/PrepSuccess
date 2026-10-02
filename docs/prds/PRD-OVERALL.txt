@@ -114,6 +114,20 @@ docs/project-overview.md, and docs/prds/PRD-01 and
 PRD-05 for the fully updated, shorter reference
 documents.
 
+REVISION NOTICE (added 2026-10-02): The backend
+is now Node.js 22 + Express 5 + TypeScript, not
+FastAPI, and the database is PostgreSQL hosted on
+Supabase, accessed through the Prisma ORM instead
+of SQLAlchemy and Alembic. Wherever this document
+mentions FastAPI, Python, Pydantic, SQLAlchemy, or
+Alembic, read the Node equivalent. The User table
+now holds identity and authentication only; college,
+branch, year, target role and all other profile
+details live in UserProfile.profile_data (JSONB).
+See docs/PRODUCTION_STANDARDS.md, backend/README.md
+and backend/prisma/schema.prisma for the current
+source of truth.
+
 SECTION 2. THE PROBLEM BEING SOLVED
 
 College students, particularly those 

@@ -134,8 +134,8 @@ the Question Bank in Phase 2).
 | Layer | Choice | Reasoning |
 |-------|--------|-----------|
 | Frontend | **Next.js** | Modern React framework, good DX, easy to deploy, supports both static and server-rendered pages (useful for a dashboard-heavy app). |
-| Backend | **FastAPI** | Fast to build REST APIs in Python, automatic OpenAPI docs, good async support, plays well with SQLAlchemy/Pydantic. |
-| Database | **PostgreSQL** | Relational data (users, assessments, scores) fits a relational model well; mature, reliable, widely supported by hosting providers. |
+| Backend | **Node.js 22 + Express 5 + TypeScript** | One language (TypeScript) across frontend and backend, so both developers can work on either side; huge ecosystem; zod for request validation. |
+| Database | **PostgreSQL on Supabase**, accessed via **Prisma** | Relational data (users, assessments, scores, sessions) fits a relational model, and constraints/transactions enforce the PRD rules (no duplicates, no double booking). JSONB covers the schemaless parts (AI profile, chat logs). Supabase's free tier keeps cost at ₹0. Prisma gives typed queries and migrations. |
 | Auth | **Email + Password, and Google OAuth** | Covers the two most common signup paths for students — quick Google sign-in for convenience, email/password as a fallback. |
 
 ## 7. Architecture at a Glance
@@ -144,16 +144,18 @@ the Question Bank in Phase 2).
 Next.js (frontend)
       │  REST calls (JSON over HTTPS)
       ▼
-FastAPI (backend)
-      │  SQL (via SQLAlchemy)
+Node.js / Express (backend)
+      │  SQL (via Prisma)
       ▼
-PostgreSQL (database)
+PostgreSQL (database, hosted on Supabase)
 
-Google OAuth ──▶ FastAPI auth endpoints ──▶ issues session/JWT to frontend
+Google OAuth ──▶ backend auth endpoints ──▶ issues session/JWT to frontend
 ```
 
 - The frontend never talks to the database directly — everything goes
-  through the FastAPI backend.
+  through the Node.js backend. Supabase is used **only as a Postgres host**:
+  not Supabase Auth, not its auto-generated REST API (blocked with RLS), and
+  no Supabase keys in the frontend.
 - Google OAuth is handled on the backend so secrets/tokens never sit
   exposed in frontend code.
 
@@ -161,7 +163,7 @@ Google OAuth ──▶ FastAPI auth endpoints ──▶ issues session/JWT to fr
 
 | Entity | Purpose | Key fields |
 |--------|---------|-----------|
-| **User** | A registered student | id, name, email, password_hash / google_id, role, timestamps |
+| **User** | Identity + authentication only (all roles) | id, first_name, last_name, email, password_hash / google_id, auth_provider, role, profile_image_url, is_verified, is_active, timestamps — nothing descriptive about the student; that lives in `UserProfile` |
 | **UserProfile** | AI-collected profile data from the onboarding conversation | id, user_id, `profile_data` (JSONB: age, location, education, skills claimed, experience, interests, goals — schemaless, evolves without migrations) |
 | **AIConversation** | Turn-by-turn log of an AI chat (onboarding or assessment) | id, user_id, agent_type (onboarding / assessment / dashboard), messages (JSON), created_at |
 | **Skill** | A trackable skill/topic (technical or soft) | id, name, category, topic/subtopic |
@@ -180,40 +182,50 @@ that both the AI agent and (later) a human mentor can write into.
 
 ## 9. Project Structure
 
-### Backend (FastAPI)
+### Backend (Node.js + Express + TypeScript)
 ```
 backend/
-├── app/
-│   ├── main.py
-│   ├── core/              # config, security, settings
-│   ├── db/                # database session, base models
-│   ├── models/             # SQLAlchemy models (User, Assessment, Skill, Score)
-│   ├── schemas/             # Pydantic request/response schemas
-│   ├── api/
-│   │   └── v1/
-│   │       ├── auth.py        # signup, login, google auth
-│   │       ├── users.py       # profile CRUD
-│   │       ├── assessment.py  # take/submit assessment
-│   │       └── dashboard.py   # readiness score, summary
-│   └── services/            # business logic (scoring, etc.)
-│       └── ai_agent/         # provider-agnostic AI agent layer (Gemini
-│                             # first), onboarding conversation, adaptive
-│                             # assessment, next-step generation, resources
-├── alembic/                 # DB migrations
-└── requirements.txt
+├── prisma/
+│   ├── schema.prisma        # all tables (Prisma models)
+│   └── migrations/          # SQL migrations, applied to Supabase
+├── prisma.config.ts         # Prisma CLI config (migrations use DIRECT_URL)
+├── src/
+│   ├── server.ts            # boots the HTTP server
+│   ├── app.ts               # Express app: middleware, routes, error handling
+│   ├── config/env.ts        # zod-validated environment variables
+│   ├── db/prisma.ts         # single Prisma client (pooled DATABASE_URL)
+│   ├── lib/                 # logger (pino), response envelope + AppError
+│   ├── middleware/          # request ID, error handler, auth guard
+│   ├── routes/v1.ts         # mounts every module under /api/v1
+│   ├── modules/             # one folder per feature: routes → controller → service
+│   │   ├── health/          # /health/live, /health/ready
+│   │   ├── auth/            # signup, OTP, login, Google OAuth
+│   │   ├── users/           # /users/me profile
+│   │   ├── onboarding/      # AI onboarding conversation
+│   │   ├── assessment/      # AI adaptive assessment
+│   │   ├── tasks/           # practical tasks + submissions
+│   │   ├── resources/       # learning resources
+│   │   ├── dashboard/       # readiness dashboard
+│   │   └── admin/           # admin users/content/analytics
+│   └── services/            # cross-module logic, no HTTP
+│       ├── ai-agent/        # provider-agnostic AI layer (Gemini first):
+│       │                    # onboarding, adaptive assessment, next steps
+│       ├── scoring/         # mastery threshold + readiness scoring
+│       └── email/           # Gmail SMTP (OTP emails)
+└── tests/                   # Vitest + supertest
 ```
+See `backend/README.md` for the module convention.
 
 ### Frontend (Next.js)
 ```
 frontend/
 ├── app/
-│   ├── (auth)/login, /signup
-│   ├── dashboard/            # readiness dashboard
-│   ├── assessment/           # take assessment flow
-│   └── profile/
-├── components/
-├── lib/                      # api client, auth helpers
-└── styles/
+│   ├── (marketing)/          # public landing + marketing pages
+│   ├── (auth)/login, signup
+│   ├── (app)/dashboard, assessment, profile   # signed-in student area
+│   └── admin/                # admin panel
+├── components/               # ui/, shell/, auth/, marketing/, motion/
+└── lib/                      # api client, auth/session helpers, content
 ```
 
 ## 10. Decisions Locked In So Far
@@ -226,7 +238,9 @@ frontend/
 | AI provider | Start with a **free-tier LLM (Gemini)** behind a provider-agnostic interface so other providers can be swapped in | Keeps cost at zero during the free-trial window and avoids lock-in. |
 | Pricing | Platform is **free**; AI usage specifically is a **free trial for the first 3–5 months** | Lets the team validate the loop before deciding on monetization. |
 | Login method | Email + Password, and Google Auth | Balances convenience with a no-dependency fallback. |
-| Database | PostgreSQL | Relational fit + hosting maturity. |
+| Backend | Node.js + Express + TypeScript (decided 2026-10-02, replacing FastAPI) | Same language as the frontend; the team works in one stack. |
+| Database | PostgreSQL on Supabase (free tier) via Prisma; local Postgres optional for dev | Relational fit, constraints enforce PRD rules, JSONB for AI data, ₹0 cost. |
+| User vs profile split | `users` = identity/auth only; everything else in `UserProfile.profile_data` (JSONB) | The AI onboarding decides what to collect, so profile fields shouldn't need migrations. |
 | MVP scope | Phase 1 only, now AI-first | Keeps first release small, shippable, and testable with real students quickly — but the AI agent is part of that first release, not deferred. |
 
 ## 11. What's Explicitly Out of Scope for MVP
@@ -265,8 +279,8 @@ understand and improve their placement readiness?*
   arrive.
 - Design the AI provider abstraction (Gemini first) including fallback
   behavior if the free-tier API is rate-limited or unavailable.
-- Decide on a hosting/deployment approach for Postgres (e.g., Supabase,
-  Railway, Neon) and for the frontend/backend apps themselves.
+- ~~Decide on a hosting approach~~ — decided 2026-10-02, all free tiers:
+  Postgres on Supabase, frontend on Vercel, backend on Render.
 - Decide the trigger/mechanism for the AI free-trial window (time-boxed
   from signup? from platform launch date?) and what happens after it ends.
 

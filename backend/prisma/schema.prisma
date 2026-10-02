@@ -1,8 +1,19 @@
 // PrepSuccess database schema (PostgreSQL on Supabase).
-// Connection URLs live in prisma.config.ts; models are added per ticket
-// (SCRUM-10 core models, SCRUM-119..123 AI-first entities).
+// Connection URLs live in prisma.config.ts.
 // Conventions (docs/PRODUCTION_STANDARDS.md §2): UUID primary keys,
-// created_at/updated_at timestamps, snake_case table and column names via @@map/@map.
+// timestamptz created_at/updated_at, snake_case tables/columns via @@map/@map,
+// soft delete (is_deleted) on admin-managed content and users.
+//
+// Phase 1 (AI-first) — SCRUM-10, SCRUM-119..123:
+//   users              identity + auth only
+//   user_profiles      everything the AI onboarding collects (JSONB)
+//   refresh_tokens     hashed, rotatable refresh tokens
+//   email_otps         hashed one-time passwords
+//   skills             shared taxonomy (reused by the Phase 2 question bank)
+//   assessments        one adaptive attempt on one skill
+//   assessment_results score + mastery verdict for an attempt
+//   ai_conversations   turn-by-turn AI chat log
+//   practical_tasks / user_task_submissions / learning_resources
 
 generator client {
   provider = "prisma-client"
@@ -11,4 +22,295 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  STUDENT
+  MENTOR
+  ADMIN
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum OtpPurpose {
+  SIGNUP
+  PASSWORD_RESET
+  LOGIN
+}
+
+enum SkillCategory {
+  TECHNICAL
+  SOFT
+  APTITUDE
+}
+
+enum AgentType {
+  ONBOARDING
+  ASSESSMENT
+  DASHBOARD
+}
+
+enum AssessmentMode {
+  DIAGNOSTIC
+  TASK
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum MasteryStatus {
+  MASTERED
+  NEEDS_REVISION
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ResourceType {
+  REFERENCE
+  EXAMPLE
+  LECTURE
+  PRACTICE
+}
+
+// ---------------------------------------------------------------------------
+// Identity & auth
+// ---------------------------------------------------------------------------
+
+/// Identity and authentication only. Everything descriptive about the student
+/// (education, skills, goals, age, mobile, ...) lives in UserProfile.profileData.
+model User {
+  id              String       @id @default(uuid()) @db.Uuid
+  firstName       String       @map("first_name") @db.VarChar(100)
+  lastName        String?      @map("last_name") @db.VarChar(100)
+  /// Always stored normalized (trimmed + lowercased) by the auth service.
+  email           String       @unique @db.VarChar(255)
+  /// Null for Google-only accounts.
+  passwordHash    String?      @map("password_hash") @db.VarChar(255)
+  googleId        String?      @unique @map("google_id") @db.VarChar(255)
+  authProvider    AuthProvider @default(LOCAL) @map("auth_provider")
+  role            Role         @default(STUDENT)
+  profileImageUrl String?      @map("profile_image_url") @db.VarChar(500)
+  isVerified      Boolean      @default(false) @map("is_verified")
+  isActive        Boolean      @default(true) @map("is_active")
+  isDeleted       Boolean      @default(false) @map("is_deleted")
+  lastLoginAt     DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile         UserProfile?
+  refreshTokens   RefreshToken[]
+  conversations   AIConversation[]
+  assessments     Assessment[]
+  taskSubmissions UserTaskSubmission[]
+
+  @@map("users")
+}
+
+/// One per user, written by the AI onboarding conversation. profileData is
+/// schemaless JSONB so new onboarding questions don't need a migration.
+model UserProfile {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  /// e.g. { age, mobile_no, location, education: { college, branch, year },
+  ///        target_role, skills_claimed: [...], experience, interests, goals }
+  profileData           Json      @default("{}") @map("profile_data")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+/// Refresh tokens are stored hashed and rotated on every use (PRODUCTION_STANDARDS §3.1).
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Hashed 6-digit codes; 10-minute expiry, max 3 attempts (SYSTEM_ARCHITECTURE_FLOW §2.2).
+model EmailOtp {
+  id        String     @id @default(uuid()) @db.Uuid
+  email     String     @db.VarChar(255)
+  otpHash   String     @map("otp_hash") @db.VarChar(255)
+  purpose   OtpPurpose
+  expiresAt DateTime   @map("expires_at") @db.Timestamptz(6)
+  isUsed    Boolean    @default(false) @map("is_used")
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([email, purpose, createdAt])
+  @@map("email_otps")
+}
+
+// ---------------------------------------------------------------------------
+// Skills & adaptive assessment
+// ---------------------------------------------------------------------------
+
+/// Shared taxonomy — reused unchanged by the Phase 2 question bank.
+model Skill {
+  id               String        @id @default(uuid()) @db.Uuid
+  name             String        @db.VarChar(100)
+  slug             String        @unique @db.VarChar(120)
+  category         SkillCategory
+  topic            String?       @db.VarChar(100)
+  subtopic         String?       @db.VarChar(100)
+  description      String?
+  /// Percentage (0-100) a student must reach to be MASTERED. Per-skill so it
+  /// can vary by difficulty (open question in PROJECT_CONTEXT §12).
+  masteryThreshold Int           @default(40) @map("mastery_threshold")
+  isActive         Boolean       @default(true) @map("is_active")
+  isDeleted        Boolean       @default(false) @map("is_deleted")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assessments    Assessment[]
+  practicalTasks PracticalTask[]
+  resources      LearningResource[]
+
+  @@index([category])
+  @@map("skills")
+}
+
+/// One adaptive attempt on one skill. Retakes create new rows, which gives
+/// Phase 2 its progress-over-time history.
+model Assessment {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  skillId     String           @map("skill_id") @db.Uuid
+  mode        AssessmentMode   @default(DIAGNOSTIC)
+  status      AssessmentStatus @default(IN_PROGRESS)
+  startedAt   DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime?        @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill         Skill             @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  result        AssessmentResult?
+  conversations AIConversation[]
+
+  @@index([userId, skillId])
+  @@map("assessments")
+}
+
+/// Score and mastery verdict for one attempt. threshold is copied from the
+/// skill at scoring time so later threshold changes don't rewrite history.
+model AssessmentResult {
+  id            String        @id @default(uuid()) @db.Uuid
+  assessmentId  String        @unique @map("assessment_id") @db.Uuid
+  score         Float
+  maxScore      Float         @map("max_score")
+  threshold     Int
+  masteryStatus MasteryStatus @map("mastery_status")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("assessment_results")
+}
+
+/// Turn-by-turn log of an AI chat. assessmentId is set for assessment chats.
+model AIConversation {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  agentType    AgentType @map("agent_type")
+  assessmentId String?   @map("assessment_id") @db.Uuid
+  /// [{ role: "user" | "assistant", content, created_at }, ...]
+  messages     Json      @default("[]")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, agentType])
+  @@map("ai_conversations")
+}
+
+// ---------------------------------------------------------------------------
+// Practical tasks & learning resources
+// ---------------------------------------------------------------------------
+
+model PracticalTask {
+  id                 String     @id @default(uuid()) @db.Uuid
+  skillId            String     @map("skill_id") @db.Uuid
+  title              String     @db.VarChar(200)
+  description        String
+  difficulty         Difficulty @default(EASY)
+  /// Rubric the AI evaluator scores against.
+  evaluationCriteria Json       @default("{}") @map("evaluation_criteria")
+  isActive           Boolean    @default(true) @map("is_active")
+  isDeleted          Boolean    @default(false) @map("is_deleted")
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  skill       Skill                @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  submissions UserTaskSubmission[]
+
+  @@index([skillId])
+  @@map("practical_tasks")
+}
+
+model UserTaskSubmission {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  taskId            String   @map("task_id") @db.Uuid
+  submissionContent String   @map("submission_content")
+  /// Structured AI feedback, e.g. { summary, strengths: [], issues: [] }.
+  aiFeedback        Json?    @map("ai_feedback")
+  score             Float?
+  passed            Boolean?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task PracticalTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@index([userId, taskId])
+  @@map("user_task_submissions")
+}
+
+/// Curated material served for any topic flagged NEEDS_REVISION.
+/// Either `url` (external, e.g. W3Schools) or `content` (hosted text) is set.
+model LearningResource {
+  id        String       @id @default(uuid()) @db.Uuid
+  skillId   String       @map("skill_id") @db.Uuid
+  title     String       @db.VarChar(200)
+  type      ResourceType
+  url       String?      @db.VarChar(1000)
+  content   String?
+  source    String?      @db.VarChar(100)
+  isActive  Boolean      @default(true) @map("is_active")
+  isDeleted Boolean      @default(false) @map("is_deleted")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@index([skillId])
+  @@map("learning_resources")
 }

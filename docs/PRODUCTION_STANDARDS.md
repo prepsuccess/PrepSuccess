@@ -1,6 +1,7 @@
 # PrepSuccess — Production Engineering Standards & Architecture Guidelines
 
-This document specifies the **production-grade engineering standards** required for the PrepSuccess backend and platform. These standards must be adhered to across all implementations, APIs, database models, and deployments.
+This document specifies the **production-grade engineering standards** required for the PrepSuccess backend and platform.
+Backend stack: **Node.js 22 + Express 5 + TypeScript**, **Prisma** ORM, **PostgreSQL on Supabase**. These standards must be adhered to across all implementations, APIs, database models, and deployments.
 
 ---
 
@@ -47,7 +48,7 @@ All API endpoints must return a predictable, standardized JSON envelope.
 
 ### 1.3 Health & Readiness Probes
 Production orchestrators (Kubernetes / ECS / Railway / Render) require two separate health checks:
-- **`GET /health/live` (Liveness)**: Returns 200 if FastAPI process is running.
+- **`GET /health/live` (Liveness)**: Returns 200 if the Node.js process is running.
 - **`GET /health/ready` (Readiness)**: Returns 200 only if DB connection ping succeeds and external dependencies are healthy.
 
 ---
@@ -58,25 +59,27 @@ Production orchestrators (Kubernetes / ECS / Railway / Render) require two separ
 - **Standard**: Use **UUIDv4** (or UUIDv7) as primary keys for all public-facing entities (`User`, `Assessment`, `QuestionBank`, etc.).
 - **Reasoning**: Avoid sequential auto-incrementing integer IDs to prevent enumeration attacks and exposure of total student/assessment volume.
 
-### 2.2 Modern Async SQLAlchemy 2.0+ & Connection Pooling
-- Use `asyncpg` driver with SQLAlchemy 2.0 `AsyncEngine` and `async_sessionmaker`.
-- **Pool Configuration for Production**:
-  - `pool_size`: 10–20 (tunable based on deployment tier).
-  - `max_overflow`: 10.
-  - `pool_pre_ping=True`: Detect and recycle disconnected DB sockets gracefully.
-  - `pool_recycle=1800`: Recycle connections periodically (crucial for AWS RDS / Supabase connection limits).
+### 2.2 Prisma & Connection Pooling (Supabase)
+- Use **Prisma** with the `@prisma/adapter-pg` driver adapter; a **single** `PrismaClient` per process (`src/db/prisma.ts`).
+- **Two connection strings**:
+  - `DATABASE_URL` — Supabase **pooled** connection (Supavisor, port `6543`), used by the running app.
+  - `DIRECT_URL` — Supabase **direct/session** connection (port `5432`), used only by Prisma migrations.
+- Schema changes go through `prisma migrate` only — never edit tables by hand in the Supabase dashboard.
+- **Supabase Data API lockdown**: every table must have Row Level Security enabled with no policies
+  (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` in its migration). The backend connects as the table
+  owner and is unaffected; Supabase's auto-generated REST API is blocked.
 
 ### 2.3 Base Model Fields (Auditing & Soft Deletion)
-Every table must inherit from a common `BaseModel` containing:
-- `id`: UUID (Primary Key, indexed)
-- `created_at`: `DateTime(timezone=True)` with `server_default=func.now()`
-- `updated_at`: `DateTime(timezone=True)` with `onupdate=func.now()`
+Every table must include these fields (Prisma has no model inheritance, so they are repeated per model):
+- `id`: UUID (`@id @default(uuid()) @db.Uuid`)
+- `created_at`: `timestamptz`, `@default(now())`
+- `updated_at`: `timestamptz`, `@updatedAt`
 - `is_active`: `Boolean` default `True`
 - `is_deleted`: `Boolean` default `False` (for soft deletion where applicable)
 
 ### 2.4 Transaction Management
-- Explicit transaction boundaries using `async with session.begin():`.
-- Auto-rollback on any uncaught exception before raising HTTP 500.
+- Multi-step writes use `prisma.$transaction(async (tx) => { ... })`.
+- Any error thrown inside the callback rolls the whole transaction back before the error handler returns HTTP 500.
 
 ---
 
@@ -87,16 +90,16 @@ Every table must inherit from a common `BaseModel` containing:
 2. **Refresh Token**: Long-lived (7–30 days) stored hashed in DB/Redis with token rotation (revoked immediately on reuse or logout).
 
 ### 3.2 Password Hashing & Validation
-- Standard: `bcrypt` (or `argon2id`) with minimum 12 work rounds.
+- Standard: `bcrypt` (via the `bcryptjs` package) or `argon2id`, with minimum 12 work rounds.
 - Validation: Minimum 8 characters, requiring mixed case, numbers, and symbols. Reject common breached passwords.
 
 ### 3.3 Rate Limiting & Abuse Prevention
 - Rate limit sensitive endpoints (e.g. `/api/v1/auth/login`, `/api/v1/auth/signup`, `/api/v1/auth/forgot-password`) to max 5–10 requests/minute per IP.
-- Rate limiting implemented via `slowapi` or Redis token bucket.
+- Rate limiting implemented via `express-rate-limit` (in-memory to start; Redis store if we run multiple instances).
 
 ### 3.4 Security Headers & CORS
 - Lock CORS strictly to allowed origins (no wildcard `*` with credentials in production).
-- Middleware for standard security headers:
+- `helmet` middleware for standard security headers, including:
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY`
   - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
@@ -106,11 +109,11 @@ Every table must inherit from a common `BaseModel` containing:
 ## 4. Observability & Logging
 
 ### 4.1 Structured JSON Logging
-- Never use raw `print()` statements in application code.
-- Use structured logging (`structlog` or `loguru`) outputting JSON logs in production with keys: `timestamp`, `level`, `request_id`, `user_id`, `path`, `method`, `status_code`, `duration_ms`.
+- Never use `console.log` in application code (ESLint enforces this).
+- Use structured logging (`pino` + `pino-http`) outputting JSON logs in production with keys: `timestamp`, `level`, `request_id`, `user_id`, `path`, `method`, `status_code`, `duration_ms`.
 
 ### 4.2 Error Tracking
-- Integrate **Sentry** SDK in `core/config.py` initialized conditionally when `SENTRY_DSN` is set.
+- Integrate the **Sentry** Node SDK (`@sentry/node`), initialized at startup only when `SENTRY_DSN` is set.
 - Capture unhandled exceptions with full stack trace and correlation `request_id`.
 
 ---
@@ -118,10 +121,12 @@ Every table must inherit from a common `BaseModel` containing:
 ## 5. Project Tooling & Code Quality
 
 ### 5.1 Linting, Formatting & Type Checking
-- **Ruff**: Blazing fast linter & code formatter (replaces Flake8, Black, isort).
-- **Mypy**: Strict type-checking across all schemas and services.
+- **ESLint** (`typescript-eslint`) for linting and **Prettier** for formatting.
+- **TypeScript `strict` mode** (`tsc --noEmit`) for type-checking; **zod** validates every request body and the environment.
+- **Vitest + supertest** for unit and API tests.
+- CI (`.github/workflows/backend-ci.yml`) runs format, lint, typecheck, tests and build on every PR.
 - **Pre-commit hooks**: Ensure clean code before every commit.
 
 ### 5.2 Containerization
-- Multi-stage `Dockerfile` based on `python:3.11-slim` running as non-root user `appuser`.
-- `docker-compose.yml` defining `backend`, `postgres`, and `redis` for one-command local environment bootstrap.
+- Optional for now (Render deploys Node apps directly). If added: multi-stage `Dockerfile` based on `node:22-slim`, running as the non-root `node` user.
+- Optional `docker-compose.yml` with `postgres` for fully offline local development.

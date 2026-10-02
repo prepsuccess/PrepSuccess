@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CircleCheck, Gauge, ListChecks, NotebookPen, Target } from "lucide-react";
 import { AiTrialCard } from "@/components/app/AiTrialCard";
 import { EmptyPanel } from "@/components/app/EmptyPanel";
+import { OnboardingPrompt } from "@/components/app/OnboardingPrompt";
 import { StatCards } from "@/components/app/StatCards";
 import { Button } from "@/components/shadcn/button";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -24,6 +25,8 @@ export default function DashboardPage() {
           </Button>
         }
       />
+
+      <OnboardingPrompt className="mb-4" />
 
       {/* No skill checks exist yet (the assessment API is next), so values are null.
           They will come from GET /api/v1/dashboard. */}

@@ -38,7 +38,7 @@ export function GoogleCallback() {
       .unwrap()
       .then((user) => {
         dispatch(signedIn());
-        router.replace(safeNext(params.get("next")) ?? homeFor(user.role));
+        router.replace(safeNext(params.get("next")) ?? homeFor(user));
       })
       .catch(() => {
         clearTokens();

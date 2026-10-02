@@ -6,7 +6,7 @@ import { z } from "zod";
  * — manual edits now, the onboarding agent later — goes through these rules,
  * so both produce the same shape. Keys are snake_case, like the rest of the API.
  */
-const profileFields = {
+export const profileFields = {
   college: z.string().trim().min(1).max(150).meta({ example: "Christ University" }),
   degree: z.string().trim().min(1).max(100).meta({ example: "BCA" }),
   branch: z.string().trim().min(1).max(100).meta({ example: "Computer Applications" }),

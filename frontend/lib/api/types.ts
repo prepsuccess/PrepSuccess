@@ -25,3 +25,9 @@ export type RegisterRequest = Schemas["RegisterRequest"];
 export type LoginRequest = Schemas["LoginRequest"];
 export type UpdateMeRequest = Schemas["UpdateMeRequest"];
 export type AiStatus = Schemas["AiStatus"];
+
+export type OnboardingState = Omit<Schemas["OnboardingState"], "profile"> & {
+  profile: StudentProfile;
+};
+export type OnboardingMessage = OnboardingState["messages"][number];
+export type OnboardingReply = { onboarding: OnboardingState; user: AuthUser };

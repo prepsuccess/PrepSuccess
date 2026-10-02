@@ -215,7 +215,7 @@ export function Navbar() {
         <div className="flex items-center gap-1 justify-self-end">
           <ThemePicker />
           {session.status === "authenticated" ? (
-            <Link href={homeFor(session.user.role)} className={pillLink}>
+            <Link href={homeFor(session.user)} className={pillLink}>
               Open dashboard
             </Link>
           ) : (
@@ -279,7 +279,7 @@ export function Navbar() {
           ))}
           <div className="flex flex-wrap items-center gap-5 border-t border-white/15 pt-6 sm:hidden">
             {session.status === "authenticated" ? (
-              <Button href={homeFor(session.user.role)} label="Open dashboard" variant="inverse" />
+              <Button href={homeFor(session.user)} label="Open dashboard" variant="inverse" />
             ) : (
               <>
                 <Button href="/signup" label="Sign up free" variant="inverse" />

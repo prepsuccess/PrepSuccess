@@ -1,4 +1,4 @@
-import type { AuthUser, UserRole } from "@/lib/api/types";
+import type { AuthUser } from "@/lib/api/types";
 
 // The backend issues bearer tokens in the response body (no cookies yet), so they live in
 // localStorage. Move to httpOnly cookies once the API sets them.
@@ -35,9 +35,10 @@ export function clearTokens() {
   }
 }
 
-/** Where a user lands after signing in. */
-export function homeFor(role: UserRole) {
-  return role === "admin" ? "/admin" : "/dashboard";
+/** Where a user lands after signing in: new students start with the onboarding chat. */
+export function homeFor(user: Pick<AuthUser, "role" | "onboarding_completed">) {
+  if (user.role === "admin") return "/admin";
+  return user.role === "student" && !user.onboarding_completed ? "/onboarding" : "/dashboard";
 }
 
 /** Only same-site paths are allowed as a post-login redirect, never another origin. */

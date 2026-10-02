@@ -48,9 +48,17 @@ describe("GoogleCallback", () => {
   });
 
   it("goes to the dashboard without a next path, ignoring off-site ones", async () => {
-    server.use(http.get(`${API}/api/v1/auth/me`, () => ok(testUser)));
+    server.use(
+      http.get(`${API}/api/v1/auth/me`, () => ok({ ...testUser, onboarding_completed: true })),
+    );
     renderCallback("/auth/callback#access_token=a&refresh_token=r&next=%2F%2Fevil.example.com");
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
+  });
+
+  it("sends a new student to the onboarding chat first", async () => {
+    server.use(http.get(`${API}/api/v1/auth/me`, () => ok(testUser)));
+    renderCallback("/auth/callback#access_token=a&refresh_token=r");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding"));
   });
 
   it("sends the user back to login when tokens are missing", async () => {

@@ -10,7 +10,7 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow="Profile"
         title="Your details"
-        description="What PrepSuccess knows about you. Editing arrives with the onboarding chat."
+        description="What PrepSuccess knows about you. The onboarding chat fills most of this in; you can edit it any time."
       />
       <ProfileDetails />
     </>

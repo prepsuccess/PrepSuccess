@@ -37,18 +37,18 @@ mentors, payments, or a job portal yet.
 ### 3.1 Infrastructure
 - GitHub monorepo (`frontend/`, `backend/`) with branch protection and PR
   templates
-- PostgreSQL instance (dev + staging)
+- PostgreSQL instance on Supabase (free tier; dev + staging)
 - Environment variable / secrets convention (`.env.example` for both apps)
-- FastAPI backend scaffold (`main.py`, `core/`, `db/`, `models/`, `schemas/`,
-  `api/v1/`, `services/`)
+- Node.js + Express + TypeScript backend scaffold (`src/app.ts`, `config/`, `db/`,
+  `middleware/`, `routes/v1.ts`, `modules/`, `services/`)
 - Next.js frontend scaffold (App Router, `(auth)/`, `dashboard/`,
   `assessment/`, `profile/`)
-- SQLAlchemy + Alembic wired to Postgres
+- Prisma (schema + migrations) wired to Supabase Postgres
 
 ### 3.2 Data Model
 | Table | Key fields |
 |---|---|
-| `User` | id, name, email, password_hash (nullable), google_id (nullable), role |
+| `User` | identity/auth only: id, first_name, last_name, email, password_hash (nullable), google_id (nullable), auth_provider, role, is_verified, is_active |
 | `UserProfile` | id, user_id, `profile_data` (JSONB — college/branch/year, target_role, age, location, education, skills claimed, experience, interests, goals) |
 | `AIConversation` | id, user_id, agent_type (onboarding/assessment/dashboard), messages (JSON), created_at |
 | `Skill` | id, name, category (technical/soft), topic/subtopic |
@@ -125,11 +125,11 @@ designed for reuse by the Phase 3 Mentor/Session tables.
 
 ### 3.9 Production-Grade Engineering Standards (Backend & Infra)
 - **Primary Keys**: UUIDv4 across all models (`User`, `Skill`, `Assessment`, `AssessmentResult`) to prevent enumeration attacks.
-- **Async Architecture**: Async SQLAlchemy 2.0 with `asyncpg` driver and robust connection pooling (`pool_pre_ping=True`, `pool_recycle=1800`).
+- **Data Access**: Prisma with the `pg` driver adapter; app traffic uses Supabase's pooled connection (port 6543), migrations use the direct connection (port 5432).
 - **Standardized API Envelope**: Unified response format (`success`, `data`, `error`, `request_id`, `timestamp`).
 - **Correlation ID Tracking**: `X-Request-ID` attached to all requests, logs, and outgoing responses.
 - **Dual Health Probes**: `/health/live` (process health) & `/health/ready` (DB ping & dependency check).
-- **Security & Rate Limiting**: Token rotation for Refresh tokens, strict password complexity, rate-limiting on auth endpoints via `slowapi`/Redis.
+- **Security & Rate Limiting**: Token rotation for Refresh tokens, strict password complexity, rate-limiting on auth endpoints via `express-rate-limit`.
 - **Structured Logging & Sentry**: JSON-formatted logs with request context; Sentry integration for uncaught exception tracking.
 - (See `docs/PRODUCTION_STANDARDS.md` for full implementation specifications).
 
@@ -174,7 +174,7 @@ designed for reuse by the Phase 3 Mentor/Session tables.
 ## 7. Dependencies / Sequencing
 
 Infra (SCRUM-5/6/7) → Backend + Frontend scaffolds (SCRUM-8/16) →
-SQLAlchemy/Alembic (SCRUM-9) → Core models incl. AI-first entities
+Prisma + migrations (SCRUM-9) → Core models incl. AI-first entities
 (SCRUM-10 + new schema tickets) → Auth (SCRUM-11/12) → AI provider/agent
 layer → AI onboarding conversation (rescoped SCRUM-13) → AI adaptive
 assessment engine (rescoped SCRUM-14) → Scoring/next-steps/Dashboard

@@ -15,9 +15,9 @@ This document defines the **end-to-end systematic engineering flow** and archite
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ PHASE 1: BENCHMARK & READINESS (Current MVP - Target: November Launch)                           │
 │ 1. Identity & Auth: Email OTP Verification OR 1-Click Google OAuth (Default Role = STUDENT)      │
-│ 2. Profile Setup: Student details (College, Branch, Year, Target Role)                          │
-│ 3. Self-Assessment: Multi-dimensional test (Technical DSA/CS + Soft Skills + Aptitude)          │
-│ 4. Readiness Dashboard: 0–100 Placement Readiness Score, Category Sub-scores, Ranked Gaps       │
+│ 2. AI Onboarding: conversational profile capture → UserProfile.profile_data (JSONB)            │
+│ 3. AI Adaptive Assessment: per-skill questions/tasks → score → mastered / needs revision       │
+│ 4. AI Dashboard: readiness score, revision topics, learning resources, AI next steps            │
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                   │
                                                   ▼
@@ -48,29 +48,35 @@ This document defines the **end-to-end systematic engineering flow** and archite
 
 ## 2. Comprehensive User Schema & Data Models
 
-### 2.1 `users` Entity (Single Source of Truth)
+### 2.1 `users` Entity (Identity & Auth Only)
 
-All user types (Students, Mentors, Admins) and both authentication methods (Local Email vs Google OAuth) share this table:
+All user types (Students, Mentors, Admins) and both authentication methods (Local Email vs Google OAuth) share this table.
+It holds **identity and authentication only** — everything descriptive about the student (age, gender, mobile,
+college/branch/year, target role, skills, goals) lives in `user_profiles.profile_data` (JSONB), written by the
+AI onboarding conversation. Source of truth: `backend/prisma/schema.prisma`.
 
 | Column Name | Type | Modifiers / Description |
 | :--- | :--- | :--- |
-| `id` | `UUID` | Primary Key (UUIDv4) |
+| `id` | `UUID` | Primary Key |
 | `first_name` | `VARCHAR(100)` | Mandatory |
-| `last_name` | `VARCHAR(100)` | Optional / Mandatory |
+| `last_name` | `VARCHAR(100)` | Optional |
 | `email` | `VARCHAR(255)` | Unique, Indexed, Always Normalized (lowercased & trimmed) |
-| `mobile_no` | `VARCHAR(20)` | Nullable (Captured during registration or Google onboarding) |
-| `age` | `INTEGER` | Nullable |
-| `gender` | `VARCHAR(20)` | `MALE`, `FEMALE`, `OTHER`, `PREFER_NOT_TO_SAY` |
-| `student_year` | `INTEGER` | `1`, `2`, `3`, `4` (College Year) |
-| `profile_image_url`| `VARCHAR(500)` | Nullable (Auto-populated from Google OAuth or uploaded) |
-| `role` | `VARCHAR(20)` | **Default: `STUDENT`**, `MENTOR`, `ADMIN` |
-| `auth_provider` | `VARCHAR(20)` | `LOCAL`, `GOOGLE` |
 | `password_hash` | `VARCHAR(255)` | Nullable (Null for Google-only signups, bcrypt-hashed for local) |
-| `google_id` | `VARCHAR(255)` | Unique, Indexed, Nullable |
+| `google_id` | `VARCHAR(255)` | Unique, Nullable |
+| `auth_provider` | enum | `LOCAL`, `GOOGLE` |
+| `role` | enum | **Default: `STUDENT`**, `MENTOR`, `ADMIN` |
+| `profile_image_url`| `VARCHAR(500)` | Nullable (Auto-populated from Google OAuth or uploaded) |
 | `is_verified` | `BOOLEAN` | Default `False` for local signups (set to `True` on OTP verification), `True` for Google |
-| `is_profile_completed`| `BOOLEAN`| Default `False` (used to prompt Google users for mobile/year) |
-| `is_active` | `BOOLEAN` | Default `True` (Soft-delete & suspension support) |
+| `is_active` | `BOOLEAN` | Default `True` (suspension support) |
+| `is_deleted` | `BOOLEAN` | Default `False` (soft delete) |
+| `last_login_at` | `TIMESTAMPTZ` | Nullable |
 | `created_at` / `updated_at`| `TIMESTAMPTZ` | Auto UTC timestamps |
+
+**`user_profiles`** (one per user): `user_id` (unique FK), `profile_data` (JSONB, default `{}`),
+`onboarding_completed_at` (nullable). "Has this student finished onboarding?" is
+`onboarding_completed_at IS NOT NULL` — this replaces the old `is_profile_completed` flag.
+
+**`refresh_tokens`**: hashed refresh tokens (`token_hash`, `expires_at`, `revoked_at`) for rotation/revocation.
 
 ---
 
@@ -110,7 +116,7 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
               ├── 3. Generate 6-digit secure numeric OTP (e.g. 749215)
               ├── 4. Store hashed OTP in `email_otps` with 10-minute expiry
               │
-              ▼ (Dispatched via Async FastAPI BackgroundTasks)
+              ▼ (Sent asynchronously — the API responds without waiting for SMTP)
     [ Send HTML Email via Free Gmail SMTP ]
               │
               ▼
@@ -119,7 +125,7 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
 ─────────────────────────────────────────────────────────────────────────────
 
 [ Frontend: User enters Form Details + 6-digit OTP ]
-(first_name, last_name, email, password, mobile_no, age, gender, student_year, profile_image_url, otp)
+(first_name, last_name, email, password, otp — plus optional student_year)
               │
               ▼ (POST /api/v1/auth/register)
     [ Backend API Controller ]
@@ -131,11 +137,9 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
               │
               ├── 2. Invalidate OTP: Mark `is_used = True`
               ├── 3. Hash Password using bcrypt (12 rounds)
-              ├── 4. Insert into `users` table:
-              │      - role = STUDENT (default)
-              │      - auth_provider = LOCAL
-              │      - is_verified = True
-              │      - is_profile_completed = True
+              ├── 4. In one transaction:
+              │      - Insert into `users`: role = STUDENT, auth_provider = LOCAL, is_verified = True
+              │      - Insert into `user_profiles`: profile_data = { student_year } if provided, else {}
               │
               ▼
     [ Issue Dual JWT Tokens: Access Token (30m) + Refresh Token (7d) ]
@@ -173,8 +177,8 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
                     │   - role = STUDENT
                     │   - auth_provider = GOOGLE
                     │   - is_verified = True
-                    │   - is_profile_completed = False  (Prompt for mobile/year on first login)
                     │   - password_hash = None
+                    │   + empty `user_profiles` row (AI onboarding fills it on first login)
                     └── Issue JWT Tokens & Return 200 OK.
 ```
 
@@ -189,7 +193,7 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
 1. Normalize email & query `users` table.
 2. If user NOT found OR `user.password_hash` is None (Google-only user):
    └── Return 401 Unauthorized ("Invalid email or password").
-3. Verify password via `bcrypt.checkpw(password, user.password_hash)`.
+3. Verify password via `bcrypt.compare(password, user.password_hash)`.
    └── Invalid? ──▶ Return 401 Unauthorized ("Invalid email or password").
 4. If `user.is_active` is False:
    └── Return 403 Forbidden ("Account is deactivated").
@@ -203,9 +207,9 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
 
 | Ticket ID | Epic | Task Description |
 | :--- | :--- | :--- |
-| **`SCRUM-10`** | Backend Foundation | Implement Core Database Models (`User`, `Skill`, `Assessment`, `AssessmentResult`, `EmailOTP`). |
+| **`SCRUM-10`** | Backend Foundation | Implement Core Database Models in Prisma (`User`, `UserProfile`, `RefreshToken`, `EmailOtp`, `Skill`, `Assessment`, `AssessmentResult`, plus AI-first `AIConversation`, `PracticalTask`, `UserTaskSubmission`, `LearningResource`). |
 | **`SCRUM-11`** | Auth & Onboarding | Email + Password Authentication API (`/send-otp`, `/register`, `/login`, `/me`). |
 | **`SCRUM-12`** | Auth & Onboarding | Google OAuth 2.0 Integration Endpoint (`/auth/google`). |
-| **`SCRUM-13`** | Student Profile | Profile Management API (`GET/PATCH /api/v1/users/me`). |
+| **`SCRUM-13`** | Student Profile | Profile API (`GET/PATCH /api/v1/users/me`) — reads/edits `user_profiles.profile_data`; primary entry is AI onboarding. |
 | **`SCRUM-14`** | Student Assessment | Assessment Submission & Storage API (`/assessment/start`, `/assessment/{id}/submit`). |
 | **`SCRUM-15`** | Readiness Dashboard | Scoring Service & Placement Readiness Dashboard API (`/dashboard`). |

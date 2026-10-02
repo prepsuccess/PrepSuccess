@@ -36,14 +36,15 @@ describe("LoginForm", () => {
   it("stores the tokens and sends an admin to the admin panel", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({ access_token: "a", refresh_token: "r", token_type: "bearer", user }),
-            { status: 200 },
-          ),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: { access_token: "a", refresh_token: "r", token_type: "bearer", user },
+          }),
+          { status: 200 },
         ),
+      ),
     );
     render(<LoginForm />);
 

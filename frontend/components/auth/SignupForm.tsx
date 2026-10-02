@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { Checkbox, Input, PasswordInput, Select } from "@/components/ui/form";
 import { register, sendSignupOtp } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
@@ -196,6 +197,7 @@ export function SignupForm() {
 
   return (
     <form noValidate onSubmit={onDetailsSubmit} className="flex flex-col gap-5">
+      <GoogleSignIn label="Sign up with Google" />
       {formError ? <Alert tone="error">{formError}</Alert> : null}
       <div className="grid gap-5 sm:grid-cols-2">
         <Input

@@ -1,9 +1,11 @@
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 
-import { env } from "./config/env.js";
+import { apiDocsEnabled, env, isProduction } from "./config/env.js";
+import { docsRouter } from "./docs/docs.routes.js";
 import { logger } from "./lib/logger.js";
 import { errorHandler, notFound } from "./middleware/error-handler.js";
 import { genRequestId } from "./middleware/request-id.js";
@@ -15,13 +17,17 @@ export function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
+  // Behind Render's proxy: trust one hop so rate limiting sees the real client IP.
+  if (isProduction) app.set("trust proxy", 1);
   app.use(pinoHttp({ logger, genReqId: genRequestId }));
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGINS, credentials: true }));
   app.use(express.json({ limit: "1mb" }));
+  app.use(cookieParser());
 
   app.use("/health", healthRouter);
   app.use("/api/v1", apiV1);
+  if (apiDocsEnabled) app.use("/docs", docsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

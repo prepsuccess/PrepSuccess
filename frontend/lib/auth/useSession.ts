@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { getCurrentUser, type TokenResponse } from "@/lib/api/auth";
+import { getCurrentUser, type AuthUser, type TokenResponse } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { clearTokens, getAccessToken, saveTokens, type SessionState } from "./session";
 
@@ -46,6 +46,11 @@ function load() {
 export function signIn({ access_token, refresh_token, user }: TokenResponse) {
   saveTokens(access_token, refresh_token);
   set({ status: "authenticated", user });
+}
+
+/** Replaces the signed-in user after a profile edit, without touching the tokens. */
+export function updateSessionUser(user: AuthUser) {
+  if (state.status === "authenticated") set({ status: "authenticated", user });
 }
 
 export function signOut() {

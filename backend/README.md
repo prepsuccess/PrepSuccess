@@ -14,6 +14,10 @@ npm run dev              # http://localhost:8000
 
 Check it's up: `GET /health/live` (process) and `GET /health/ready` (database reachable).
 
+**API docs:** http://localhost:8000/docs (Swagger UI — try requests in the browser; use **Authorize** with an
+`access_token` from `/api/v1/auth/login`). Raw spec: `/docs/openapi.json`. On by default outside production;
+set `API_DOCS_ENABLED=true|false` to override.
+
 ## Scripts
 
 | Script                                  | What it does                                           |
@@ -39,7 +43,8 @@ backend/
 │   ├── config/env.ts        # zod-validated environment (app won't boot with bad config)
 │   ├── db/prisma.ts         # single PrismaClient (pooled DATABASE_URL)
 │   ├── generated/prisma/    # generated Prisma client (git-ignored)
-│   ├── lib/                 # logger (pino), response envelope + AppError
+│   ├── docs/                # OpenAPI document + Swagger UI route; helpers.ts for module docs
+│   ├── lib/                 # logger (pino), response envelope + AppError, crypto helpers
 │   ├── middleware/          # request ID, 404 + error handler (auth guard goes here)
 │   ├── routes/v1.ts         # mounts every module under /api/v1
 │   ├── modules/             # one folder per feature
@@ -69,10 +74,13 @@ modules/<feature>/
 ├── <feature>.routes.ts      # Express Router — wires paths to controller functions
 ├── <feature>.controller.ts  # parse/validate input (zod), call service, sendSuccess()
 ├── <feature>.service.ts     # business logic + Prisma calls; throws AppError
-└── <feature>.schemas.ts     # zod request/response schemas
+├── <feature>.schemas.ts     # zod request/response schemas (+ .meta() examples)
+└── <feature>.docs.ts        # OpenAPI paths built from those schemas
 ```
 
-Then mount the router in `src/routes/v1.ts`.
+Then mount the router in `src/routes/v1.ts`, add its paths in `src/docs/openapi.ts`, and add it to
+`MOUNTED` in `tests/docs.test.ts`. **Every endpoint ships with docs** — that test fails CI for any
+mounted route missing from the OpenAPI document.
 
 ## Conventions
 

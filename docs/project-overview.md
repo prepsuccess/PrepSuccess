@@ -34,14 +34,14 @@ agent and adaptive-assessment loop on.
 ## 4. Tech Stack
 
 - **Frontend:** Next.js
-- **Backend:** FastAPI
-- **Database:** PostgreSQL
+- **Backend:** Node.js 22 + Express 5 + TypeScript
+- **Database:** PostgreSQL on Supabase (via Prisma ORM)
 - **Auth:** Email + Password, and Google OAuth
 
 ## 5. High-Level Architecture
 
 ```
-Next.js (frontend) → FastAPI (backend) → PostgreSQL (database)
+Next.js (frontend) → Node.js/Express (backend) → PostgreSQL on Supabase (database)
                     ↳ Google OAuth for login
 ```
 
@@ -96,7 +96,7 @@ Next.js (frontend) → FastAPI (backend) → PostgreSQL (database)
 
 ## 7. Phase 1 — Core Entities (Conceptual)
 
-- **User** — id, name, email, password_hash / google_id, role
+- **User** — identity/auth only: id, first_name, last_name, email, password_hash / google_id, auth_provider, role, is_verified
 - **UserProfile** — id, user_id, profile_data (JSONB: college/branch/year,
   target role, age, location, education, skills, experience, interests,
   goals — collected by the AI onboarding conversation)
@@ -127,39 +127,50 @@ Next.js (frontend) → FastAPI (backend) → PostgreSQL (database)
 
 ## 9. Project Structure
 
-### Backend (FastAPI)
+### Backend (Node.js + Express + TypeScript)
 ```
 backend/
-├── app/
-│   ├── main.py
-│   ├── core/              # config, security, settings
-│   ├── db/                # database session, base models
-│   ├── models/             # SQLAlchemy models (User, Assessment, Skill, Score)
-│   ├── schemas/             # Pydantic request/response schemas
-│   ├── api/
-│   │   └── v1/
-│   │       ├── auth.py        # signup, login, google auth
-│   │       ├── users.py       # profile CRUD
-│   │       ├── assessment.py  # take/submit assessment
-│   │       └── dashboard.py   # readiness score, summary
-│   └── services/            # business logic (scoring, etc.)
-│       └── ai_agent/         # provider-agnostic AI agent (Gemini first),
-│                             # onboarding, adaptive assessment, next steps
-├── alembic/                 # DB migrations
-└── requirements.txt
+├── prisma/
+│   ├── schema.prisma        # all tables (Prisma models)
+│   └── migrations/          # SQL migrations, applied to Supabase
+├── prisma.config.ts         # Prisma CLI config (migrations use DIRECT_URL)
+├── src/
+│   ├── server.ts            # boots the HTTP server
+│   ├── app.ts               # Express app: middleware, routes, error handling
+│   ├── config/env.ts        # zod-validated environment variables
+│   ├── db/prisma.ts         # single Prisma client (pooled DATABASE_URL)
+│   ├── lib/                 # logger (pino), response envelope + AppError
+│   ├── middleware/          # request ID, error handler, auth guard
+│   ├── routes/v1.ts         # mounts every module under /api/v1
+│   ├── modules/             # one folder per feature: routes → controller → service
+│   │   ├── health/          # /health/live, /health/ready
+│   │   ├── auth/            # signup, OTP, login, Google OAuth
+│   │   ├── users/           # /users/me profile
+│   │   ├── onboarding/      # AI onboarding conversation
+│   │   ├── assessment/      # AI adaptive assessment
+│   │   ├── tasks/           # practical tasks + submissions
+│   │   ├── resources/       # learning resources
+│   │   ├── dashboard/       # readiness dashboard
+│   │   └── admin/           # admin users/content/analytics
+│   └── services/            # cross-module logic, no HTTP
+│       ├── ai-agent/        # provider-agnostic AI layer (Gemini first):
+│       │                    # onboarding, adaptive assessment, next steps
+│       ├── scoring/         # mastery threshold + readiness scoring
+│       └── email/           # Gmail SMTP (OTP emails)
+└── tests/                   # Vitest + supertest
 ```
+See `backend/README.md` for the module convention.
 
 ### Frontend (Next.js)
 ```
 frontend/
 ├── app/
-│   ├── (auth)/login, /signup
-│   ├── dashboard/            # readiness dashboard
-│   ├── assessment/           # take assessment flow
-│   └── profile/
-├── components/
-├── lib/                      # api client, auth helpers
-└── styles/
+│   ├── (marketing)/          # public landing + marketing pages
+│   ├── (auth)/login, signup
+│   ├── (app)/dashboard, assessment, profile   # signed-in student area
+│   └── admin/                # admin panel
+├── components/               # ui/, shell/, auth/, marketing/, motion/
+└── lib/                      # api client, auth/session helpers, content
 ```
 
 ## 10. Decisions Made So Far
@@ -172,7 +183,9 @@ frontend/
 | AI provider | Gemini first, behind a pluggable provider interface |
 | Pricing | Platform free; AI free for a 3–5 month trial window |
 | Login method | Email + Password, and Google Auth |
-| Database | PostgreSQL |
+| Backend | Node.js + Express + TypeScript (replaced FastAPI, 2026-10-02) |
+| Database | PostgreSQL on Supabase, via Prisma |
+| User vs profile | `users` = identity only; profile data in `UserProfile` JSONB |
 | MVP scope | Phase 1 only, now AI-first |
 
 ## 11. Open / Next Steps
@@ -180,12 +193,11 @@ frontend/
 - Design detailed database schema for the AI-first entities (`UserProfile`,
   `AIConversation`, `PracticalTask`, `UserTaskSubmission`,
   `LearningResource`) alongside the original tables
-- Scaffold actual FastAPI + Next.js project folders and starter code
 - Define mastery thresholds per skill/topic and the AI provider
   abstraction/fallback behavior
 - Decide the source of curated learning resources (admin-authored vs.
   AI-generated vs. external links)
-- Decide hosting/deployment approach (e.g., Postgres on Supabase/Railway/Neon)
+- Hosting (decided, all free tiers): Postgres on Supabase, frontend on Vercel, backend on Render
 
 ## 12. Jira Project Tracking
 
@@ -200,7 +212,7 @@ structure mirrors the phase roadmap in §6:
 | Auth & AI Onboarding | Signup/login, Google OAuth, **AI conversational onboarding + JSON profile capture** |
 | AI Profile & Adaptive Assessment *(renamed from "Student Profile & Assessment")* | **AI adaptive assessment engine, practical tasks, learning resources**, readiness scoring |
 | Design System & UX | Tokens, component library, wireframes, mockups, a11y |
-| Backend Foundation & Data Model | FastAPI/Next.js scaffolds, SQLAlchemy/Alembic, core models, **AI agent/provider integration layer** |
+| Backend Foundation & Data Model | Node.js/Next.js scaffolds, Prisma + migrations, core models, **AI agent/provider integration layer** |
 | Admin & Notifications | Admin APIs/UI, notification service |
 | Platform Ops, QA & Compliance | Security review, API docs, ToS/Privacy, analytics instrumentation, **AI free-trial/usage tracking** |
 | Interview Prep (Question Bank) | Phase 2 question bank, bookmarks, progress tracking |

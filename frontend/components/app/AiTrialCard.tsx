@@ -1,28 +1,33 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
+import { Badge } from "@/components/shadcn/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/shadcn/card";
+import { Progress } from "@/components/shadcn/progress";
+import { Skeleton } from "@/components/shadcn/skeleton";
 import { QueryState } from "@/components/ui/QueryState";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { useGetAiStatusQuery } from "@/lib/api/endpoints/ai";
 import type { AiStatus } from "@/lib/api/types";
-import { cn } from "@/lib/utils/cn";
 
 function AiTrialSkeleton() {
   return (
-    <div
-      aria-hidden
-      className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
-    >
-      {/* Each bar sits in a box the height of the real line of text, so nothing shifts on load. */}
-      <div>
-        <div className="flex h-[22.5px] items-center">
-          <Skeleton className="h-4 w-44" />
-        </div>
-        <div className="mt-1 flex h-[19.5px] items-center">
-          <Skeleton className="h-3.5 w-72 max-w-full" />
-        </div>
-      </div>
-      <Skeleton className="h-2 w-full rounded-full sm:w-48" />
-    </div>
+    <Card aria-hidden>
+      <CardHeader>
+        {/* Boxes sized to the real title and description lines, so nothing shifts on load. */}
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="h-4 w-72 max-w-full" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-2 w-full rounded-full" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -44,31 +49,38 @@ export function AiTrialCard({ className }: { className?: string }) {
         errorTitle="Couldn't load your AI trial"
       >
         {(status) => {
-          const used = Math.min(1, status.today.requests / status.today.limit);
+          const percent = Math.min(
+            100,
+            Math.round((status.today.requests / status.today.limit) * 100),
+          );
+          const atLimit = status.reason === "AI_DAILY_LIMIT";
           return (
-            <section className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-heading text-[15px] font-medium">{headline(status)}</h2>
-                <p className="text-text-dim mt-1 text-[13px]">
-                  {status.reason === "AI_DAILY_LIMIT"
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="text-brand size-4" aria-hidden />
+                  {headline(status)}
+                </CardTitle>
+                <CardDescription>
+                  {atLimit
                     ? "You've used today's AI chats. They reset at midnight."
                     : `${status.today.requests} of ${status.today.limit} AI chats used today · resets at midnight`}
-                </p>
-              </div>
-              <div
-                className="bg-surface-3 h-2 w-full overflow-hidden rounded-full sm:w-48"
-                role="progressbar"
-                aria-label="AI chats used today"
-                aria-valuemin={0}
-                aria-valuemax={status.today.limit}
-                aria-valuenow={status.today.requests}
-              >
-                <div
-                  className={cn("h-full rounded-full", used >= 1 ? "bg-danger" : "bg-accent")}
-                  style={{ width: `${used * 100}%` }}
+                </CardDescription>
+                <CardAction>
+                  <Badge variant={atLimit ? "destructive" : "secondary"}>
+                    {atLimit ? "Limit reached" : "Free"}
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <Progress
+                  value={percent}
+                  aria-label="AI chats used today"
+                  getValueLabel={() => `${status.today.requests} of ${status.today.limit} chats`}
+                  className="h-2"
                 />
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           );
         }}
       </QueryState>

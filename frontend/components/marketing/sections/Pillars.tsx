@@ -47,7 +47,7 @@ export function Pillars({
             >
               <span
                 aria-hidden
-                className="bg-accent absolute -top-px left-0 h-[3px] w-full origin-left scale-x-0 transition-transform duration-500 ease-[var(--ease-out-cubic)] group-hover:scale-x-100"
+                className="bg-brand absolute -top-px left-0 h-[3px] w-full origin-left scale-x-0 transition-transform duration-500 ease-[var(--ease-out-cubic)] group-hover:scale-x-100"
               />
               <div className="flex items-start justify-between">
                 <span className="text-text-dim text-[12px] tabular-nums">

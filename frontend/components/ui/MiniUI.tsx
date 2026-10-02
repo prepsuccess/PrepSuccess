@@ -38,7 +38,7 @@ type Status = "mastered" | "revision" | "neutral";
 /** Solid accent square = mastered, hollow square = needs revision. Replaces emoji ticks. */
 export function StatusGlyph({ status }: { status: Exclude<Status, "neutral"> }) {
   return status === "mastered" ? (
-    <span aria-hidden className="bg-accent inline-block h-[7px] w-[7px] flex-none" />
+    <span aria-hidden className="bg-brand inline-block h-[7px] w-[7px] flex-none" />
   ) : (
     <span aria-hidden className="border-heading/50 inline-block h-[7px] w-[7px] flex-none border" />
   );
@@ -98,7 +98,7 @@ export function Bar({
           style={{ width: `${value}%` }}
         />
         <span
-          className="bg-accent absolute -top-0.5 h-2.5 w-px"
+          className="bg-brand absolute -top-0.5 h-2.5 w-px"
           style={{ left: `${threshold}%` }}
           aria-hidden
         />

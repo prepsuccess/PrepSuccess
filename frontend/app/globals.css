@@ -1,4 +1,10 @@
 @import "tailwindcss";
+/* shadcn/ui (app area): enter/exit animations and the data-open/data-checked variants its components use. */
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Dark mode is class-based (.dark on <html>). Tokens exist; no toggle ships yet. */
+@custom-variant dark (&:is(.dark *));
 
 :root {
   color-scheme: light;
@@ -14,8 +20,8 @@
   --color-heading: #0b0c0f;
   /* The single accent: light sky blue — pale for highlights/fills, deeper for pencil strokes and marks. */
   --color-marker: #cde9ff;
-  --color-accent: #2e8fe0;
-  --color-accent-ink: #1f6fb5;
+  --color-brand: #2e8fe0;
+  --color-brand-ink: #1f6fb5;
   /* Status colours for forms and alerts; deep enough to read as text on white. */
   --color-danger: #b42318;
   --color-success: #1f7a4d;
@@ -38,6 +44,82 @@
   --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
+/*
+ * shadcn/ui tokens, mapped onto the PrepSuccess palette above. Used by
+ * components/shadcn/* in the logged-in app; the marketing site keeps its own
+ * classes. Note shadcn's "accent" is a quiet hover fill — the brand colour is "brand".
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #0b0c0f;
+  --card: #ffffff;
+  --card-foreground: #0b0c0f;
+  --popover: #ffffff;
+  --popover-foreground: #0b0c0f;
+  --primary: #0b0c0f;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #0b0c0f;
+  --muted: #f3f4f6;
+  /* Body grey: ~7.5:1 on white (shadcn's default is ~4.7:1). */
+  --muted-foreground: #4b5563;
+  --accent: #f3f4f6;
+  --accent-foreground: #0b0c0f;
+  --destructive: #b42318;
+  --border: #e5e7eb;
+  /* Inputs need >= 3:1 against white to read as fields (WCAG 1.4.11). */
+  --input: #8b919c;
+  --ring: #2e8fe0;
+  --radius: 0.625rem;
+  --chart-1: #2e8fe0;
+  --chart-2: #1f6fb5;
+  --chart-3: #7cc0f5;
+  --chart-4: #0b0c0f;
+  --chart-5: #8b919c;
+  --sidebar: #f9fafb;
+  --sidebar-foreground: #374151;
+  --sidebar-primary: #0b0c0f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef0f3;
+  --sidebar-accent-foreground: #0b0c0f;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #2e8fe0;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.75 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 25%);
+  --ring: #5aa9eb;
+  --chart-1: #5aa9eb;
+  --chart-2: #2e8fe0;
+  --chart-3: #a7d4f7;
+  --chart-4: oklch(0.985 0 0);
+  --chart-5: oklch(0.708 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #5aa9eb;
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #5aa9eb;
+}
+
 @theme inline {
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -49,12 +131,44 @@
   --color-text-dim: var(--color-text-dim);
   --color-heading: var(--color-heading);
   --color-marker: var(--color-marker);
-  --color-accent: var(--color-accent);
-  --color-accent-ink: var(--color-accent-ink);
+  --color-brand: var(--color-brand);
+  --color-brand-ink: var(--color-brand-ink);
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
   --color-skeleton: var(--color-skeleton);
   --color-shimmer: var(--color-shimmer);
+
+  /* shadcn/ui colours (see the token block above). --color-border is shared. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -355,5 +469,18 @@ html.js [data-split] {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * shadcn components draw plain `border` and expect the theme border colour
+ * (Tailwind's default is currentColor). Every border in the project already
+ * names its colour, so this only fills in the ones that don't.
+ */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
   }
 }

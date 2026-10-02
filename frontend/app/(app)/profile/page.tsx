@@ -8,8 +8,7 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Profile"
-        title="Your details"
+        title="Profile"
         description="What PrepSuccess knows about you. The onboarding chat fills most of this in; you can edit it any time."
       />
       <ProfileDetails />

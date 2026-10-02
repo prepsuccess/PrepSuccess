@@ -1,22 +1,13 @@
+import { Skeleton as ShadcnSkeleton } from "@/components/shadcn/skeleton";
 import { cn } from "@/lib/utils/cn";
 
 /**
- * A placeholder block with a soft highlight sweeping across it. Size it like
- * the content it stands in for, so nothing shifts when the data arrives.
- * Decorative only: wrap a group of skeletons in <Loading> for screen readers.
+ * A placeholder block with a soft highlight sweeping across it — shadcn's
+ * Skeleton (one implementation app-wide), hidden from assistive tech. Size it
+ * like the content it stands in for; wrap a group in <Loading> for screen readers.
  */
 export function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "bg-skeleton relative overflow-hidden rounded-md",
-        "after:animate-shimmer after:via-shimmer after:absolute after:inset-0 after:bg-linear-to-r after:from-transparent after:to-transparent",
-        "motion-reduce:after:hidden",
-        className,
-      )}
-    />
-  );
+  return <ShadcnSkeleton aria-hidden className={className} />;
 }
 
 /** Lines of text; the last one is shorter, like a real paragraph. */

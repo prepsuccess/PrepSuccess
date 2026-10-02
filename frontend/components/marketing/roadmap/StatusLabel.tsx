@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils/cn";
 // Every status is icon + word, never colour alone.
 const STATUS: Record<RoadmapStatus, { label: string; className: string }> = {
   ready: { label: "Ready", className: "text-success" },
-  building: { label: "In progress", className: "text-accent-ink" },
+  building: { label: "In progress", className: "text-brand-ink" },
   planned: { label: "Planned", className: "text-text" },
 };
 
@@ -34,7 +34,7 @@ export function StatusLabel({ status, className }: { status: RoadmapStatus; clas
 
 const STAGE: Record<RoadmapPhase["stage"], { label: string; className: string }> = {
   now: { label: "Now", className: "bg-heading text-white border-heading" },
-  next: { label: "Next", className: "border-accent-ink text-accent-ink bg-surface" },
+  next: { label: "Next", className: "border-brand-ink text-brand-ink bg-surface" },
   later: { label: "Later", className: "border-border-strong text-text bg-surface" },
 };
 

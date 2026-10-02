@@ -49,7 +49,7 @@ export function OnboardingChat() {
           ) : (
             <>
               <span
-                className={`h-1.5 w-1.5 rounded-full ${playing ? "animate-pulse-dot bg-accent" : "bg-border-strong"}`}
+                className={`h-1.5 w-1.5 rounded-full ${playing ? "animate-pulse-dot bg-brand" : "bg-border-strong"}`}
               />
               {playing ? "Live" : "Paused"}
             </>

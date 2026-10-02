@@ -26,7 +26,7 @@ export default function RoadmapPage() {
           <Container>
             <div className="max-w-[720px]">
               <Reveal onLoad>
-                <p className="text-accent-ink text-[15px] font-medium">Roadmap</p>
+                <p className="text-brand-ink text-[15px] font-medium">Roadmap</p>
               </Reveal>
               <Reveal onLoad delay={0.05}>
                 <h1 className="text-heading mt-4 text-[clamp(2.3rem,1.6rem+2.6vw,3.6rem)] leading-[1.06] font-semibold tracking-[-0.035em] text-balance">

@@ -19,7 +19,7 @@ export function Hero() {
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,500px)] lg:gap-16">
           <div className="max-w-[620px]">
             <Reveal onLoad>
-              <p className="text-accent-ink text-[15px] font-medium">{hero.eyebrow}</p>
+              <p className="text-brand-ink text-[15px] font-medium">{hero.eyebrow}</p>
             </Reveal>
             <Reveal onLoad delay={0.05}>
               <h1 className="text-heading mt-4 text-[clamp(2.4rem,1.55rem+3.1vw,4rem)] leading-[1.04] font-semibold tracking-[-0.035em] text-balance">

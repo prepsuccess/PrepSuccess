@@ -55,8 +55,8 @@ function RollingLabel({ label, incoming }: { label: string; incoming: string }) 
 // Deep accent ink keeps white text readable across every accent theme.
 const variantClasses: Record<ButtonVariant, { base: string; sweep: string; incoming: string }> = {
   primary: {
-    base: "bg-heading text-white hover:bg-accent-ink",
-    sweep: "bg-accent-ink",
+    base: "bg-heading text-white hover:bg-brand-ink",
+    sweep: "bg-brand-ink",
     incoming: "text-white",
   },
   inverse: {

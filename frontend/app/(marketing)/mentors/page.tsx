@@ -117,7 +117,7 @@ export default function MentorsPage() {
       <Panel className="mb-4">
         <Section>
           <DrawScope className="relative mx-auto flex max-w-[760px] flex-col items-center text-center">
-            <SketchIcon name="heart" delay={0.2} className="text-accent h-14 w-14 -rotate-6" />
+            <SketchIcon name="heart" delay={0.2} className="text-brand h-14 w-14 -rotate-6" />
             <SplitHeading className="text-h2 mt-6">
               Be the senior you <Mark>wish you&apos;d had</Mark>.
             </SplitHeading>

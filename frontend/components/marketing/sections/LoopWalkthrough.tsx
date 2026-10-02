@@ -66,7 +66,7 @@ export function LoopWalkthrough() {
                     className="group flex w-full cursor-pointer items-baseline gap-5 py-6 text-left"
                   >
                     <span
-                      className={`w-6 flex-none text-[12px] tabular-nums transition-colors ${isActive ? "text-accent" : "text-text-dim"}`}
+                      className={`w-6 flex-none text-[12px] tabular-nums transition-colors ${isActive ? "text-brand" : "text-text-dim"}`}
                     >
                       {step.step}
                     </span>
@@ -96,7 +96,7 @@ export function LoopWalkthrough() {
                     <span
                       key={active}
                       aria-hidden
-                      className="bg-accent absolute -bottom-px left-0 h-[2px] w-full origin-left"
+                      className="bg-brand absolute -bottom-px left-0 h-[2px] w-full origin-left"
                       style={{
                         animation: `progress ${ADVANCE_MS}ms linear both`,
                         animationPlayState: paused ? "paused" : "running",

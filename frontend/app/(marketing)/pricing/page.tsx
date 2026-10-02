@@ -28,7 +28,7 @@ function PlanCard({ plan }: { plan: Plan }) {
         </p>
         <p className="text-text-dim mt-2 text-[14px]">{plan.period}</p>
         <p
-          className={`border-border mt-5 flex-1 border-t pt-4 text-[14px] ${saving ? "text-accent-ink font-medium" : "text-text"}`}
+          className={`border-border mt-5 flex-1 border-t pt-4 text-[14px] ${saving ? "text-brand-ink font-medium" : "text-text"}`}
         >
           {plan.note}
         </p>
@@ -48,7 +48,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 function Includes() {
   return (
     <DrawScope className="mt-16 flex flex-col items-center gap-6 text-center">
-      <p className="font-marker text-accent -rotate-1 text-[22px]">what&apos;s included</p>
+      <p className="font-marker text-brand -rotate-1 text-[22px]">what&apos;s included</p>
       <ul className="flex max-w-[900px] flex-wrap justify-center gap-x-8 gap-y-4">
         {pricing.includes.map((item, i) => {
           const delay = 0.3 + i * 0.3;
@@ -63,7 +63,7 @@ function Includes() {
                 <SketchIcon
                   name="tick"
                   delay={delay + 0.25}
-                  className="text-accent absolute -top-1 left-0.5 h-7 w-7"
+                  className="text-brand absolute -top-1 left-0.5 h-7 w-7"
                 />
               </span>
               <span className="text-heading text-[15px]">{item}</span>

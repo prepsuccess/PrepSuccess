@@ -24,7 +24,7 @@ export function Footer() {
             </a>
             <DrawScope className="flex -rotate-2 items-end gap-1.5">
               <span
-                className="ink font-marker text-accent text-[22px] leading-tight whitespace-pre"
+                className="ink font-marker text-brand text-[22px] leading-tight whitespace-pre"
                 style={{ "--d": "0.3s" } as React.CSSProperties}
               >
                 {"good luck with your\nplacements!"}
@@ -32,7 +32,7 @@ export function Footer() {
               <SketchIcon
                 name="heart"
                 delay={0.9}
-                className="text-accent mb-0.5 h-7 w-7 -rotate-6"
+                className="text-brand mb-0.5 h-7 w-7 -rotate-6"
               />
             </DrawScope>
           </Reveal>

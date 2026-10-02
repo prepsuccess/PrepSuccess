@@ -17,7 +17,7 @@ export default function NotFound() {
               now
               name="question"
               delay={0.2}
-              className="text-accent h-20 w-20 -rotate-6"
+              className="text-brand h-20 w-20 -rotate-6"
             />
 
             <p className="text-text-dim mt-6 text-[12px] tabular-nums">Error 404</p>

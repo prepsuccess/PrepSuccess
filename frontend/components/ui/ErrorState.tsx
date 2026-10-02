@@ -1,5 +1,13 @@
-import { Button } from "@/components/ui/Button";
-import { LineIcon } from "@/components/ui/LineIcon";
+import { CircleAlert, RotateCw } from "lucide-react";
+import { Button } from "@/components/shadcn/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/shadcn/empty";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/utils/cn";
 
@@ -16,21 +24,27 @@ export function ErrorState({
   className?: string;
 }) {
   return (
-    <div
-      role="alert"
-      className={cn("card flex flex-col items-center px-6 py-12 text-center", className)}
-    >
-      <LineIcon name="alert" className="text-danger h-6 w-6" />
-      <h2 className="text-h6 mt-4">{title}</h2>
-      <p className="mt-2 max-w-[46ch] text-[15px]">{errorMessage(error)}</p>
-      {isApiError(error) ? (
-        <p className="text-text-dim mt-2 font-mono text-[12px]">{error.code}</p>
-      ) : null}
+    <Empty role="alert" className={cn("border", className)}>
+      <EmptyHeader>
+        <EmptyMedia variant="icon" className="text-destructive">
+          <CircleAlert />
+        </EmptyMedia>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>
+          {errorMessage(error)}
+          {isApiError(error) ? (
+            <span className="text-muted-foreground mt-1 block font-mono text-xs">{error.code}</span>
+          ) : null}
+        </EmptyDescription>
+      </EmptyHeader>
       {onRetry ? (
-        <div className="mt-6">
-          <Button label="Try again" variant="secondary" onClick={onRetry} />
-        </div>
+        <EmptyContent>
+          <Button variant="outline" onClick={onRetry}>
+            <RotateCw />
+            Try again
+          </Button>
+        </EmptyContent>
       ) : null}
-    </div>
+    </Empty>
   );
 }

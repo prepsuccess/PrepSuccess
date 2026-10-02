@@ -111,7 +111,7 @@ export function Marksheet({ className }: { className?: string }) {
           </div>
 
           <p className="bg-surface-3 text-heading mt-5 flex items-start gap-2 rounded-[6px] px-3 py-2.5 text-[13px]">
-            <LineIcon name="send" className="text-accent-ink mt-0.5 h-4 w-4 flex-none" />
+            <LineIcon name="send" className="text-brand-ink mt-0.5 h-4 w-4 flex-none" />
             <span>
               <span className="text-text">Study next: </span>
               {next}

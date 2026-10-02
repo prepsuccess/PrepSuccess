@@ -37,7 +37,7 @@ export function ProfileCard() {
           <span className="text-text-dim">{"{"}</span>
           {lines.map(([key, value], i) => (
             <span key={key} className="block pl-4">
-              <span className="text-accent-ink">&quot;{key}&quot;</span>
+              <span className="text-brand-ink">&quot;{key}&quot;</span>
               <span className="text-text-dim">: </span>
               <span className="text-heading">{value}</span>
               {i < lines.length - 1 ? <span className="text-text-dim">,</span> : null}
@@ -130,7 +130,7 @@ export function ThresholdCard() {
           })}
         </div>
         <p className="border-border text-text-dim mt-4 flex items-center gap-2 border-t pt-3 text-[11px]">
-          <span aria-hidden className="bg-accent h-2.5 w-px" /> The tick marks the pass mark
+          <span aria-hidden className="bg-brand h-2.5 w-px" /> The tick marks the pass mark
         </p>
       </MiniWindow>
     </Taped>
@@ -220,7 +220,7 @@ export function TopicsCard() {
           ))}
         </div>
         <p className="border-border bg-bg text-heading mt-4 rounded-[8px] border px-3 py-2.5 text-[12px]">
-          <span className="text-accent-ink text-[12px] tabular-nums">Next · </span>
+          <span className="text-brand-ink text-[12px] tabular-nums">Next · </span>
           Study the event loop, then check it again
         </p>
       </MiniWindow>
@@ -315,7 +315,7 @@ export function MergedStepsCard() {
         <ol className="divide-border flex flex-col divide-y">
           {steps.map((step, i) => (
             <li key={step.text} className="flex items-center gap-3 py-3 text-[13px]">
-              <span className="text-accent-ink text-[12px] tabular-nums">0{i + 1}</span>
+              <span className="text-brand-ink text-[12px] tabular-nums">0{i + 1}</span>
               <span className="text-heading flex-1">{step.text}</span>
               <Chip status={step.from === "Mentor" ? "mastered" : "neutral"}>{step.from}</Chip>
             </li>

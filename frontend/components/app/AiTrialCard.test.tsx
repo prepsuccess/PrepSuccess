@@ -20,7 +20,9 @@ describe("AiTrialCard", () => {
 
     expect(await screen.findByText("AI free trial · 87 days left")).toBeInTheDocument();
     expect(screen.getByText(/12 of 200 AI chats used today/)).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "12");
+    const bar = screen.getByRole("progressbar", { name: "AI chats used today" });
+    expect(bar).toHaveAttribute("aria-valuenow", "6"); // 12 of 200 = 6%
+    expect(bar).toHaveAttribute("aria-valuetext", "12 of 200 chats");
   });
 
   it("explains the daily limit when it's reached", async () => {

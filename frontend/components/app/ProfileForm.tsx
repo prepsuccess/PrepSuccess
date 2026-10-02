@@ -1,9 +1,19 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/form";
+import { CircleAlert, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
+import { Button } from "@/components/shadcn/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/shadcn/card";
+import { SelectField, TextField } from "./form-fields";
 import { useUpdateMeMutation } from "@/lib/api/endpoints/users";
 import { errorMessage, fieldErrors } from "@/lib/api/errors";
 import type { AuthUser, UpdateMeRequest } from "@/lib/api/types";
@@ -101,6 +111,7 @@ export function ProfileForm({ user, onDone }: { user: AuthUser; onDone: () => vo
     try {
       // The mutation writes the updated user into the cache, so the details view refreshes itself.
       await updateMe(toPayload(values)).unwrap();
+      toast.success("Profile saved");
       onDone();
     } catch (error) {
       // Server-side validation lands on the matching field; anything else goes in the banner.
@@ -111,45 +122,84 @@ export function ProfileForm({ user, onDone }: { user: AuthUser; onDone: () => vo
   }
 
   return (
-    <form noValidate onSubmit={onSubmit} className="card flex flex-col gap-5 p-5 sm:p-6">
-      {formError ? <Alert tone="error">{formError}</Alert> : null}
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Input label="First name" autoComplete="given-name" required {...field("first_name")} />
-        <Input label="Last name" autoComplete="family-name" {...field("last_name")} />
-        <Input label="College" autoComplete="organization" {...field("college")} />
-        <Input label="Degree" placeholder="BCA, B.Tech, …" {...field("degree")} />
-        <Input label="Branch" placeholder="Computer Applications" {...field("branch")} />
-        <Select
-          label="Year of study"
-          placeholder="Choose your year"
-          options={yearOptions}
-          {...field("student_year")}
-        />
-        <Input
-          label="Graduation year"
-          inputMode="numeric"
-          placeholder="2027"
-          {...field("graduation_year")}
-        />
-        <Input label="Target role" placeholder="SDE, Data Analyst, …" {...field("target_role")} />
-        <Input
-          label="Mobile"
-          type="tel"
-          autoComplete="tel"
-          placeholder="+91 98765 43210"
-          {...field("mobile_no")}
-        />
-        <Input
-          label="Location"
-          autoComplete="address-level2"
-          placeholder="Bengaluru"
-          {...field("location")}
-        />
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" label="Save changes" loading={saving} noArrow />
-        <Button label="Cancel" variant="secondary" onClick={onDone} disabled={saving} />
-      </div>
-    </form>
+    <Card>
+      <form
+        noValidate
+        onSubmit={onSubmit}
+        aria-labelledby="profile-form-title"
+        className="flex flex-col gap-(--card-spacing)"
+      >
+        <CardHeader>
+          <CardTitle id="profile-form-title">Edit details</CardTitle>
+          <CardDescription>
+            Leave a box empty to remove it. Skills and goals come from your onboarding chat.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {formError ? (
+            <Alert variant="destructive">
+              <CircleAlert />
+              <AlertTitle>Couldn&apos;t save your details</AlertTitle>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <TextField
+              label="First name"
+              autoComplete="given-name"
+              required
+              {...field("first_name")}
+            />
+            <TextField label="Last name" autoComplete="family-name" {...field("last_name")} />
+            <TextField label="College" autoComplete="organization" {...field("college")} />
+            <TextField label="Degree" placeholder="e.g. BCA, B.Tech" {...field("degree")} />
+            <TextField
+              label="Branch"
+              placeholder="e.g. Computer Applications"
+              {...field("branch")}
+            />
+            <SelectField
+              label="Year of study"
+              placeholder="Choose your year"
+              options={yearOptions}
+              {...field("student_year")}
+            />
+            <TextField
+              label="Graduation year"
+              inputMode="numeric"
+              placeholder="e.g. 2027"
+              {...field("graduation_year")}
+            />
+            <TextField
+              label="Target role"
+              placeholder="e.g. SDE, Data Analyst"
+              {...field("target_role")}
+            />
+            <TextField
+              label="Mobile"
+              type="tel"
+              autoComplete="tel"
+              placeholder="e.g. +91 98765 43210"
+              {...field("mobile_no")}
+            />
+            <TextField
+              label="Location"
+              autoComplete="address-level2"
+              placeholder="e.g. Bengaluru"
+              {...field("location")}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onDone} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving} aria-busy={saving || undefined}>
+            {saving ? <Loader2 className="animate-spin" aria-hidden /> : null}
+            Save changes
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
   );
 }

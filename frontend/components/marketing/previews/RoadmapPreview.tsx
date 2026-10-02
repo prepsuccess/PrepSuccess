@@ -36,7 +36,7 @@ function Mentor() {
     <MiniWindow title="Mentor session" meta="45 min" className="h-full">
       <div className="border-border bg-surface grid h-24 place-items-center rounded-[6px] border">
         <span className="text-text flex items-center gap-2 text-[11px]">
-          <span className="animate-pulse-dot bg-accent h-2 w-2 rounded-full" />
+          <span className="animate-pulse-dot bg-brand h-2 w-2 rounded-full" />
           Join opens 10 min before
         </span>
       </div>

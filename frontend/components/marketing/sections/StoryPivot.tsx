@@ -12,7 +12,7 @@ export function StoryPivot() {
     <Panel>
       <Section>
         <DrawScope className="relative mx-auto flex max-w-[880px] flex-col items-center text-center">
-          <SketchIcon name="question" delay={0.2} className="text-accent h-16 w-16 -rotate-6" />
+          <SketchIcon name="question" delay={0.2} className="text-brand h-16 w-16 -rotate-6" />
           <SplitHeading className="text-h2 mt-6">
             It was never a lack of effort. It was a lack of <Mark>information</Mark>.
           </SplitHeading>

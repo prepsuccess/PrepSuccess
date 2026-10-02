@@ -121,7 +121,7 @@ export function Arrow({
     <svg
       viewBox="0 0 120 80"
       aria-hidden
-      className={`text-accent overflow-visible ${PENCIL} ${className}`}
+      className={`text-brand overflow-visible ${PENCIL} ${className}`}
     >
       <SketchPath d={shaft} delay={delay} duration={0.7} now={now} />
       <SketchPath d={head} delay={delay + 0.6} duration={0.25} now={now} />
@@ -146,7 +146,7 @@ export function Circled({
         viewBox="0 0 200 80"
         preserveAspectRatio="none"
         aria-hidden
-        className={`text-accent pointer-events-none absolute -top-[18%] -left-[9%] h-[136%] w-[118%] overflow-visible ${PENCIL}`}
+        className={`text-brand pointer-events-none absolute -top-[18%] -left-[9%] h-[136%] w-[118%] overflow-visible ${PENCIL}`}
       >
         <SketchPath
           d="M40 14 C 90 2, 168 4, 190 28 C 206 50, 160 74, 98 75 C 40 76, 4 62, 8 38 C 12 18, 60 8, 132 8"
@@ -178,7 +178,7 @@ export function Underlined({
         viewBox="0 0 200 20"
         preserveAspectRatio="none"
         aria-hidden
-        className={`text-accent pointer-events-none absolute -bottom-[0.16em] -left-[3%] h-[0.28em] w-[106%] overflow-visible ${PENCIL}`}
+        className={`text-brand pointer-events-none absolute -bottom-[0.16em] -left-[3%] h-[0.28em] w-[106%] overflow-visible ${PENCIL}`}
       >
         <SketchPath
           d="M4 12 C 40 5, 80 16, 118 9 S 170 6, 196 11"
@@ -215,7 +215,7 @@ export function Sparkle({
     <svg
       viewBox="0 0 40 40"
       aria-hidden
-      className={`text-accent pointer-events-none absolute overflow-visible ${PENCIL} ${className}`}
+      className={`text-brand pointer-events-none absolute overflow-visible ${PENCIL} ${className}`}
     >
       <SketchPath d="M20 4 L 21 15" delay={delay} duration={0.2} now={now} />
       <SketchPath d="M6 14 L 15 19" delay={delay + 0.15} duration={0.2} now={now} />
@@ -296,7 +296,7 @@ export function HoverScribble({
         viewBox="0 0 200 12"
         preserveAspectRatio="none"
         aria-hidden
-        className={`hover-draw ${active ? "is-active" : ""} text-accent pointer-events-none absolute -bottom-1.5 left-0 h-2.5 w-full overflow-visible ${PENCIL}`}
+        className={`hover-draw ${active ? "is-active" : ""} text-brand pointer-events-none absolute -bottom-1.5 left-0 h-2.5 w-full overflow-visible ${PENCIL}`}
       >
         <path
           d="M2 7 C 50 3, 100 10, 150 5 S 190 6, 198 6"
@@ -370,7 +370,7 @@ export function Annotation({
       className={`pointer-events-none absolute z-20 hidden lg:flex ${layoutClasses[layout]} ${className}`}
     >
       <span
-        className={`ink ${now ? "now" : ""} font-marker text-accent block text-[22px] leading-[1.1] whitespace-pre opacity-90 ${tilt} ${labelClassName}`}
+        className={`ink ${now ? "now" : ""} font-marker text-brand block text-[22px] leading-[1.1] whitespace-pre opacity-90 ${tilt} ${labelClassName}`}
         style={drawStyle(delay + 0.75)}
       >
         {label}

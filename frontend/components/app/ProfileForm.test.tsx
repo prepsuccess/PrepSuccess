@@ -72,6 +72,7 @@ describe("ProfileForm", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(/College/)).toHaveAccessibleDescription("Too long."),
     );
-    expect(screen.queryByRole("alert")).toBeNull();
+    // The message sits on the field (announced there), not in a form-level banner.
+    expect(screen.queryByText(/Couldn.t save your details/)).toBeNull();
   });
 });

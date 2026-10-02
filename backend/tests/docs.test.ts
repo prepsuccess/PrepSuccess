@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { buildOpenApiDocument } from "../src/docs/openapi.js";
 import { authUserSchema } from "../src/modules/auth/auth.schemas.js";
+import { aiRouter } from "../src/modules/ai/ai.routes.js";
 import { authRouter } from "../src/modules/auth/auth.routes.js";
 import { usersRouter } from "../src/modules/users/users.routes.js";
 import { toAuthUser } from "../src/modules/auth/auth.dto.js";
@@ -16,6 +17,7 @@ const doc = buildOpenApiDocument();
 const MOUNTED: [prefix: string, router: Router][] = [
   ["/api/v1/auth", authRouter],
   ["/api/v1/users", usersRouter],
+  ["/api/v1/ai", aiRouter],
 ];
 
 function routesOf(prefix: string, router: Router) {

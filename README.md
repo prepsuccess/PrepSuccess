@@ -9,7 +9,7 @@ Monorepo containing the Next.js frontend, the FastAPI backend, and all product d
 ```
 PrepSuccess/
 ├── frontend/   # Next.js (App Router, TypeScript) web app
-├── backend/    # FastAPI service + SQLAlchemy/Alembic (PostgreSQL)
+├── backend/    # Backend placeholder (service pending scaffold)
 ├── docs/       # Product docs — PRDs, project overview, context
 │   └── prds/   # One PRD per phase / feature area
 └── .github/    # PR template, CI workflows
@@ -24,27 +24,15 @@ All PRDs and planning documents live in `docs/`. Start with
 | Layer    | Choice                                  |
 |----------|-----------------------------------------|
 | Frontend | Next.js + TypeScript                    |
-| Backend  | FastAPI (Python 3.11+)                  |
+| Backend  | FastAPI (Python 3.11+) *(Pending)*       |
 | Database | PostgreSQL (SQLAlchemy + Alembic)       |
 | Auth     | Email + password, Google OAuth          |
 
 ## Getting started
 
-Clone the repo and set up each app separately. Both apps read config from a
-local `.env` file — copy the `.env.example` in each folder and fill in values
+Clone the repo and set up the active application. Config is read from a
+local `.env` file — copy `.env.example` to `.env.local` in `frontend/` and fill in values
 (never commit a real `.env`).
-
-### Backend (FastAPI)
-
-```bash
-cd backend
-python -m venv .venv
-# Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # then edit values
-alembic upgrade head          # run DB migrations
-uvicorn app.main:app --reload # http://localhost:8000  (docs at /docs)
-```
 
 ### Frontend (Next.js)
 
@@ -55,8 +43,9 @@ cp .env.example .env.local    # then edit values
 npm run dev                   # http://localhost:3000
 ```
 
-> The backend scaffold is tracked in SCRUM-8; until it lands, `backend/` is a
-> placeholder. The frontend scaffold (SCRUM-16) is in place.
+### Backend (FastAPI)
+
+> The `backend/` directory is currently a placeholder pending re-scaffold.
 
 ## Contributing
 

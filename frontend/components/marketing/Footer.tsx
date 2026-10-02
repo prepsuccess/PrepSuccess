@@ -64,7 +64,7 @@ export function Footer() {
 
         <div className="border-border mt-12 flex flex-wrap items-center justify-between gap-6 border-t pt-4 pb-6 text-sm">
           <span>© {new Date().getFullYear()} PrepSuccess. All rights reserved.</span>
-          <span className="text-text-dim">First month free</span>
+          <span className="text-text-dim">Free to use</span>
         </div>
       </Container>
     </footer>

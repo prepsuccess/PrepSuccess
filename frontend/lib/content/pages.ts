@@ -73,7 +73,10 @@ export const howItWorks = {
       description:
         "A weak topic comes with why it matters and what to do about it, in plain words.",
     },
-    { title: "Free to start", description: "Your first month is free, with everything included." },
+    {
+      title: "Free to start",
+      description: "Free to use, and the AI coach is free for your first 4 months.",
+    },
   ] satisfies Point[],
 };
 
@@ -127,75 +130,102 @@ export const trackGroups = [
   preview: TrackPreview;
 }[];
 
-export type RoadmapVisual = "core" | "questions" | "mentor" | "resume" | "jobs";
+/** Where a feature stands. Update as things ship — the roadmap page reads straight from this. */
+export type RoadmapStatus = "ready" | "building" | "planned";
 
-export const roadmapItems = [
+export type RoadmapPhase = {
+  id: string;
+  phase: number;
+  /** Now = being built, Next = straight after, Later = planned further out. */
+  stage: "now" | "next" | "later";
+  /** Honest timing — a date only when one is actually set. */
+  timing: string;
+  title: string;
+  why: string;
+  /** How this phase uses what came before it (from the phase PRDs). */
+  buildsOn?: string;
+  features: { label: string; status: RoadmapStatus }[];
+};
+
+// Phases follow docs/project-overview.md §6. Phase 1's launch date is the end of
+// Sprint 3 (Nov 5); later phases have no committed dates yet, so none are shown.
+export const roadmapItems: RoadmapPhase[] = [
   {
-    id: "live",
-    status: "live now",
+    id: "launch",
+    phase: 1,
+    stage: "now",
+    timing: "Launching November 2026",
     title: "Know where you stand",
-    why: "Chat with the AI, prove your skills, and get a dashboard with your next steps.",
+    why: "Tell the AI what you know, get each skill checked, and see exactly what to revise. This is the core of PrepSuccess, and everything after it builds on the results.",
     features: [
-      "Sign up with email or Google",
-      "AI onboarding chat",
-      "Skill checks for everything you claim",
-      "Study material for weak topics",
-      "Your readiness dashboard",
+      { label: "Sign up with email or Google", status: "ready" },
+      { label: "Your profile, editable any time", status: "ready" },
+      { label: "AI onboarding chat", status: "building" },
+      { label: "Skill checks for everything you claim", status: "building" },
+      { label: "Study material for weak topics", status: "building" },
+      { label: "Your readiness dashboard", status: "building" },
     ],
-    visual: "core",
   },
   {
     id: "interview-prep",
-    status: "next up",
+    phase: 2,
+    stage: "next",
+    timing: "Next, after launch",
     title: "Interview prep",
-    why: "Practice questions aimed straight at your gaps.",
+    why: "Practice questions aimed straight at your gaps, with your progress tracked over time instead of a single score.",
+    buildsOn:
+      "Questions are tagged with the same skills you were checked on, so the ones you see first are the ones you need most.",
     features: [
-      "Questions by company, role and topic",
-      "Save and track what you've solved",
-      "See your progress over time",
+      { label: "Questions by company, role and topic", status: "planned" },
+      { label: "Save and track what you've solved", status: "planned" },
+      { label: "Your progress over time", status: "planned" },
     ],
-    visual: "questions",
   },
   {
     id: "mentors",
-    status: "coming soon",
+    phase: 3,
+    stage: "later",
+    timing: "Planned",
     title: "1:1 mentors",
-    why: "Some gaps close faster with a real person.",
+    why: "Some gaps close faster with a real person: book a session with a verified developer and get notes you can act on.",
+    buildsOn:
+      "Your mentor sees only what the session needs, your target role and key gaps, never your full test history.",
     features: [
-      "Video sessions with verified developers",
-      "Book a time that suits you",
-      "Session notes on your dashboard",
+      { label: "Video sessions with verified developers", status: "planned" },
+      { label: "Book a time that suits you", status: "planned" },
+      { label: "Session notes on your dashboard", status: "planned" },
     ],
-    visual: "mentor",
   },
   {
     id: "feedback",
-    status: "coming soon",
+    phase: 4,
+    stage: "later",
+    timing: "Planned",
     title: "Resume & interview feedback",
-    why: "Sharper AI help for the last step before an offer.",
+    why: "Sharper AI help for the last step before an offer, and PrepSuccess opens up to freshers and working professionals.",
+    buildsOn:
+      "Your resume feedback, mentor notes and AI suggestions all land in the same next-steps list on your dashboard.",
     features: [
-      "AI resume feedback",
-      "A downloadable readiness report",
-      "Feedback on practice interviews",
+      { label: "AI resume feedback for your target role", status: "planned" },
+      { label: "A downloadable readiness report", status: "planned" },
+      { label: "Feedback on practice interviews", status: "planned" },
+      { label: "Accounts for freshers and working professionals", status: "planned" },
     ],
-    visual: "resume",
   },
   {
     id: "jobs",
-    status: "later",
+    phase: 5,
+    stage: "later",
+    timing: "Exploring",
     title: "Jobs & internships",
     why: "Go from ready to applying without leaving PrepSuccess.",
-    features: ["Job and internship listings", "Apply with your PrepSuccess profile"],
-    visual: "jobs",
+    buildsOn: "Listings are filtered by the target role you already set in your profile.",
+    features: [
+      { label: "Job and internship listings", status: "planned" },
+      { label: "Apply with your PrepSuccess profile", status: "planned" },
+    ],
   },
-] satisfies {
-  id: string;
-  status: string;
-  title: string;
-  why: string;
-  features: string[];
-  visual: RoadmapVisual;
-}[];
+];
 
 export const audiences = [
   {
@@ -223,40 +253,17 @@ export type Plan = {
   featured?: boolean;
 };
 
-// ₹149/month is the base; the 6-month and yearly notes are worked out from it.
+// Pricing model (docs/PROJECT_CONTEXT.md §4): the platform is free; the AI coach is a
+// free trial (AI_TRIAL_DAYS = 120 on the backend). No paid plan has been decided yet.
 export const pricing = {
   plans: [
     {
       id: "free",
-      name: "First month",
+      name: "PrepSuccess",
       price: "₹0",
-      period: "for 30 days",
-      note: "Everything included. Try it properly.",
+      period: "free to use",
+      note: "The AI coach is free for your first 4 months. No card details needed.",
       cta: "Start free",
-    },
-    {
-      id: "monthly",
-      name: "Monthly",
-      price: "₹149",
-      period: "per month",
-      note: "Pay month by month.",
-      cta: "Choose monthly",
-    },
-    {
-      id: "half-year",
-      name: "6 months",
-      price: "₹500",
-      period: "for 6 months",
-      note: "About ₹83 a month · save 44%",
-      cta: "Choose 6 months",
-    },
-    {
-      id: "yearly",
-      name: "1 year",
-      price: "₹800",
-      period: "for 12 months",
-      note: "About ₹67 a month · save 55%",
-      cta: "Choose 1 year",
       featured: true,
     },
   ] satisfies Plan[],
@@ -269,19 +276,19 @@ export const pricing = {
   ],
   faqs: [
     {
-      question: "Is the first month really free?",
+      question: "Is PrepSuccess really free?",
       answer:
-        "Yes. Your first month includes everything, so you can see where you stand before you pay anything.",
+        "Yes. Signing up, skill checks, study material and your readiness dashboard are free, and we never ask for card details.",
     },
     {
-      question: "What happens after the free month?",
+      question: "What is the AI free trial?",
       answer:
-        "Pick a plan to keep going: ₹149 a month, ₹500 for 6 months or ₹800 for a year. Every plan includes the same features.",
+        "The AI coach (the onboarding chat, adaptive skill checks and AI next steps) is free for your first 4 months. Your dashboard shows how many days are left.",
     },
     {
-      question: "Which plan should I choose?",
+      question: "What happens when the AI trial ends?",
       answer:
-        "If placements are a few months away, 6 months or 1 year works out far cheaper than paying monthly.",
+        "We haven't set a price yet. We'll tell you well before your trial ends, and nothing is ever charged automatically, because we don't have your card.",
     },
     {
       question: "Are mentor sessions included?",

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Annotation, Circled, DrawScope, SketchIcon } from "@/components/ui/Annotation";
+import { Circled, DrawScope, SketchIcon } from "@/components/ui/Annotation";
 import { Button } from "@/components/ui/Button";
 import { MonoLabel } from "@/components/ui/MiniUI";
 import { Section } from "@/components/ui/Section";
@@ -12,32 +12,15 @@ import { faqs, pricing, type Plan } from "@/lib/content";
 export const metadata: Metadata = {
   title: "Pricing — PrepSuccess",
   description:
-    "Your first month on PrepSuccess is free. Then ₹149 a month, ₹500 for 6 months, or ₹800 for a year.",
+    "PrepSuccess is free to use, and the AI coach is free for your first 4 months. No card details needed.",
 };
 
 function PlanCard({ plan }: { plan: Plan }) {
   const saving = plan.note.includes("save");
   return (
     <DrawScope className="group relative h-full">
-      {plan.featured ? (
-        <>
-          <span
-            aria-hidden
-            className="bg-accent/20 absolute -top-3 left-1/2 z-20 h-7 w-24 -translate-x-1/2 -rotate-2"
-          />
-          <Annotation
-            delay={0.5}
-            arrow="down-left"
-            tilt="rotate-[5deg]"
-            label={"best value"}
-            className="-top-20 -right-6"
-            labelClassName="pl-12"
-            arrowClassName="h-[48px] w-[72px]"
-          />
-        </>
-      ) : null}
       <article
-        className={`card flex h-full flex-col p-6 ${plan.featured ? "outline-heading/80 outline-[1.5px] -outline-offset-[1.5px] lg:-rotate-[0.6deg] lg:transition-transform lg:duration-700 lg:group-hover:rotate-0" : ""}`}
+        className={`card flex h-full flex-col p-6 ${plan.featured ? "outline-heading/80 outline-[1.5px] -outline-offset-[1.5px]" : ""}`}
       >
         <MonoLabel>{plan.name}</MonoLabel>
         <p className="text-heading mt-5 text-[44px] leading-none font-semibold tracking-[-0.045em]">
@@ -65,7 +48,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 function Includes() {
   return (
     <DrawScope className="mt-16 flex flex-col items-center gap-6 text-center">
-      <p className="font-marker text-accent -rotate-1 text-[22px]">every plan includes</p>
+      <p className="font-marker text-accent -rotate-1 text-[22px]">what&apos;s included</p>
       <ul className="flex max-w-[900px] flex-wrap justify-center gap-x-8 gap-y-4">
         {pricing.includes.map((item, i) => {
           const delay = 0.3 + i * 0.3;
@@ -102,18 +85,18 @@ export default function PricingPage() {
         eyebrow="pricing"
         title={
           <>
-            Start{" "}
+            Free to use.{" "}
             <Circled now delay={0.5}>
-              free
+              No card
             </Circled>
-            . Stay for less.
+            .
           </>
         }
-        description="Your first month is free, with everything included. Then pick the plan that fits your placement season."
+        description="Everything in PrepSuccess is free, and the AI coach is free for your first 4 months. We'll tell you well before that ends if anything changes."
       />
 
       <Section>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto max-w-[420px]">
           {pricing.plans.map((plan, i) => (
             <Reveal key={plan.id} offset={10} delay={0.08 * i} className="h-full">
               <PlanCard plan={plan} />

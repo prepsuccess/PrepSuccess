@@ -1,27 +1,25 @@
 export const hero = {
+  eyebrow: "For BCA, B.Tech and MCA students heading into placements",
+  title: "Find your weak topics before the interviewer does.",
   description:
-    "Chat with an AI coach, prove the skills you claim, and get a clear plan for what to do next — built for college students heading into placements.",
+    "Tell PrepSuccess the skills you'd put on your resume. It checks each one with short questions and small tasks, marks what needs revision, and shows you exactly what to study next.",
+  facts: ["Free to use", "No card needed", "AI coach free for your first 4 months"],
 };
 
-// Illustrative sample student shown in the hero bento — product mock-up data, not user metrics.
-export const bento = {
-  claims: [
-    { skill: "HTML / CSS", score: 88 },
-    { skill: "JavaScript", score: 71 },
-    { skill: "SQL", score: 34 },
+// Illustrative sample shown in the hero — product mock-up data, not a real student.
+// Marks are out of 100; anything below the pass mark is flagged for revision.
+export const marksheet = {
+  student: { name: "Asha Verma", course: "BCA · Year 3", target: "Frontend developer" },
+  passMark: 40,
+  subjects: [
+    { name: "HTML & CSS", marks: 88 },
+    { name: "JavaScript", marks: 71 },
+    { name: "SQL", marks: 34 },
+    { name: "Aptitude", marks: 58 },
+    { name: "Communication", marks: 64 },
   ],
-  threshold: 40,
-  overall: 72,
-  trend: [48, 53, 51, 60, 64, 69, 72],
-  rounds: [
-    { label: "Resume", icon: "resume" },
-    { label: "Aptitude", icon: "aptitude" },
-    { label: "Technical", icon: "code" },
-    { label: "Communication", icon: "chat" },
-    { label: "HR", icon: "person" },
-  ],
-  currentRound: 2,
-} as const;
+  next: "SQL joins and GROUP BY · 3 short lessons",
+};
 
 export const onboardingChat: { from: "agent" | "user"; text: string }[] = [
   { from: "agent", text: "Hi! Which year are you in, and what's your branch?" },
@@ -67,46 +65,65 @@ export const pillars = [
 
 export type TrackPreview = "code" | "task" | "aptitude" | "communication";
 
+/** How a skill is tested. Each maps to a real assessment mode (PRD-01 §3.5). */
+export type TestMethod = "questions" | "task" | "written";
+
 export const tracks: {
   category: string;
   title: string;
-  description: string;
-  modes: [string, string];
-  preview: TrackPreview;
+  topics: string[];
+  methods: TestMethod[];
 }[] = [
   {
     category: "Technical",
     title: "Data structures & problem solving",
-    description:
-      "Arrays to dynamic programming — diagnosed topic by topic instead of one blended score.",
-    modes: ["Quick questions", "Per-topic mastery"],
-    preview: "code",
+    topics: ["Arrays", "Strings", "Linked lists", "Trees", "Dynamic programming"],
+    methods: ["questions", "task"],
   },
   {
     category: "Technical",
     title: "Web development",
-    description:
-      "Claim HTML, CSS or JavaScript and prove it with a small hands-on task the AI evaluates.",
-    modes: ["Practical task", "AI feedback"],
-    preview: "task",
+    topics: ["HTML", "CSS", "JavaScript", "React"],
+    methods: ["questions", "task"],
   },
   {
     category: "Aptitude",
     title: "Quantitative & logical reasoning",
-    description:
-      "The timed, pattern-based reasoning most placement drives test before the technical round.",
-    modes: ["Quick questions", "Revision material"],
-    preview: "aptitude",
+    topics: ["Percentages", "Time & work", "Probability", "Puzzles"],
+    methods: ["questions"],
   },
   {
     category: "Soft skills",
     title: "Communication & resume",
-    description:
-      "The skills that decide whether a strong technical score actually converts into an offer.",
-    modes: ["Written responses", "AI feedback"],
-    preview: "communication",
+    topics: ["Written answers", "Emails", "Resume clarity"],
+    methods: ["written"],
   },
 ];
+
+// One skill walked through the check, end to end. Illustrative example, not a real student.
+export const skillCheck = {
+  skill: "JavaScript",
+  passMark: 40,
+  marks: 71,
+  steps: [
+    {
+      title: "You claim it",
+      body: "“I know JavaScript.” One line in the onboarding chat, no form to fill in.",
+    },
+    {
+      title: "A few quick questions",
+      body: "Short questions on arrays, closures and async code. Each answer decides what comes next.",
+    },
+    {
+      title: "One small task",
+      body: "Fix a function that filters an array. The AI reads your code, not just the output.",
+    },
+    {
+      title: "Your mark",
+      body: "Scored out of 100 and compared with the pass mark, so you know if it's mastered or needs revision.",
+    },
+  ],
+};
 
 export const dashboardLeft = [
   {
@@ -193,7 +210,7 @@ export const faqs = [
   {
     question: "How much does it cost?",
     answer:
-      "Your first month is free, with everything included. After that it's ₹149 a month, or less on a longer plan.",
+      "PrepSuccess is free to use, and the AI coach is free for your first 4 months. We never ask for card details.",
   },
   {
     question: "How is this different from a mock test?",

@@ -6,7 +6,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { SplitHeading } from "@/components/motion/SplitHeading";
 
 const checklist = [
-  "sign up — first month free",
+  "sign up · it's free",
   "chat with the AI agent",
   "take your first skill check",
   "see where you stand",
@@ -77,7 +77,7 @@ export function CTA() {
                   Stop guessing. Start knowing your <Circled delay={0.1}>readiness</Circled>.
                 </SplitHeading>
                 <Reveal delay={0.2} className="mt-5 max-w-[46ch]">
-                  <p>Your first month is free. Your first skill check takes one chat.</p>
+                  <p>PrepSuccess is free, and the AI coach is free for your first 4 months.</p>
                 </Reveal>
                 <div className="relative mt-10 inline-flex">
                   <Reveal delay={0.3}>

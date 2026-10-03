@@ -17,9 +17,11 @@ import { toApiError, type ApiError } from "./errors";
  *  - unwrapping of the `{ success, data }` envelope — endpoints receive `data`
  *  - one error shape (`ApiError`) for every failure
  *  - silent token refresh: a 401 triggers one `/auth/refresh` (concurrent
- *    requests wait for it), then the request is retried; if refresh fails the
- *    user is signed out (the cache is cleared when the next session starts —
- *    see startSession — so the failing request still reports its 401).
+ *    requests wait for it), then the request is retried; if the server rejects
+ *    the refresh token the user is signed out (the cache is cleared when the
+ *    next session starts — see startSession — so the failing request still
+ *    reports its 401). If the refresh can't get through at all, the user stays
+ *    signed in and the request reports that error instead.
  */
 
 const rawQuery = fetchBaseQuery({
@@ -40,23 +42,42 @@ const NO_REFRESH = [
   "/auth/logout",
 ];
 
-let refreshing: Promise<boolean> | null = null;
+// The refresh endpoint answers these when the session itself is dead. Anything
+// else — offline, a timeout, a 5xx, the 429 rate limit — says nothing about the
+// session, so the student stays signed in and can simply retry.
+const SESSION_REJECTED = [400, 401, 403];
+
+type Refresh =
+  | { outcome: "refreshed" }
+  | { outcome: "rejected" }
+  | {
+      outcome: "failed";
+      error: FetchBaseQueryError;
+    };
+
+let refreshing: Promise<Refresh> | null = null;
 
 /** Exchanges the refresh token once, however many requests hit a 401 at the same time. */
-function refreshSession(api: Parameters<BaseQueryFn>[1], extra: object): Promise<boolean> {
-  refreshing ??= (async () => {
+function refreshSession(api: Parameters<BaseQueryFn>[1], extra: object): Promise<Refresh> {
+  refreshing ??= (async (): Promise<Refresh> => {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
+    if (!refreshToken) return { outcome: "rejected" };
     const result = await rawQuery(
       { url: "/api/v1/auth/refresh", method: "POST", body: { refresh_token: refreshToken } },
       api,
       extra,
     );
+    if (result.error) {
+      const status = result.error.status;
+      return typeof status === "number" && SESSION_REJECTED.includes(status)
+        ? { outcome: "rejected" }
+        : { outcome: "failed", error: result.error };
+    }
     const tokens = (result.data as { data?: { access_token: string; refresh_token: string } })
       ?.data;
-    if (!tokens) return false;
+    if (!tokens) return { outcome: "rejected" };
     saveTokens(tokens.access_token, tokens.refresh_token);
-    return true;
+    return { outcome: "refreshed" };
   })().finally(() => {
     refreshing = null;
   });
@@ -69,11 +90,16 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, ApiError> = async (arg
 
   const url = typeof args === "string" ? args : args.url;
   if (result.error?.status === 401 && !NO_REFRESH.some((path) => url.includes(path))) {
-    if (await refreshSession(api, extra)) {
+    const refresh = await refreshSession(api, extra);
+    if (refresh.outcome === "refreshed") {
       result = await rawQuery(args, api, extra);
-    } else {
+    } else if (refresh.outcome === "rejected") {
       clearTokens();
       api.dispatch(signedOut());
+    } else {
+      // Couldn't reach the refresh endpoint: report that (e.g. "check your
+      // connection") rather than the 401, and keep the tokens for next time.
+      return { error: toApiError(refresh.error) };
     }
   }
 

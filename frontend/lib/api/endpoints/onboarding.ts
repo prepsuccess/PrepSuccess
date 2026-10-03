@@ -41,8 +41,11 @@ export const onboardingApi = baseApi.injectEndpoints({
           optimistic.undo();
         }
       },
-      // Finishing onboarding changes the dashboard's next steps and the claimed skills.
-      invalidatesTags: (result) => (result?.onboarding.completed ? ["Dashboard", "MySkills"] : []),
+      // Every reply is one AI call, and a failure may be the daily limit, so AI
+      // usage is refetched either way. Finishing onboarding also changes the
+      // dashboard's next steps and the claimed skills.
+      invalidatesTags: (result) =>
+        result?.onboarding.completed ? ["AiStatus", "Dashboard", "MySkills"] : ["AiStatus"],
     }),
   }),
 });

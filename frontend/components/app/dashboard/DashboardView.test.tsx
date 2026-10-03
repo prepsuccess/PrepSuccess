@@ -292,8 +292,9 @@ describe("DashboardView", () => {
     );
     renderDashboard();
 
-    await screen.findByRole("region", { name: "Readiness" });
-    await waitFor(() => expect(statusCalls).toBe(1));
+    // Once on load, then again after the coach's take, which may have used AI.
+    await screen.findByText(insight.summary!);
+    await waitFor(() => expect(statusCalls).toBe(2));
     expect(screen.queryByText(/AI chats/)).not.toBeInTheDocument();
   });
 

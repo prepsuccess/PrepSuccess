@@ -1,31 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Area,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  Pie,
-  PieChart,
-  PolarAngleAxis,
-  RadialBar,
-  RadialBarChart,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { Button } from "@/components/shadcn/button";
+import { ArrowRight } from "lucide-react";
+import { Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/shadcn/chart";
-import type { Dashboard, DashboardSkillResult, NextStep } from "@/lib/api/types";
-import { DashCard, Pill } from "./DashCard";
-import { PALETTE, PASS_MARK, readinessBand, shortDate } from "./shared";
+import type { Dashboard, DashboardSkillResult } from "@/lib/api/types";
+import { DashCard } from "./DashCard";
+import { PALETTE, PASS_MARK, shortDate } from "./shared";
+
+/** Skill scores lists this many, weakest first, so the row it sits in stays short. */
+const SKILL_LIMIT = 6;
 
 /** A dashed, centred note where a chart will appear once there's data. */
 function ChartPlaceholder({ children, className }: { children: string; className: string }) {
@@ -40,85 +29,6 @@ function ChartPlaceholder({ children, className }: { children: string; className
 
 const shorten = (name: string, max = 18) =>
   name.length > max ? `${name.slice(0, max - 1)}…` : name;
-
-// ---------------------------------------------------------------------------
-// Readiness gauge (the reference's 75% ring with a button)
-// ---------------------------------------------------------------------------
-
-export function ReadinessGauge({
-  readiness,
-  topStep,
-  className,
-}: {
-  readiness: Dashboard["readiness"];
-  topStep?: NextStep;
-  className?: string;
-}) {
-  const score = readiness.score;
-  const config = { score: { label: "Readiness", color: PALETTE.indigo } } satisfies ChartConfig;
-
-  return (
-    <DashCard
-      title="Readiness"
-      description="Weighted across everything you've checked"
-      className={className}
-    >
-      <div className="relative mx-auto w-full max-w-[240px]">
-        <ChartContainer config={config} className="aspect-square w-full">
-          <RadialBarChart
-            data={[{ score: score ?? 0 }]}
-            innerRadius="80%"
-            outerRadius="100%"
-            startAngle={90}
-            endAngle={-270}
-          >
-            <defs>
-              <linearGradient id="gauge-fill" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={PALETTE.indigoSoft} />
-                <stop offset="100%" stopColor={PALETTE.indigo} />
-              </linearGradient>
-            </defs>
-            <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
-            <RadialBar
-              dataKey="score"
-              fill="url(#gauge-fill)"
-              cornerRadius={99}
-              background={{ fill: "color-mix(in oklab, var(--dash-indigo-soft) 35%, transparent)" }}
-            />
-          </RadialBarChart>
-        </ChartContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-foreground text-5xl font-light tracking-tight tabular-nums">
-            {score ?? "—"}
-            {score !== null ? (
-              <span className="text-muted-foreground ml-0.5 text-base">/100</span>
-            ) : null}
-          </span>
-        </div>
-      </div>
-      <p className="text-muted-foreground mt-4 text-center text-sm leading-relaxed">
-        {score === null ? (
-          "Take your first skill check to get a readiness score."
-        ) : (
-          <>
-            <span className="text-foreground font-medium">{readinessBand(score)}.</span> Technical
-            counts most, then aptitude, then soft skills.
-          </>
-        )}
-      </p>
-      <div className="mt-auto pt-5">
-        <Button
-          asChild
-          className="bg-dash-indigo hover:bg-dash-indigo/90 h-11 w-full min-w-0 rounded-full px-5 text-white dark:text-white"
-        >
-          <Link href={topStep?.href ?? "/assessment"} title={topStep?.title}>
-            <span className="truncate">{topStep?.title ?? "Take a skill check"}</span>
-          </Link>
-        </Button>
-      </div>
-    </DashCard>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Readiness over time (the reference's two-line chart)
@@ -141,7 +51,6 @@ export function TrendChart({
     <DashCard
       title="Progress over time"
       description="Readiness after each check, and what you scored on it"
-      action={<Pill>All time</Pill>}
       className={className}
     >
       {points.length > 1 ? (
@@ -233,12 +142,28 @@ export function SkillScores({
   skills: DashboardSkillResult[];
   className?: string;
 }) {
+  const shown = skills.slice(0, SKILL_LIMIT);
   return (
-    <DashCard title="Skill scores" description="Latest check, weakest first" className={className}>
+    <DashCard
+      title="Skill scores"
+      description="Latest check, weakest first"
+      action={
+        skills.length > SKILL_LIMIT ? (
+          <Link
+            href="/assessment"
+            className="text-dash-indigo flex shrink-0 items-center gap-1 text-xs font-medium hover:underline"
+          >
+            See all {skills.length}
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        ) : null
+      }
+      className={className}
+    >
       {skills.length ? (
         <>
           <ul className="space-y-3.5">
-            {skills.map((s) => {
+            {shown.map((s) => {
               const mastered = s.mastery === "mastered";
               return (
                 <li key={s.skill_id}>
@@ -393,71 +318,6 @@ export function RetakeBars({
       ) : (
         <ChartPlaceholder className="h-[254px]">
           Retake a skill after revising it to see how much you improved.
-        </ChartPlaceholder>
-      )}
-    </DashCard>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Mastered vs needs revision (donut)
-// ---------------------------------------------------------------------------
-
-export function MasteryDonut({
-  counts,
-  className,
-}: {
-  counts: Dashboard["counts"];
-  className?: string;
-}) {
-  const total = counts.mastered + counts.needs_revision;
-  const mastered = total ? Math.round((counts.mastered / total) * 100) : 0;
-  const config = {
-    mastered: { label: "Mastered", color: PALETTE.indigo },
-    revise: { label: "Needs revision", color: PALETTE.coral },
-  } satisfies ChartConfig;
-
-  return (
-    <DashCard
-      title="Mastery"
-      description="Share of the skills you've checked"
-      action={<Pill>All time</Pill>}
-      className={className}
-    >
-      {total ? (
-        <div className="relative mx-auto w-full max-w-[230px]">
-          <ChartContainer config={config} className="aspect-square w-full">
-            <PieChart>
-              <Pie
-                data={[
-                  { key: "mastered", value: counts.mastered, fill: PALETTE.indigo },
-                  { key: "revise", value: counts.needs_revision, fill: PALETTE.coral },
-                ]}
-                dataKey="value"
-                nameKey="key"
-                innerRadius="64%"
-                outerRadius="100%"
-                paddingAngle={total > 1 && counts.mastered && counts.needs_revision ? 3 : 0}
-                cornerRadius={4}
-                startAngle={90}
-                endAngle={-270}
-                stroke="none"
-              />
-            </PieChart>
-          </ChartContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <p className="text-dash-indigo text-2xl font-semibold tabular-nums">{mastered}%</p>
-            <p className="text-muted-foreground -mt-0.5 text-xs">Mastered</p>
-            <span className="bg-border my-1.5 h-px w-12" aria-hidden />
-            <p className="text-dash-coral-ink text-2xl font-semibold tabular-nums">
-              {100 - mastered}%
-            </p>
-            <p className="text-muted-foreground -mt-0.5 text-xs">Needs revision</p>
-          </div>
-        </div>
-      ) : (
-        <ChartPlaceholder className="mx-auto aspect-square w-full max-w-[230px] rounded-full">
-          Your mastery split appears after your first check.
         </ChartPlaceholder>
       )}
     </DashCard>

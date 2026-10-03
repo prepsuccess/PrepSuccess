@@ -11,6 +11,18 @@ export function CategoryBars({ readiness }: { readiness: Dashboard["readiness"] 
           const { label, color } = CATEGORY_META[c.category];
           return (
             <li key={c.category} className="space-y-1.5">
+              {/* Label above the bar, the same as Skill scores. */}
+              <div className="flex justify-between text-xs">
+                <span className="text-foreground font-medium">
+                  {label}{" "}
+                  <span className="text-muted-foreground font-normal">
+                    · weight {readiness.weights[c.category]}%
+                  </span>
+                </span>
+                <span className="text-foreground font-semibold tabular-nums">
+                  {c.score === null ? "Not checked" : `${c.score}%`}
+                </span>
+              </div>
               <div
                 role="meter"
                 aria-label={`${label} score`}
@@ -24,14 +36,6 @@ export function CategoryBars({ readiness }: { readiness: Dashboard["readiness"] 
                   className="h-full rounded-full transition-[width] duration-700"
                   style={{ width: `${c.score ?? 0}%`, background: color }}
                 />
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">
-                  {label} · weight {readiness.weights[c.category]}%
-                </span>
-                <span className="text-foreground font-medium tabular-nums">
-                  {c.score === null ? "Not checked" : `${c.score}%`}
-                </span>
               </div>
             </li>
           );

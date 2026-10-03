@@ -6,7 +6,7 @@ import { Button } from "@/components/shadcn/button";
 import { cn } from "@/lib/utils/cn";
 import { DashCard } from "./DashCard";
 
-const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
@@ -27,6 +27,7 @@ export function PracticeCalendar({
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const practised = new Set(checkDates.map((iso) => dayKey(new Date(iso))));
   const monthName = month.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const monthShort = month.toLocaleDateString("en-IN", { month: "long" });
   const inMonth = checkDates.filter((iso) => {
     const d = new Date(iso);
     return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
@@ -38,81 +39,86 @@ export function PracticeCalendar({
   ];
 
   return (
-    <DashCard className={className}>
-      <div className="mb-3 flex items-center justify-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-dash-coral-ink size-8"
-          aria-label="Previous month"
-          onClick={() => setOffset((o) => o - 1)}
-        >
-          <ChevronLeft />
-        </Button>
-        <h2
-          className="text-foreground min-w-36 text-center text-[15px] font-semibold"
-          aria-live="polite"
-        >
-          {monthName}
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-dash-coral-ink size-8"
-          aria-label="Next month"
-          disabled={offset >= 0}
-          onClick={() => setOffset((o) => o + 1)}
-        >
-          <ChevronRight />
-        </Button>
-      </div>
-      <div
-        role="grid"
-        aria-label={`Practice days in ${monthName}`}
-        className="grid grid-cols-7 gap-y-1 text-center text-sm"
-      >
-        {WEEKDAYS.map((d) => (
-          <span key={d} role="columnheader" className="text-muted-foreground pb-1 text-xs">
-            {d}
-          </span>
-        ))}
-        {cells.map((day, i) => {
-          if (day === null) return <span key={`blank-${i}`} aria-hidden />;
-          const date = new Date(month.getFullYear(), month.getMonth(), day);
-          const isToday = dayKey(date) === dayKey(today);
-          const didPractise = practised.has(dayKey(date));
-          return (
-            <span
-              key={day}
-              role="gridcell"
-              className="flex justify-center"
-              aria-label={`${day}${didPractise ? ", checks taken" : ""}${isToday ? ", today" : ""}`}
+    <DashCard
+      title="Practice calendar"
+      description="Days you finished a skill check"
+      className={className}
+    >
+      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-foreground text-sm font-medium" aria-live="polite">
+            {monthName}
+          </p>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground size-8"
+              aria-label="Previous month"
+              onClick={() => setOffset((o) => o - 1)}
             >
-              <span
-                aria-hidden
-                className={cn(
-                  "text-foreground/80 flex size-8 items-center justify-center rounded-full text-[13px] tabular-nums",
-                  didPractise && "border-dash-indigo text-dash-indigo border-2 font-semibold",
-                  isToday && !didPractise && "border-dash-coral text-dash-coral-ink border-2",
-                  isToday && didPractise && "bg-dash-indigo text-white",
-                )}
-              >
-                {day}
-              </span>
+              <ChevronLeft />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground size-8"
+              aria-label="Next month"
+              disabled={offset >= 0}
+              onClick={() => setOffset((o) => o + 1)}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+        </div>
+        <div
+          role="grid"
+          aria-label={`Practice days in ${monthName}`}
+          className="grid grid-cols-7 gap-y-1 text-center text-sm"
+        >
+          {WEEKDAYS.map((d) => (
+            <span key={d} role="columnheader" className="text-muted-foreground pb-1 text-xs">
+              {d}
             </span>
-          );
-        })}
+          ))}
+          {cells.map((day, i) => {
+            if (day === null) return <span key={`blank-${i}`} aria-hidden />;
+            const date = new Date(month.getFullYear(), month.getMonth(), day);
+            const isToday = dayKey(date) === dayKey(today);
+            const didPractise = practised.has(dayKey(date));
+            return (
+              <span
+                key={day}
+                role="gridcell"
+                className="flex justify-center"
+                aria-label={`${day}${didPractise ? ", checks taken" : ""}${isToday ? ", today" : ""}`}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "text-foreground/80 flex size-8 items-center justify-center rounded-full text-[13px] tabular-nums",
+                    didPractise && "border-dash-indigo text-dash-indigo border-2 font-semibold",
+                    isToday && !didPractise && "border-dash-coral text-dash-coral-ink border-2",
+                    isToday && didPractise && "bg-dash-indigo text-white",
+                  )}
+                >
+                  {day}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground mt-auto flex items-center justify-center gap-4 pt-3 text-xs">
+          <span className="flex items-center gap-1.5">
+            <span className="border-dash-indigo size-2.5 rounded-full border-2" aria-hidden />
+            {inMonth} check{inMonth === 1 ? "" : "s"} in {monthShort}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="border-dash-coral size-2.5 rounded-full border-2" aria-hidden />
+            Today
+          </span>
+        </p>
       </div>
-      <p className="text-muted-foreground mt-3 flex items-center justify-center gap-4 text-xs">
-        <span className="flex items-center gap-1.5">
-          <span className="border-dash-indigo size-2.5 rounded-full border-2" aria-hidden />
-          {inMonth} check{inMonth === 1 ? "" : "s"} this month
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="border-dash-coral size-2.5 rounded-full border-2" aria-hidden />
-          Today
-        </span>
-      </p>
     </DashCard>
   );
 }

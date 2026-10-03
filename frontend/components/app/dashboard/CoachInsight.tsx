@@ -19,7 +19,10 @@ function updatedLabel(iso: string) {
 
 const TITLE = "Your coach's take";
 const DESCRIPTION = "Written by AI from your results and target role";
-const COLUMNS = "grid gap-4 lg:grid-cols-3";
+// Sized by the card, not the viewport: the summary sits on top while the card
+// is narrow, then the three panels go side by side.
+const COLUMNS = "grid gap-4 @lg:grid-cols-2 @4xl:grid-cols-3";
+const SUMMARY = "@lg:col-span-2 @4xl:col-span-1";
 const PANEL = "bg-dash-canvas/60 space-y-2 rounded-2xl p-4";
 
 function TitleIcon() {
@@ -41,15 +44,31 @@ export function CoachInsightSkeleton({
   return (
     <DashCard title={TITLE} description={DESCRIPTION} className={className} aria-busy>
       {message ? <p className="text-muted-foreground mb-3 text-sm">{message}</p> : null}
-      <div className={COLUMNS}>
-        {[0, 1, 2].map((col) => (
-          <div key={col} className={PANEL}>
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-3.5 w-full" />
-            <Skeleton className="h-3.5 w-11/12" />
-            <Skeleton className="h-3.5 w-4/5" />
-          </div>
-        ))}
+      <div className="@container">
+        <div className={COLUMNS}>
+          {[0, 1, 2].map((col) => (
+            <div key={col} className={cn(PANEL, col === 0 && SUMMARY)}>
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-11/12" />
+              <Skeleton className="h-3.5 w-4/5" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </DashCard>
+  );
+}
+
+/** Holds the coach's place before there's anything to read, without calling the AI. */
+export function CoachInsightPlaceholder({ className }: { className?: string }) {
+  return (
+    <DashCard title={TITLE} description={DESCRIPTION} action={<TitleIcon />} className={className}>
+      <div className="text-muted-foreground border-dash-indigo-soft/70 flex flex-1 items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center text-sm">
+        <p className="max-w-80">
+          Finish your first skill check and your coach will explain where you stand, what to work
+          on, and a plan for this week.
+        </p>
       </div>
     </DashCard>
   );
@@ -93,7 +112,7 @@ export function CoachInsight({ className }: { className?: string }) {
   }
 
   const insight = query.data;
-  if (insight.status === "empty") return null;
+  if (insight.status === "empty") return <CoachInsightPlaceholder className={className} />;
 
   return (
     <DashCard
@@ -108,59 +127,61 @@ export function CoachInsight({ className }: { className?: string }) {
       }
       className={cn(query.isFetching && "opacity-70 transition-opacity", className)}
     >
-      <div className={COLUMNS}>
-        <section aria-labelledby="coach-summary" className={PANEL}>
-          <h3 id="coach-summary" className="text-dash-indigo text-sm font-semibold">
-            Where you stand
-          </h3>
-          <p className="text-foreground/85 text-sm leading-relaxed">{insight.summary}</p>
-        </section>
+      <div className="@container">
+        <div className={COLUMNS}>
+          <section aria-labelledby="coach-summary" className={cn(PANEL, SUMMARY)}>
+            <h3 id="coach-summary" className="text-dash-indigo text-sm font-semibold">
+              Where you stand
+            </h3>
+            <p className="text-foreground/85 text-sm leading-relaxed">{insight.summary}</p>
+          </section>
 
-        <section aria-labelledby="coach-gaps" className={PANEL}>
-          <h3 id="coach-gaps" className="text-dash-coral-ink text-sm font-semibold">
-            What to work on
-          </h3>
-          {insight.gaps.length ? (
-            <ul className="space-y-3">
-              {insight.gaps.map((gap) => (
-                <li key={gap.skill_id} className="text-sm">
-                  <p className="text-foreground font-medium">{gap.name}</p>
-                  <p className="text-muted-foreground mt-0.5">{gap.why}</p>
-                  <p className="text-muted-foreground mt-1">
-                    <span className="text-foreground font-medium">Try: </span>
-                    {gap.how}
-                  </p>
+          <section aria-labelledby="coach-gaps" className={PANEL}>
+            <h3 id="coach-gaps" className="text-dash-coral-ink text-sm font-semibold">
+              What to work on
+            </h3>
+            {insight.gaps.length ? (
+              <ul className="space-y-3">
+                {insight.gaps.map((gap) => (
+                  <li key={gap.skill_id} className="text-sm">
+                    <p className="text-foreground font-medium">{gap.name}</p>
+                    <p className="text-muted-foreground mt-0.5">{gap.why}</p>
+                    <p className="text-muted-foreground mt-1">
+                      <span className="text-foreground font-medium">Try: </span>
+                      {gap.how}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Nothing below the pass mark — keep checking new skills.
+              </p>
+            )}
+          </section>
+
+          <section aria-labelledby="coach-plan" className={PANEL}>
+            <h3 id="coach-plan" className="text-dash-indigo text-sm font-semibold">
+              This week
+            </h3>
+            <ol className="space-y-3">
+              {insight.plan.map((step, index) => (
+                <li key={step.title} className="flex gap-3 text-sm">
+                  <span
+                    aria-hidden
+                    className="bg-dash-indigo flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                  >
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="text-foreground font-medium">{step.title}</p>
+                    <p className="text-muted-foreground">{step.detail}</p>
+                  </div>
                 </li>
               ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Nothing below the pass mark — keep checking new skills.
-            </p>
-          )}
-        </section>
-
-        <section aria-labelledby="coach-plan" className={PANEL}>
-          <h3 id="coach-plan" className="text-dash-indigo text-sm font-semibold">
-            This week
-          </h3>
-          <ol className="space-y-3">
-            {insight.plan.map((step, index) => (
-              <li key={step.title} className="flex gap-3 text-sm">
-                <span
-                  aria-hidden
-                  className="bg-dash-indigo flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                >
-                  {index + 1}
-                </span>
-                <div>
-                  <p className="text-foreground font-medium">{step.title}</p>
-                  <p className="text-muted-foreground">{step.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+            </ol>
+          </section>
+        </div>
       </div>
     </DashCard>
   );

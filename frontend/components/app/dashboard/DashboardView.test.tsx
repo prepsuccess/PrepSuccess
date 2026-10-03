@@ -144,16 +144,16 @@ describe("DashboardView", () => {
     );
     renderDashboard();
 
-    const standing = await screen.findByRole("region", { name: "Your standing" });
-    expect(standing).toHaveTextContent("appears after your first check");
+    const readiness = await screen.findByRole("region", { name: "Readiness" });
+    expect(readiness).toHaveTextContent("Appears after your first check");
+    expect(card("Needs revision")).toHaveTextContent("Skills below the pass mark show here");
     expect(card("Progress over time")).toHaveTextContent("starts after your first two checks");
     expect(card("Skill scores")).toHaveTextContent("appears here");
-    // The gauge's button is the top next step.
-    expect(within(card("Readiness")).getByRole("link", { name: "Check your SQL" })).toHaveAttribute(
-      "href",
-      "/assessment",
-    );
-    expect(screen.queryByRole("region", { name: "Your coach's take" })).not.toBeInTheDocument();
+    expect(
+      within(card("Next steps")).getByRole("link", { name: /Check your SQL/ }),
+    ).toHaveAttribute("href", "/assessment");
+    // The coach keeps its place, but the AI isn't asked until there's a result.
+    expect(card("Your coach's take")).toHaveTextContent("Finish your first skill check");
     expect(insightCalls).toBe(0);
   });
 
@@ -165,9 +165,11 @@ describe("DashboardView", () => {
     );
     renderDashboard();
 
-    const standing = await screen.findByRole("region", { name: "Your standing" });
-    expect(standing).toHaveTextContent("Readiness out of 100, up 11 since your last check");
-    expect(standing).toHaveTextContent("below the 40% pass mark, of 2 checked");
+    const readiness = await screen.findByRole("region", { name: "Readiness" });
+    expect(readiness).toHaveTextContent("40/ 100");
+    expect(readiness).toHaveTextContent("Getting there · up 11 since last check");
+    expect(card("Needs revision")).toHaveTextContent("Below the 40% pass mark, of 2 checked");
+    expect(card("Checks this month")).toHaveTextContent("3");
 
     expect(screen.getByRole("meter", { name: "Technical score" })).toHaveAttribute(
       "aria-valuetext",
@@ -180,7 +182,6 @@ describe("DashboardView", () => {
     expect(
       screen.getByRole("img", { name: "Mastered: 1, Needs revision: 1, Not checked yet: 1" }),
     ).toBeInTheDocument();
-    expect(card("Mastery")).toHaveTextContent("50%");
     expect(card("Before and after")).toHaveTextContent("1 skill retaken");
     expect(
       within(card("Skill scores")).getByRole("link", {
@@ -208,8 +209,82 @@ describe("DashboardView", () => {
     expect(
       await screen.findByRole("gridcell", { name: `${day}, checks taken, today` }),
     ).toBeInTheDocument();
-    expect(screen.getByText("3 checks this month")).toBeInTheDocument();
+    const month = new Date().toLocaleDateString("en-IN", { month: "long" });
+    expect(screen.getByText(`3 checks in ${month}`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled();
+  });
+
+  it("lists the six weakest skills and links to the rest", async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({
+      ...dsa,
+      skill_id: `00000000-0000-4000-8000-00000000010${i}`,
+      assessment_id: `00000000-0000-4000-8000-00000000020${i}`,
+      name: `Skill ${i + 1}`,
+    }));
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok({ ...withResults, skills: many })),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+    );
+    renderDashboard();
+
+    const scores = await screen.findByRole("region", { name: "Skill scores" });
+    expect(within(scores).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(scores).getByRole("link", { name: "See all 8" })).toHaveAttribute(
+      "href",
+      "/assessment",
+    );
+  });
+
+  it("shows today's AI usage and the trial in the stat row", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(withResults)),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+    );
+    renderDashboard();
+
+    const bar = await screen.findByRole("progressbar", { name: "AI chats used today" });
+    expect(bar).toHaveAttribute("aria-valuetext", "3 of 200 chats");
+    expect(card("AI chats today")).toHaveTextContent("Free trial · 87 days left");
+  });
+
+  it("explains the AI daily limit when it's reached", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(empty)),
+      http.get(`${API}/api/v1/ai/status`, () =>
+        ok({
+          ...aiStatus,
+          allowed: false,
+          reason: "AI_DAILY_LIMIT",
+          today: { requests: 200, limit: 200 },
+        }),
+      ),
+    );
+    renderDashboard();
+
+    expect(await screen.findByText(/Daily limit reached/)).toBeInTheDocument();
+  });
+
+  it("offers a retry when the AI usage can't load, without hiding the numbers", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(empty)),
+      http.get(`${API}/api/v1/ai/status`, () => {
+        attempts += 1;
+        return attempts === 1 ? fail(500, "INTERNAL_SERVER_ERROR", "Boom.") : ok(aiStatus);
+      }),
+    );
+    renderDashboard();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your AI usage.");
+    expect(card("Readiness")).toBeInTheDocument();
+
+    await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByRole("progressbar", { name: "AI chats used today" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the numbers when the coach's take fails, and offers a retry", async () => {

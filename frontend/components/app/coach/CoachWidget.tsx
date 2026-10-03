@@ -225,7 +225,7 @@ function CoachPanel({ onClose }: { onClose: () => void }) {
             maxLength={MAX_CHARS}
             disabled={outOfMessages}
             placeholder="Ask anything about your prep…"
-            className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 field-sizing-content max-h-32 min-h-10 flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus-visible:ring-3 disabled:opacity-50"
+            className="border-input bg-background focus-visible:border-ring field-sizing-content max-h-32 min-h-10 flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none disabled:opacity-50"
           />
           <Button
             type="submit"

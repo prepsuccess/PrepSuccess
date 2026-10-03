@@ -3,7 +3,13 @@
 import { useId, type ComponentProps } from "react";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/shadcn/field";
 import { Input } from "@/components/shadcn/input";
-import { NativeSelect, NativeSelectOption } from "@/components/shadcn/native-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 
 /**
  * shadcn Field wiring for the app's forms: a visible label tied to the control,
@@ -62,47 +68,63 @@ export function TextField({ id, label, description, error, required, ...props }:
   );
 }
 
-type SelectFieldProps = Omit<ComponentProps<typeof NativeSelect>, "id"> & {
+type SelectFieldProps = {
   id?: string;
+  name?: string;
   label: string;
   options: { value: string; label: string }[];
-  /** Shown as a disabled first option while nothing is chosen. */
+  /** Shown in the box while nothing is chosen. */
   placeholder?: string;
   description?: string;
   error?: string;
+  value: string;
+  /** Same shape as an input's change event, so forms can share one handler. */
+  onChange: (event: { target: { value: string } }) => void;
+  disabled?: boolean;
+  required?: boolean;
 };
 
-/** A native <select> in shadcn styling: the platform picker on phones, and keyboard-friendly. */
+/** A styled dropdown (shadcn/Radix Select): the open list matches the app instead of the browser's. */
 export function SelectField({
   id,
+  name,
   label,
   options,
   placeholder,
   description,
   error,
-  ...props
+  value,
+  onChange,
+  disabled,
+  required,
 }: SelectFieldProps) {
   const ids = useFieldIds(id, error, description);
   return (
     <Field data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={ids.inputId}>{label}</FieldLabel>
-      <NativeSelect
-        id={ids.inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={ids.describedBy}
-        {...props}
+      <Select
+        name={name}
+        // Radix treats "" as no choice, which shows the placeholder.
+        value={value || undefined}
+        onValueChange={(next) => onChange({ target: { value: next } })}
+        disabled={disabled}
+        required={required}
       >
-        {placeholder ? (
-          <NativeSelectOption value="" disabled>
-            {placeholder}
-          </NativeSelectOption>
-        ) : null}
-        {options.map((option) => (
-          <NativeSelectOption key={option.value} value={option.value}>
-            {option.label}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+        <SelectTrigger
+          id={ids.inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={ids.describedBy}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {error ? (
         <FieldError id={ids.errorId}>{error}</FieldError>
       ) : description ? (

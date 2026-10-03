@@ -48,7 +48,7 @@ describe("CoachWidget", () => {
     renderCoach();
 
     await userEvent.click(screen.getByRole("button", { name: "Ask your AI coach" }));
-    const chat = screen.getByRole("dialog", { name: "Your AI coach" });
+    const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
     expect(await within(chat).findByText("20 of 20 messages left today")).toBeInTheDocument();
     expect(
       within(chat).getByRole("button", { name: "How do I improve my SQL?" }),
@@ -83,7 +83,7 @@ describe("CoachWidget", () => {
     );
     renderCoach();
     await userEvent.click(screen.getByRole("button", { name: "Ask your AI coach" }));
-    const chat = screen.getByRole("dialog", { name: "Your AI coach" });
+    const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
 
     await userEvent.click(
       await within(chat).findByRole("button", { name: "How do I improve my SQL?" }),
@@ -102,7 +102,7 @@ describe("CoachWidget", () => {
     );
     renderCoach();
     await userEvent.click(screen.getByRole("button", { name: "Ask your AI coach" }));
-    const chat = screen.getByRole("dialog", { name: "Your AI coach" });
+    const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
 
     const box = await within(chat).findByLabelText("Ask your coach");
     await userEvent.type(box, "Explain normalisation{Enter}");
@@ -114,7 +114,7 @@ describe("CoachWidget", () => {
     server.use(http.get(`${API}/api/v1/ai/coach`, () => ok({ ...empty, usage: usage(20) })));
     renderCoach();
     await userEvent.click(screen.getByRole("button", { name: "Ask your AI coach" }));
-    const chat = screen.getByRole("dialog", { name: "Your AI coach" });
+    const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
     expect(await within(chat).findByText(/used today's 20 messages/)).toBeInTheDocument();
     expect(within(chat).getByLabelText("Ask your coach")).toBeDisabled();
   });

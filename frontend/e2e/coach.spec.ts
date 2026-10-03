@@ -50,7 +50,7 @@ test("the coach checks in with a toast that opens the chat", async ({ page }) =>
   await expect(toast).toContainText(TIP);
   await toast.getByRole("button", { name: "Open chat" }).click();
 
-  const chat = page.getByRole("dialog", { name: "Your AI coach" });
+  const chat = page.getByRole("dialog", { name: "PrepSuccess coach" });
   await expect(chat).toContainText("Check-in");
   await expect(chat).toContainText(TIP);
   await expect(chat).toContainText("20 of 20 messages left today");
@@ -61,7 +61,7 @@ test("the corner button opens and closes the coach", async ({ page }) => {
   const api = await signIn(page);
   await page.goto("/dashboard");
   await page.getByRole("button", { name: "Ask your AI coach" }).click();
-  const chat = page.getByRole("dialog", { name: "Your AI coach" });
+  const chat = page.getByRole("dialog", { name: "PrepSuccess coach" });
   await expect(chat.getByRole("button", { name: "What should I work on next?" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(chat).toBeHidden();

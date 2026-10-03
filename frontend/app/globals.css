@@ -134,9 +134,11 @@
   --chart-3: #a7d4f7;
   --chart-4: oklch(0.985 0 0);
   --chart-5: oklch(0.708 0 0);
-  --dash-canvas: #121320;
+  /* Dark: tiles and tracks use the app's neutral greys (navy tints looked muddy);
+     indigo and coral stay as accents only. */
+  --dash-canvas: oklch(0.235 0 0);
   --dash-indigo: #8e8ff7;
-  --dash-indigo-soft: #4a4b9c;
+  --dash-indigo-soft: oklch(0.34 0 0);
   --dash-coral: #f49a74;
   --dash-coral-soft: #8a4c34;
   --dash-coral-ink: #f49a74;

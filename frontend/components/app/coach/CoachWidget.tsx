@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { CircleAlert, RotateCcw, SendHorizontal, Sparkles, X } from "lucide-react";
+import { Bot, CircleAlert, RotateCcw, SendHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/shadcn/button";
 import { Prose } from "@/components/app/learning/Prose";
 import { Spinner } from "@/components/ui/Spinner";
@@ -109,13 +109,13 @@ function CoachPanel({ onClose }: { onClose: () => void }) {
       <header className="flex items-center gap-3 border-b px-4 py-3">
         <span
           aria-hidden
-          className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-sky-500 to-violet-600 text-white"
+          className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-xl"
         >
-          <Sparkles className="size-4" />
+          <Bot className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
           <h2 id={titleId} className="text-foreground text-sm font-semibold">
-            Your AI coach
+            PrepSuccess coach
           </h2>
           <p className="text-muted-foreground text-xs">
             {data
@@ -263,12 +263,12 @@ export function CoachWidget() {
           aria-label={open ? "Close coach" : "Ask your AI coach"}
           aria-expanded={open}
           className={cn(
-            "fixed right-5 bottom-5 z-40 size-14 rounded-full bg-linear-to-br from-sky-500 to-violet-600 text-white shadow-lg hover:opacity-95",
+            "bg-primary text-primary-foreground hover:bg-primary/90 fixed right-5 bottom-5 z-40 size-14 rounded-full shadow-lg",
             // On phones the open chat is full screen and has its own close button.
             open && "max-sm:hidden",
           )}
         >
-          {open ? <X className="size-6" /> : <Sparkles className="size-6" />}
+          {open ? <X className="size-6" /> : <Bot className="size-7" />}
         </Button>
       ) : null}
     </>

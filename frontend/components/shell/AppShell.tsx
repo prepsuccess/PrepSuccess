@@ -49,6 +49,8 @@ import { useSession, useSignOut } from "@/lib/auth/useSession";
 import { applyTheme, useAppTheme, type ThemePreference } from "@/lib/theme/appTheme";
 import { activeNavItem, navByArea, type NavArea } from "./nav";
 import { NotificationBell } from "./NotificationBell";
+import { CoachProvider } from "@/components/app/coach/CoachProvider";
+import { CoachWidget } from "@/components/app/coach/CoachWidget";
 
 function initialsOf(first: string, last: string | null) {
   return `${first[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase();
@@ -186,10 +188,12 @@ export function AppShell({
     if (workspace) setWorkspaceOpen(false);
   }
 
+  const student = navArea === "student";
+
   // Before paint, so switching themes or arriving from the marketing site never flashes.
   useLayoutEffect(() => applyTheme(resolved), [resolved]);
 
-  return (
+  const shell = (
     <TooltipProvider delayDuration={0}>
       <SidebarProvider
         open={workspace ? workspaceOpen : savedOpen}
@@ -284,8 +288,19 @@ export function AppShell({
             {children}
           </div>
         </SidebarInset>
-        <Toaster theme={resolved} richColors closeButton position="bottom-right" />
+        {student ? <CoachWidget /> : null}
+        <Toaster
+          theme={resolved}
+          richColors
+          closeButton
+          position="bottom-right"
+          // Above the coach button in the student app.
+          offset={student ? { bottom: 88, right: 20 } : undefined}
+          mobileOffset={student ? { bottom: 88 } : undefined}
+        />
       </SidebarProvider>
     </TooltipProvider>
   );
+  // The coach (chat + activity pings) is for students only.
+  return student ? <CoachProvider>{shell}</CoachProvider> : shell;
 }

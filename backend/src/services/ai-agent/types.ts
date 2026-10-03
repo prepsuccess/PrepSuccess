@@ -6,7 +6,14 @@
  */
 
 /** What a call is for — recorded on every ai_usage row. */
-export type AiFeature = "onboarding" | "assessment" | "task_review" | "next_steps" | "smoke_test";
+export type AiFeature =
+  | "onboarding"
+  | "assessment"
+  | "task_review"
+  | "next_steps"
+  | "coach"
+  | "coach_nudge"
+  | "smoke_test";
 
 export interface AiMessage {
   role: "user" | "assistant";

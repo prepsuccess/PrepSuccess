@@ -138,6 +138,7 @@ export const baseApi = createApi({
     "Tasks",
     "Task",
     "Notifications",
+    "Coach",
     "AdminUsers",
     "AdminAnalytics",
     "AdminSkills",

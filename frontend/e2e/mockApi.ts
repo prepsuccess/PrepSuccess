@@ -298,6 +298,15 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
         return reply(route, onboarding(me ?? student));
       case "GET /api/v1/notifications":
         return reply(route, { notifications: [], unread_count: 0 });
+      // The coach: activity pings while the tab is visible, and the chat.
+      case "POST /api/v1/ai/coach/ping":
+        return reply(route, { nudged: false });
+      case "GET /api/v1/ai/coach":
+        return reply(route, {
+          messages: [],
+          usage: { used: 0, limit: 20, remaining: 20, resets_at: now },
+          suggestions: ["What should I work on next?"],
+        });
       case "GET /api/v1/dashboard":
         return reply(route, emptyDashboard);
       case "GET /api/v1/skills/mine":

@@ -20,6 +20,7 @@ import {
 } from "@/lib/api/endpoints/notifications";
 import type { AppNotification } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
+import { useCoach } from "@/components/app/coach/CoachProvider";
 
 const POLL_MS = 60_000;
 
@@ -38,6 +39,7 @@ const timeAgo = (iso: string, now = Date.now()) => {
  */
 export function NotificationBell() {
   const router = useRouter();
+  const coach = useCoach();
   const { data } = useGetNotificationsQuery(undefined, {
     pollingInterval: POLL_MS,
     skipPollingIfUnfocused: true,
@@ -53,16 +55,32 @@ export function NotificationBell() {
     const ids = data.notifications.map((n) => n.id);
     if (seen.current) {
       for (const n of data.notifications) {
-        if (!seen.current.has(n.id) && !n.read)
+        if (seen.current.has(n.id) || n.read) continue;
+        if (n.type === "COACH_NUDGE" && coach) {
+          // The coach's check-in: one tap opens the chat, where the tip is waiting.
+          toast(n.title, {
+            description: n.body ?? undefined,
+            duration: 15_000,
+            action: {
+              label: "Open chat",
+              onClick: () => {
+                void markRead(n.id);
+                coach.openCoach();
+              },
+            },
+          });
+        } else {
           toast(n.title, { description: n.body ?? undefined });
+        }
       }
     }
     seen.current = new Set(ids);
-  }, [data]);
+  }, [data, coach, markRead]);
 
   function open(n: AppNotification) {
     if (!n.read) void markRead(n.id);
-    if (n.href) router.push(n.href);
+    if (n.type === "COACH_NUDGE" && coach) coach.openCoach();
+    else if (n.href) router.push(n.href);
   }
 
   return (

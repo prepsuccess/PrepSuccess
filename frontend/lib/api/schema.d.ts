@@ -1970,6 +1970,21 @@ export interface components {
                  */
                 score: number | null;
                 /**
+                 * @description Points since before the latest check; null with fewer than two checks.
+                 * @example 6
+                 */
+                change: number | null;
+                /** @description Readiness after each finished check, oldest first (last 20). */
+                history: {
+                    /** Format: date-time */
+                    date: string;
+                    score: number;
+                    /** @description The check that moved readiness here. */
+                    skill: string;
+                    /** @description That check's score. */
+                    percent: number;
+                }[];
+                /**
                  * @example {
                  *       "technical": 50,
                  *       "aptitude": 30,

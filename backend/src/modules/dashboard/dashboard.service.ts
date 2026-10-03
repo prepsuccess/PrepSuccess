@@ -12,6 +12,7 @@ import {
   groundInsight,
   insightSchema,
   latestPerSkill,
+  readinessHistory,
   readinessScore,
   resultsFingerprint,
   topGaps,
@@ -75,6 +76,7 @@ async function loadStanding(userId: string) {
   return {
     user,
     profile,
+    finished,
     results,
     claimedSlugs,
     claimedUnchecked,
@@ -104,10 +106,23 @@ export async function getDashboard(userId: string): Promise<DashboardResponse> {
   const { results } = standing;
   const categories = categoryScores(results);
   const checkedSlugs = new Set(results.map((r) => r.slug));
+  const history = readinessHistory(standing.finished);
+  const [before, now] = history.slice(-2);
 
   return {
     onboarding_completed: standing.onboardingCompleted,
-    readiness: { score: readinessScore(categories), weights: CATEGORY_WEIGHTS, categories },
+    readiness: {
+      score: readinessScore(categories),
+      change: before && now ? now.score - before.score : null,
+      history: history.map((p) => ({
+        date: p.date.toISOString(),
+        score: p.score,
+        skill: p.skill,
+        percent: p.percent,
+      })),
+      weights: CATEGORY_WEIGHTS,
+      categories,
+    },
     counts: {
       checked: results.length,
       mastered: results.filter((r) => r.mastered).length,

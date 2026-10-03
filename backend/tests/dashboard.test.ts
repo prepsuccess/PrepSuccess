@@ -6,6 +6,7 @@ import {
   categoryScores,
   groundInsight,
   latestPerSkill,
+  readinessHistory,
   readinessScore,
   type FinishedCheck,
 } from "../src/modules/dashboard/dashboard.logic.js";
@@ -155,6 +156,20 @@ describe("readiness rules", () => {
     expect(readinessScore(categoryScores([]))).toBeNull();
   });
 
+  it("replays readiness after each check, oldest first", () => {
+    const history = readinessHistory([
+      check("sql", "technical", 50, 10), // retake replaces the 21
+      check("quant", "aptitude", 64, 30),
+      check("sql", "technical", 21, 50),
+    ]);
+    expect(history.map((p) => p.score)).toEqual([
+      21, // technical 21 only
+      37, // (21×50 + 64×30) / 80 = 37.1
+      55, // SQL retaken at 50: (50×50 + 64×30) / 80 = 55.3
+    ]);
+    expect(history.at(-1)).toMatchObject({ skill: "sql", percent: 50 });
+  });
+
   it("orders next steps: onboarding, unfinished check, weakest skill, unchecked claims", () => {
     const results = latestPerSkill([check("dsa", "technical", 29, 1)]);
     const steps = buildNextSteps({
@@ -230,6 +245,9 @@ describe("GET /api/v1/dashboard", () => {
     expect(data.readiness.categories[0]).toEqual({ category: "technical", score: 40, checked: 2 });
     // (40×50 + 64×30) / 80 = 49
     expect(data.readiness.score).toBe(49);
+    // The history ends at today's score; `change` is its last step.
+    expect(data.readiness.history.map((p: { score: number }) => p.score).at(-1)).toBe(49);
+    expect(data.readiness.change).toBe(49 - data.readiness.history.at(-2).score);
     expect(data.counts).toMatchObject({
       checked: 3,
       mastered: 2,

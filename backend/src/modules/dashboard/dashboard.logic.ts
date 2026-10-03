@@ -87,6 +87,35 @@ export function readinessScore(categories: ReturnType<typeof categoryScores>) {
   return Math.round(weighted / totalWeight);
 }
 
+export interface ReadinessPoint {
+  date: Date;
+  score: number;
+  /** The check that moved readiness to this score. */
+  skill: string;
+  percent: number;
+}
+
+/**
+ * Readiness as it stood after each finished check, oldest first — what the
+ * score would have read on the dashboard at that moment. Capped to the most
+ * recent `limit` points.
+ */
+export function readinessHistory(checksNewestFirst: FinishedCheck[], limit = 20) {
+  const latest = new Map<string, FinishedCheck>();
+  const points: ReadinessPoint[] = [];
+  for (const check of [...checksNewestFirst].reverse()) {
+    latest.set(check.skill.id, check);
+    const asOfNow = latestPerSkill([...latest.values()]);
+    points.push({
+      date: check.completedAt,
+      score: readinessScore(categoryScores(asOfNow))!,
+      skill: check.skill.name,
+      percent: check.percent,
+    });
+  }
+  return points.slice(-limit);
+}
+
 /** Skills below the pass mark, weakest first. */
 export function topGaps(results: SkillResult[], limit = 3) {
   return results

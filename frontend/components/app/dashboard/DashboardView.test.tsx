@@ -12,6 +12,8 @@ const empty: Dashboard = {
   onboarding_completed: true,
   readiness: {
     score: null,
+    change: null,
+    history: [],
     weights,
     categories: [
       { category: "technical", score: null, checked: 0 },
@@ -64,10 +66,17 @@ const sql = {
   change: 29,
 };
 
+const now = new Date().toISOString();
 const withResults: Dashboard = {
   ...empty,
   readiness: {
     score: 40,
+    change: 11,
+    history: [
+      { date: now, score: 21, skill: "SQL", percent: 21 },
+      { date: now, score: 25, skill: "Data structures & algorithms", percent: 29 },
+      { date: now, score: 40, skill: "SQL", percent: 50 },
+    ],
     weights,
     categories: [
       { category: "technical", score: 40, checked: 2 },
@@ -79,7 +88,7 @@ const withResults: Dashboard = {
     checked: 2,
     mastered: 1,
     needs_revision: 1,
-    claimed: 2,
+    claimed: 3,
     claimed_checked: 2,
     in_progress: 0,
   },
@@ -108,7 +117,7 @@ const insight: AiInsight = {
     },
   ],
   plan: [{ title: "Revise DSA", detail: "Go through your missed answers." }],
-  generated_at: new Date().toISOString(),
+  generated_at: now,
 };
 
 const aiStatus = {
@@ -120,9 +129,10 @@ const aiStatus = {
 };
 
 const renderDashboard = () => renderWithStore(<DashboardView />, { signedInAs: testUser });
+const card = (name: string) => screen.getByRole("region", { name });
 
 describe("DashboardView", () => {
-  it("guides a student with no results to their first check, without asking the AI", async () => {
+  it("shows the full frame with guidance before any result, without asking the AI", async () => {
     let insightCalls = 0;
     server.use(
       http.get(`${API}/api/v1/dashboard`, () => ok(empty)),
@@ -134,17 +144,20 @@ describe("DashboardView", () => {
     );
     renderDashboard();
 
-    expect(await screen.findByText("No results yet")).toBeInTheDocument();
-    expect(screen.getByText("Appears after your first skill check")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Check your SQL/ })).toHaveAttribute(
+    const standing = await screen.findByRole("region", { name: "Your standing" });
+    expect(standing).toHaveTextContent("appears after your first check");
+    expect(card("Progress over time")).toHaveTextContent("starts after your first two checks");
+    expect(card("Skill scores")).toHaveTextContent("appears here");
+    // The gauge's button is the top next step.
+    expect(within(card("Readiness")).getByRole("link", { name: "Check your SQL" })).toHaveAttribute(
       "href",
       "/assessment",
     );
-    expect(screen.queryByText("By category")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Your coach's take" })).not.toBeInTheDocument();
     expect(insightCalls).toBe(0);
   });
 
-  it("shows readiness, results weakest first, and the coach's take", async () => {
+  it("shows standing, categories, skills and the coach's take from real results", async () => {
     server.use(
       http.get(`${API}/api/v1/dashboard`, () => ok(withResults)),
       http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
@@ -152,8 +165,10 @@ describe("DashboardView", () => {
     );
     renderDashboard();
 
-    expect(await screen.findByText("Of 2 checked · pass mark 40%")).toBeInTheDocument();
-    expect(screen.getByText("2 of your 2 skills checked")).toBeInTheDocument();
+    const standing = await screen.findByRole("region", { name: "Your standing" });
+    expect(standing).toHaveTextContent("Readiness out of 100, up 11 since your last check");
+    expect(standing).toHaveTextContent("below the 40% pass mark, of 2 checked");
+
     expect(screen.getByRole("meter", { name: "Technical score" })).toHaveAttribute(
       "aria-valuetext",
       "40%",
@@ -162,21 +177,39 @@ describe("DashboardView", () => {
       "aria-valuetext",
       "Not checked yet",
     );
+    expect(
+      screen.getByRole("img", { name: "Mastered: 1, Needs revision: 1, Not checked yet: 1" }),
+    ).toBeInTheDocument();
+    expect(card("Mastery")).toHaveTextContent("50%");
+    expect(card("Before and after")).toHaveTextContent("1 skill retaken");
+    expect(
+      within(card("Skill scores")).getByRole("link", {
+        name: "SQL: 50%, mastered. Review answers",
+      }),
+    ).toHaveAttribute("href", `/assessment/${sql.assessment_id}`);
+    expect(
+      within(card("Next steps")).getByRole("link", { name: /Revise Data structures/ }),
+    ).toHaveAttribute("href", `/assessment/${dsa.assessment_id}`);
 
-    const rows = screen.getAllByRole("meter", { name: /^(Data structures|SQL)/ });
-    expect(rows.map((r) => r.getAttribute("aria-label"))).toEqual([
-      "Data structures & algorithms score",
-      "SQL score",
-    ]);
-    expect(screen.getByText("29 points up since last time")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Review your SQL answers" })).toHaveAttribute(
-      "href",
-      `/assessment/${sql.assessment_id}`,
+    // The skeleton shares the card's title, so wait for the AI text itself.
+    await screen.findByText(insight.summary!);
+    expect(card("Your coach's take")).toHaveTextContent("Practise arrays.");
+  });
+
+  it("marks practice days on the calendar", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(withResults)),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
     );
+    renderDashboard();
 
-    expect(await screen.findByText(insight.summary!)).toBeInTheDocument();
-    expect(screen.getByText("Practise arrays.")).toBeInTheDocument();
-    expect(screen.getByText(/refreshes after each skill check/)).toBeInTheDocument();
+    const day = new Date().getDate();
+    expect(
+      await screen.findByRole("gridcell", { name: `${day}, checks taken, today` }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("3 checks this month")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled();
   });
 
   it("keeps the numbers when the coach's take fails, and offers a retry", async () => {
@@ -195,7 +228,7 @@ describe("DashboardView", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Couldn't get your coach's take.");
-    expect(screen.getByText("Your results")).toBeInTheDocument();
+    expect(card("Skill scores")).toBeInTheDocument();
 
     await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));
     expect(await screen.findByText(insight.summary!)).toBeInTheDocument();

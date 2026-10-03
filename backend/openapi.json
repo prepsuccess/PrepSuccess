@@ -3102,6 +3102,56 @@
                 "description": "0-100, a weighted average of the category scores the student has; null before any check.",
                 "example": 58
               },
+              "change": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Points since before the latest check; null with fewer than two checks.",
+                "example": 6
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "date": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "score": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "skill": {
+                      "type": "string",
+                      "description": "The check that moved readiness here."
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "That check's score."
+                    }
+                  },
+                  "required": [
+                    "date",
+                    "score",
+                    "skill",
+                    "percent"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Readiness after each finished check, oldest first (last 20)."
+              },
               "weights": {
                 "type": "object",
                 "propertyNames": {
@@ -3171,6 +3221,8 @@
             },
             "required": [
               "score",
+              "change",
+              "history",
               "weights",
               "categories"
             ],

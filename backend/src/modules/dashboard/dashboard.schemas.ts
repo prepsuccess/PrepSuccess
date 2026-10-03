@@ -29,6 +29,20 @@ export const dashboardSchema = z
           "0-100, a weighted average of the category scores the student has; null before any check.",
         example: 58,
       }),
+      change: z.number().int().nullable().meta({
+        description: "Points since before the latest check; null with fewer than two checks.",
+        example: 6,
+      }),
+      history: z
+        .array(
+          z.object({
+            date: z.iso.datetime(),
+            score: z.number().int(),
+            skill: z.string().meta({ description: "The check that moved readiness here." }),
+            percent: z.number().int().meta({ description: "That check's score." }),
+          }),
+        )
+        .meta({ description: "Readiness after each finished check, oldest first (last 20)." }),
       weights: z
         .record(category, z.number().int())
         .meta({ example: { technical: 50, aptitude: 30, soft: 20 } }),

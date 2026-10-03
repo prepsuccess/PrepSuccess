@@ -1757,7 +1757,19 @@
             "bearerAuth": []
           }
         ],
-        "description": "Skills, companies, roles and topics that have questions, with counts.",
+        "description": "Skills, companies, roles and topics that have questions, with counts. Pass `skill` to get only that skill's topics.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skill",
+            "schema": {
+              "description": "Only this skill's topics (others are unaffected).",
+              "type": "string",
+              "maxLength": 120
+            },
+            "description": "Only this skill's topics (others are unaffected)."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Filter values.",

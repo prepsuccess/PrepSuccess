@@ -12,6 +12,7 @@ import { CategoryBars, CoverageBar } from "./Bars";
 import { RetakeBars, SkillScores, TrendChart } from "./Charts";
 import { CoachInsight, CoachInsightPlaceholder, CoachInsightSkeleton } from "./CoachInsight";
 import { CARD_SURFACE, DashCard } from "./DashCard";
+import { InterviewPractice } from "./InterviewPractice";
 import { NextSteps } from "./NextSteps";
 import { PracticeCalendar } from "./PracticeCalendar";
 import { StatTiles } from "./StatTiles";
@@ -178,6 +179,9 @@ export function DashboardView() {
           <CoverageBar counts={data.counts} />
         </div>
       </div>
+
+      {/* Phase 2: interview questions solved over time, and where to practise next. */}
+      <InterviewPractice gaps={data.gaps} />
 
       {detail.length ? (
         <div className={DETAIL_GRID[detail.length]}>

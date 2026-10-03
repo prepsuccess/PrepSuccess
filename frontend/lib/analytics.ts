@@ -13,7 +13,10 @@ export type AnalyticsEvent =
   | { name: "skill_check_completed"; props: { category: string; mastered: boolean } }
   | { name: "dashboard_viewed"; props: { has_results: boolean } }
   | { name: "task_submitted"; props: { passed: boolean } }
-  | { name: "password_reset_completed"; props?: undefined };
+  | { name: "password_reset_completed"; props?: undefined }
+  | { name: "question_bookmarked"; props?: Record<string, never> }
+  | { name: "question_solved"; props?: Record<string, never> }
+  | { name: "prep_pdf_downloaded"; props?: Record<string, never> };
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";

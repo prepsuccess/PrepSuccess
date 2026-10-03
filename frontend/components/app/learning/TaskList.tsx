@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/shadcn/skeleton";
 import { QueryState } from "@/components/ui/QueryState";
 import { useGetTasksQuery } from "@/lib/api/endpoints/learning";
 import type { TaskSummary } from "@/lib/api/types";
-import { cn } from "@/lib/utils/cn";
+import { DifficultyBars } from "@/components/app/DifficultyBars";
 import { LANGUAGE_LABEL } from "./editor/languages";
 
 export function TaskStatusBadge({ task }: { task: Pick<TaskSummary, "best" | "attempts"> }) {
@@ -16,30 +16,6 @@ export function TaskStatusBadge({ task }: { task: Pick<TaskSummary, "best" | "at
     <Badge className="bg-success/10 text-success">Passed · {task.best.percent}%</Badge>
   ) : (
     <Badge variant="secondary">Best {task.best.percent}%</Badge>
-  );
-}
-
-const LEVEL = { easy: 1, medium: 2, hard: 3 } as const;
-
-/** Difficulty as 1–3 filled bars plus the word, so it never relies on colour. */
-function Difficulty({ level }: { level: TaskSummary["difficulty"] }) {
-  const filled = LEVEL[level];
-  return (
-    <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-medium">
-      <span aria-hidden className="flex items-end gap-0.5">
-        {[1, 2, 3].map((n) => (
-          <span
-            key={n}
-            className={cn(
-              "w-1 rounded-sm",
-              n === 1 ? "h-1.5" : n === 2 ? "h-2.5" : "h-3.5",
-              n <= filled ? "bg-foreground/70" : "bg-border",
-            )}
-          />
-        ))}
-      </span>
-      <span className="capitalize">{level}</span>
-    </span>
   );
 }
 
@@ -72,7 +48,7 @@ function TaskCard({ task, number }: { task: TaskSummary; number: number }) {
             <span className="bg-muted text-foreground flex size-6 items-center justify-center rounded-md font-semibold tabular-nums">
               {number}
             </span>
-            <Difficulty level={task.difficulty} />
+            <DifficultyBars level={task.difficulty} />
           </span>
           <TaskStatusBadge task={task} />
         </div>

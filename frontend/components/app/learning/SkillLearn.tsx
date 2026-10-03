@@ -14,6 +14,7 @@ import { useGetMySkillsQuery } from "@/lib/api/endpoints/skills";
 import type { MySkill } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
 import { ResourceList } from "./ResourceList";
+import { SkillQuestions } from "./SkillQuestions";
 import { TaskList } from "./TaskList";
 
 /** Heading for a section: a title and one line of help, no extra spacing. */
@@ -208,6 +209,15 @@ export function SkillLearn({ slug }: { slug: string }) {
                 hint="Five hands-on tasks, easy to hard. Write code in a real editor; the AI marks it against a rubric."
               />
               <TaskList slug={skill.slug} />
+            </section>
+
+            <section aria-labelledby="interview">
+              <SectionHead
+                id="interview"
+                title="Interview questions"
+                hint="Questions interviewers ask about this skill. Practise them, then check the model answer."
+              />
+              <SkillQuestions slug={skill.slug} name={skill.name} />
             </section>
           </div>
         );

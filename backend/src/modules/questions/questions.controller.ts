@@ -8,6 +8,7 @@ import {
   adminPrepPdfPatchSchema,
   adminQuestionInputSchema,
   adminQuestionPatchSchema,
+  filtersQuerySchema,
   listQuestionsQuerySchema,
   pageQuerySchema,
   prepPdfIdParamsSchema,
@@ -29,7 +30,8 @@ export async function list(req: Request, res: Response) {
 }
 
 export async function filters(req: Request, res: Response) {
-  sendSuccess(req, res, await questions.filterOptions());
+  const { skill } = filtersQuerySchema.parse(req.query);
+  sendSuccess(req, res, await questions.filterOptions(skill));
 }
 
 export async function get(req: Request, res: Response) {

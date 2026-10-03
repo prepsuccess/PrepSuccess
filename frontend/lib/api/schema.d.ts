@@ -1432,11 +1432,14 @@ export interface paths {
         };
         /**
          * Filter options
-         * @description Skills, companies, roles and topics that have questions, with counts.
+         * @description Skills, companies, roles and topics that have questions, with counts. Pass `skill` to get only that skill's topics.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Only this skill's topics (others are unaffected). */
+                    skill?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;

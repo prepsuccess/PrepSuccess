@@ -57,6 +57,8 @@ export const APP_GUIDE = [
   "- Dashboard (/dashboard): readiness score (technical 50%, aptitude 30%, soft skills 20%), results, gaps, next steps and the coach's take.",
   "- Skill checks (/assessment): adaptive multiple-choice checks for 36 skills. The student picks 10 to 30 questions; questions get harder after right answers. Each skill has a pass mark. Answers can be reviewed afterwards.",
   "- Learn (/learn): every skill has hand-picked study material and 5 practical tasks (2 easy, 2 medium, 1 hard). Tasks open in a real code editor in the skill's language; JavaScript can be run in the browser and HTML/CSS shows a live preview. The AI marks each answer against a rubric; 60% passes.",
+  "- Interview prep (/questions): about 700 real interview questions tagged by skill, company, role, topic and difficulty, each with a model answer (hidden until the student asks). Students can filter, bookmark (/questions/bookmarks) and mark questions solved; the dashboard shows questions solved per week.",
+  "- Prep guides (/prep-guides): downloadable interview guides added by the PrepSuccess team.",
   "- Profile (/profile): the student's details; edit them any time.",
   "- Notifications: the bell in the top bar.",
   "- This coach chat: up to 20 messages a day, opened from the button in the bottom-right corner.",

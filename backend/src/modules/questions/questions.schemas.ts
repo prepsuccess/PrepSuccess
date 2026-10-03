@@ -29,6 +29,17 @@ export const listQuestionsQuerySchema = z
   })
   .meta({ id: "ListQuestionsQuery" });
 
+export const filtersQuerySchema = z
+  .object({
+    skill: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .meta({ description: "Only this skill's topics (others are unaffected)." }),
+  })
+  .meta({ id: "QuestionFiltersQuery" });
+
 export const pageQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(PAGE_LIMIT_MAX).default(PAGE_LIMIT_DEFAULT),

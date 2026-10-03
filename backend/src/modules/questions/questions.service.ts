@@ -71,9 +71,13 @@ export async function listQuestions(userId: string, query: ListQuestionsQuery) {
   };
 }
 
-/** GET /questions/filters — filter values that have questions, with counts. */
-export async function filterOptions() {
+/**
+ * GET /questions/filters — filter values that have questions, with counts.
+ * Topics are only for `skill` when given (there are hundreds across all skills).
+ */
+export async function filterOptions(skill?: string) {
   const where = { ...live, skill: live };
+  const topicWhere = skill ? { ...live, skill: { ...live, slug: skill } } : where;
   const [bySkill, byCompany, byRole, byTopic, skills] = await Promise.all([
     prisma.questionBank.groupBy({ by: ["skillId"], where, _count: { _all: true } }),
     prisma.questionBank.groupBy({
@@ -86,7 +90,7 @@ export async function filterOptions() {
       where: { ...where, role: { not: null } },
       _count: { _all: true },
     }),
-    prisma.questionBank.groupBy({ by: ["topic"], where, _count: { _all: true } }),
+    prisma.questionBank.groupBy({ by: ["topic"], where: topicWhere, _count: { _all: true } }),
     prisma.skill.findMany({ where: live }),
   ]);
   const skillById = new Map(skills.map((s) => [s.id, s]));

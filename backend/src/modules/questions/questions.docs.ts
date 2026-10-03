@@ -10,6 +10,7 @@ import {
   adminQuestionInputSchema,
   adminQuestionPatchSchema,
   adminQuestionSchema,
+  filtersQuerySchema,
   listQuestionsQuerySchema,
   pageQuerySchema,
   prepPdfDownloadSchema,
@@ -85,7 +86,10 @@ export const questionsPaths: ZodOpenApiPathsObject = {
   },
   "/api/v1/questions/filters": {
     get: student("Filter options", {
-      description: "Skills, companies, roles and topics that have questions, with counts.",
+      description:
+        "Skills, companies, roles and topics that have questions, with counts. Pass `skill` to " +
+        "get only that skill's topics.",
+      requestParams: { query: filtersQuerySchema },
       responses: {
         ...ok(questionFiltersSchema, "Filter values."),
         ...errors(studentAuth),

@@ -2,12 +2,10 @@
 
 import type { ReactNode } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { Skeleton } from "@/components/shadcn/skeleton";
-import { useGetAiStatusQuery } from "@/lib/api/endpoints/ai";
-import type { AiStatus, Dashboard } from "@/lib/api/types";
+import type { Dashboard } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
 import { CARD_SURFACE } from "./DashCard";
-import { PASS_MARK, readinessBand, shortDate } from "./shared";
+import { PASS_MARK, READY_MARK, readinessBand, shortDate } from "./shared";
 
 /** One number with its label and a line of context. */
 function Tile({
@@ -46,7 +44,7 @@ function Tile({
         {suffix ? <span className="text-muted-foreground text-sm">{suffix}</span> : null}
         {badge}
       </p>
-      {/* Extras (the AI usage bar) sit above the caption, so captions line up across tiles. */}
+      {/* Extras (the goal bar) sit above the caption, so captions line up across tiles. */}
       {children}
       <p className="text-muted-foreground mt-auto pt-1 text-xs leading-snug">{caption}</p>
     </section>
@@ -71,79 +69,39 @@ function Change({ value }: { value: number | null }) {
   );
 }
 
-function aiCaption(status: AiStatus) {
-  if (!status.available) return "AI is unavailable right now";
-  if (status.reason === "AI_DAILY_LIMIT") return "Daily limit reached · resets at midnight";
-  if (!status.trial.active) return "Your AI free trial has ended";
-  const days = status.trial.days_left;
-  return `Free trial · ${days} day${days === 1 ? "" : "s"} left · resets at midnight`;
-}
+/** How far the student is from placement ready, so the readiness number has a target. */
+function GoalTile({ score }: { score: number | null }) {
+  const toGo = score === null ? null : Math.max(READY_MARK - score, 0);
+  const reached = toGo === 0;
+  const percent = score === null ? 0 : Math.min(100, Math.round((score / READY_MARK) * 100));
 
-/** Today's AI usage and the trial (GET /ai/status), loaded apart from the dashboard. */
-function AiUsageTile() {
-  const query = useGetAiStatusQuery();
-  const id = "stat-ai";
-  const label = "AI chats today";
-
-  if (query.isLoading) {
-    return (
-      <Tile
-        id={id}
-        label={label}
-        value={<Skeleton className="my-1 h-7 w-16" />}
-        caption={<Skeleton className="h-3 w-32" />}
-      />
-    );
-  }
-
-  if (query.isError || !query.data) {
-    return (
-      <Tile
-        id={id}
-        label={label}
-        value="—"
-        caption={
-          <span role="alert">
-            Couldn&apos;t load your AI usage.{" "}
-            <button
-              type="button"
-              className="text-dash-indigo font-medium underline-offset-2 hover:underline"
-              onClick={() => void query.refetch()}
-            >
-              Try again
-            </button>
-          </span>
-        }
-      />
-    );
-  }
-
-  const status = query.data;
-  const { requests, limit } = status.today;
-  const percent = Math.min(100, Math.round((requests / limit) * 100));
-  const atLimit = status.reason === "AI_DAILY_LIMIT";
   return (
     <Tile
-      id={id}
-      label={label}
-      value={requests}
-      suffix={`/ ${limit}`}
-      valueClassName={atLimit ? "text-dash-coral-ink" : undefined}
-      caption={aiCaption(status)}
+      id="stat-goal"
+      label="Placement-ready goal"
+      value={toGo === null ? "—" : reached ? "Reached" : toGo}
+      suffix={toGo && !reached ? "points to go" : undefined}
+      valueClassName={reached ? "text-dash-indigo" : undefined}
+      caption={
+        score === null
+          ? `Placement ready is ${READY_MARK}. Take a check to see how far you are`
+          : reached
+            ? `You're above ${READY_MARK} — keep checking new skills`
+            : `Placement ready is ${READY_MARK} readiness`
+      }
     >
       <div
         role="progressbar"
-        aria-label="AI chats used today"
+        aria-label="Progress to placement ready"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
-        aria-valuetext={`${requests} of ${limit} chats`}
+        aria-valuetext={
+          score === null ? "No readiness score yet" : `${score} of ${READY_MARK} readiness`
+        }
         className="bg-dash-indigo-soft/35 mt-1 h-1.5 overflow-hidden rounded-full"
       >
-        <div
-          className={cn("h-full rounded-full", atLimit ? "bg-dash-coral" : "bg-dash-indigo")}
-          style={{ width: `${percent}%` }}
-        />
+        <div className="bg-dash-indigo h-full rounded-full" style={{ width: `${percent}%` }} />
       </div>
     </Tile>
   );
@@ -179,6 +137,7 @@ export function StatTiles({ data }: { data: Dashboard }) {
               }`
         }
       />
+      <GoalTile score={readiness.score} />
       <Tile
         id="stat-revision"
         label="Needs revision"
@@ -200,7 +159,6 @@ export function StatTiles({ data }: { data: Dashboard }) {
             : "Take your first skill check to start"
         }
       />
-      <AiUsageTile />
     </div>
   );
 }

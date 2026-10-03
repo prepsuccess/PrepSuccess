@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { AiInsight, Dashboard } from "@/lib/api/types";
@@ -147,8 +147,15 @@ describe("DashboardView", () => {
     const readiness = await screen.findByRole("region", { name: "Readiness" });
     expect(readiness).toHaveTextContent("Appears after your first check");
     expect(card("Needs revision")).toHaveTextContent("Skills below the pass mark show here");
-    expect(card("Progress over time")).toHaveTextContent("starts after your first two checks");
-    expect(card("Skill scores")).toHaveTextContent("appears here");
+    expect(card("Placement-ready goal")).toHaveTextContent("Placement ready is 70");
+    // Charts with nothing to show are listed once, with what unlocks them.
+    const unlocks = card("More insights on the way");
+    expect(unlocks).toHaveTextContent("Progress over timeTake 2 checks");
+    expect(unlocks).toHaveTextContent("Skill scoresFinish your first check");
+    expect(unlocks).toHaveTextContent("Before and afterRetake a skill after revising it");
+    expect(unlocks).toHaveTextContent("Practice calendarFinish your first check");
+    expect(screen.queryByRole("region", { name: "Progress over time" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Skill scores" })).not.toBeInTheDocument();
     expect(
       within(card("Next steps")).getByRole("link", { name: /Check your SQL/ }),
     ).toHaveAttribute("href", "/assessment");
@@ -170,6 +177,15 @@ describe("DashboardView", () => {
     expect(readiness).toHaveTextContent("Getting there · up 11 since last check");
     expect(card("Needs revision")).toHaveTextContent("Below the 40% pass mark, of 2 checked");
     expect(card("Checks this month")).toHaveTextContent("3");
+    expect(card("Placement-ready goal")).toHaveTextContent("30points to go");
+    expect(
+      screen.getByRole("progressbar", { name: "Progress to placement ready" }),
+    ).toHaveAttribute("aria-valuetext", "40 of 70 readiness");
+    // Everything has data, so nothing is locked.
+    expect(card("Progress over time")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "More insights on the way" }),
+    ).not.toBeInTheDocument();
 
     expect(screen.getByRole("meter", { name: "Technical score" })).toHaveAttribute(
       "aria-valuetext",
@@ -195,6 +211,34 @@ describe("DashboardView", () => {
     // The skeleton shares the card's title, so wait for the AI text itself.
     await screen.findByText(insight.summary!);
     expect(card("Your coach's take")).toHaveTextContent("Practise arrays.");
+    // Next steps is the one to-do list; the AI's weekly plan isn't repeated here.
+    expect(screen.queryByText("Go through your missed answers.")).not.toBeInTheDocument();
+  });
+
+  it("after one check, shows what's ready and lists what's still locked", async () => {
+    const oneCheck: Dashboard = {
+      ...withResults,
+      readiness: {
+        ...withResults.readiness,
+        change: null,
+        history: [withResults.readiness.history[0]!],
+      },
+      skills: [dsa],
+    };
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(oneCheck)),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+    );
+    renderDashboard();
+
+    const unlocks = await screen.findByRole("region", { name: "More insights on the way" });
+    expect(unlocks).toHaveTextContent("Progress over timeTake 1 more check");
+    expect(unlocks).toHaveTextContent("Before and after");
+    expect(unlocks).not.toHaveTextContent("Skill scores");
+    expect(card("Skill scores")).toBeInTheDocument();
+    expect(card("Practice calendar")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Before and after" })).not.toBeInTheDocument();
   });
 
   it("marks practice days on the calendar", async () => {
@@ -236,17 +280,35 @@ describe("DashboardView", () => {
     );
   });
 
-  it("shows today's AI usage and the trial in the stat row", async () => {
+  it("keeps AI usage out of the way while it's well under the limit", async () => {
+    let statusCalls = 0;
     server.use(
       http.get(`${API}/api/v1/dashboard`, () => ok(withResults)),
       http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
-      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+      http.get(`${API}/api/v1/ai/status`, () => {
+        statusCalls += 1;
+        return ok(aiStatus);
+      }),
     );
     renderDashboard();
 
-    const bar = await screen.findByRole("progressbar", { name: "AI chats used today" });
-    expect(bar).toHaveAttribute("aria-valuetext", "3 of 200 chats");
-    expect(card("AI chats today")).toHaveTextContent("Free trial · 87 days left");
+    await screen.findByRole("region", { name: "Readiness" });
+    await waitFor(() => expect(statusCalls).toBe(1));
+    expect(screen.queryByText(/AI chats/)).not.toBeInTheDocument();
+  });
+
+  it("warns when AI chats are nearly used up", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(empty)),
+      http.get(`${API}/api/v1/ai/status`, () =>
+        ok({ ...aiStatus, today: { requests: 170, limit: 200 } }),
+      ),
+    );
+    renderDashboard();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "170 of 200 AI chats used today. They reset at midnight.",
+    );
   });
 
   it("explains the AI daily limit when it's reached", async () => {
@@ -263,28 +325,9 @@ describe("DashboardView", () => {
     );
     renderDashboard();
 
-    expect(await screen.findByText(/Daily limit reached/)).toBeInTheDocument();
-  });
-
-  it("offers a retry when the AI usage can't load, without hiding the numbers", async () => {
-    let attempts = 0;
-    server.use(
-      http.get(`${API}/api/v1/dashboard`, () => ok(empty)),
-      http.get(`${API}/api/v1/ai/status`, () => {
-        attempts += 1;
-        return attempts === 1 ? fail(500, "INTERNAL_SERVER_ERROR", "Boom.") : ok(aiStatus);
-      }),
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "You've used all 200 AI chats for today.",
     );
-    renderDashboard();
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Couldn't load your AI usage.");
-    expect(card("Readiness")).toBeInTheDocument();
-
-    await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));
-    expect(
-      await screen.findByRole("progressbar", { name: "AI chats used today" }),
-    ).toBeInTheDocument();
   });
 
   it("keeps the numbers when the coach's take fails, and offers a retry", async () => {

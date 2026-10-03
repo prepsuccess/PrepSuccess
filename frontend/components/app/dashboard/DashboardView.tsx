@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { useDelayedFlag } from "@/lib/hooks/useDelayedFlag";
 import { useGetDashboardQuery } from "@/lib/api/endpoints/dashboard";
 import { cn } from "@/lib/utils/cn";
+import { AiUsageNotice } from "./AiUsageNotice";
 import { CategoryBars, CoverageBar } from "./Bars";
 import { RetakeBars, SkillScores, TrendChart } from "./Charts";
 import { CoachInsight, CoachInsightPlaceholder, CoachInsightSkeleton } from "./CoachInsight";
@@ -12,6 +13,7 @@ import { CARD_SURFACE, DashCard } from "./DashCard";
 import { NextSteps } from "./NextSteps";
 import { PracticeCalendar } from "./PracticeCalendar";
 import { StatTiles } from "./StatTiles";
+import { type Unlock, Unlocks } from "./Unlocks";
 
 /*
  * Top to bottom, the way a student reads it: the key numbers, what to do next,
@@ -21,10 +23,15 @@ import { StatTiles } from "./StatTiles";
 const ROW = {
   actions: "grid gap-4 xl:grid-cols-3",
   trends: "grid gap-4 xl:grid-cols-3",
-  detail: "grid gap-4 md:grid-cols-2 xl:grid-cols-3",
+};
+// The detail row holds one to three cards, depending on what's unlocked.
+const DETAIL_GRID: Record<number, string> = {
+  1: "grid gap-4",
+  2: "grid gap-4 md:grid-cols-2",
+  3: "grid gap-4 md:grid-cols-2 xl:grid-cols-3",
 };
 const WIDE = "xl:col-span-2";
-const CALENDAR = "md:col-span-2 xl:col-span-1";
+const LAST_OF_THREE = "md:col-span-2 xl:col-span-1";
 const CATEGORY_STACK = "flex flex-col gap-4 [&>*:first-child]:flex-1";
 
 /** The rows, stacked straight on the page — no wrapper box, same as other app pages. */
@@ -73,10 +80,10 @@ function DashboardSkeleton() {
           <Block body="h-[40px]" />
         </div>
       </div>
-      <div className={ROW.detail}>
+      <div className={DETAIL_GRID[3]}>
         <Block body="h-[220px]" />
         <Block body="h-[254px]" />
-        <Block className={CALENDAR} body="h-[254px]" />
+        <Block className={LAST_OF_THREE} body="h-[254px]" />
       </div>
     </Rows>
   );
@@ -100,9 +107,45 @@ export function DashboardView() {
 
   const data = query.data;
   const hasResults = data.counts.checked > 0;
+  const history = data.readiness.history;
+
+  // A chart only shows once it has something to say; the rest are listed in
+  // one Unlocks card instead of a page of empty boxes.
+  const ready = {
+    trend: history.length >= 2,
+    skills: data.skills.length > 0,
+    retake: data.skills.some((s) => s.change !== null),
+    calendar: history.length > 0,
+  };
+  const locked: Unlock[] = [
+    !ready.trend && {
+      title: "Progress over time",
+      need: history.length === 1 ? "Take 1 more check" : "Take 2 checks",
+    },
+    !ready.skills && { title: "Skill scores", need: "Finish your first check" },
+    !ready.retake && { title: "Before and after", need: "Retake a skill after revising it" },
+    !ready.calendar && { title: "Practice calendar", need: "Finish your first check" },
+  ].filter((item): item is Unlock => Boolean(item));
+
+  // Unlocks takes the trend chart's place while that's locked, otherwise it
+  // joins the detail row.
+  const detail = [
+    ready.skills &&
+      ((cls: string) => <SkillScores key="skills" skills={data.skills} className={cls} />),
+    ready.retake &&
+      ((cls: string) => <RetakeBars key="retake" skills={data.skills} className={cls} />),
+    ready.calendar &&
+      ((cls: string) => (
+        <PracticeCalendar key="calendar" checkDates={history.map((p) => p.date)} className={cls} />
+      )),
+    ready.trend &&
+      locked.length > 0 &&
+      ((cls: string) => <Unlocks key="unlocks" items={locked} className={cls} />),
+  ].filter((card): card is (cls: string) => React.JSX.Element => Boolean(card));
 
   return (
     <Rows>
+      <AiUsageNotice />
       <StatTiles data={data} />
 
       <div className={ROW.actions}>
@@ -116,21 +159,23 @@ export function DashboardView() {
       </div>
 
       <div className={ROW.trends}>
-        <TrendChart history={data.readiness.history} className={WIDE} />
+        {ready.trend ? (
+          <TrendChart history={history} className={WIDE} />
+        ) : (
+          <Unlocks items={locked} className={WIDE} />
+        )}
         <div className={CATEGORY_STACK}>
           <CategoryBars readiness={data.readiness} />
           <CoverageBar counts={data.counts} />
         </div>
       </div>
 
-      <div className={ROW.detail}>
-        <SkillScores skills={data.skills} />
-        <RetakeBars skills={data.skills} />
-        <PracticeCalendar
-          checkDates={data.readiness.history.map((p) => p.date)}
-          className={CALENDAR}
-        />
-      </div>
+      {detail.length ? (
+        <div className={DETAIL_GRID[detail.length]}>
+          {/* With three cards on a two-column tablet, the last one spans the row. */}
+          {detail.map((card, i) => card(detail.length === 3 && i === 2 ? LAST_OF_THREE : ""))}
+        </div>
+      ) : null}
     </Rows>
   );
 }

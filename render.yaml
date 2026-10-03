@@ -1,0 +1,104 @@
+# Render Blueprint for the backend API (docs/DEPLOYMENT.md).
+#
+#   prepsuccess-api-staging  ← deploys every merge to `main`, once CI passes
+#   prepsuccess-api          ← production; deploys only from the `production`
+#                              branch, so going live is a deliberate PR (main → production)
+#
+# Migrations run before the server starts. If one fails, the new instance
+# never becomes healthy and Render keeps the previous deploy serving traffic —
+# a failed migration blocks the deploy instead of half-updating it.
+# Secrets (sync: false) are entered once in the Render dashboard, never here.
+
+services:
+  - type: web
+    name: prepsuccess-api-staging
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev && npm run db:generate && npm run build
+    startCommand: npm run db:deploy && npm start
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: SENTRY_ENVIRONMENT
+        value: staging
+      # Swagger UI is handy on staging; production keeps the default (off).
+      - key: API_DOCS_ENABLED
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: web
+    name: prepsuccess-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    branch: production
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev && npm run db:generate && npm run build
+    startCommand: npm run db:deploy && npm start
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

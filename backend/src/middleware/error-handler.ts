@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
 import { AppError, sendError } from "../lib/http.js";
+import { captureError } from "../lib/monitoring.js";
 
 export function notFound(req: Request, _res: Response, next: NextFunction) {
   next(new AppError(404, "ROUTE_NOT_FOUND", `Route ${req.method} ${req.path} was not found.`));
@@ -24,5 +25,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   req.log.error({ err }, "Unhandled error");
+  captureError(err, req);
   sendError(req, res, new AppError(500, "INTERNAL_SERVER_ERROR", "Something went wrong."));
 }

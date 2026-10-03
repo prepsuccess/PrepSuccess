@@ -1,7 +1,14 @@
 import type { Request, Response } from "express";
 
 import { sendSuccess } from "../../lib/http.js";
-import { loginSchema, refreshSchema, registerSchema, sendOtpSchema } from "./auth.schemas.js";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  refreshSchema,
+  registerSchema,
+  resetPasswordSchema,
+  sendOtpSchema,
+} from "./auth.schemas.js";
 import * as authService from "./auth.service.js";
 
 // Thin HTTP layer: validate with zod (a ZodError becomes a 422 in the error
@@ -20,6 +27,16 @@ export async function register(req: Request, res: Response) {
 export async function login(req: Request, res: Response) {
   const input = loginSchema.parse(req.body);
   sendSuccess(req, res, await authService.login(input));
+}
+
+export async function forgotPassword(req: Request, res: Response) {
+  const { email } = forgotPasswordSchema.parse(req.body);
+  sendSuccess(req, res, await authService.sendPasswordResetOtp(email));
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  const input = resetPasswordSchema.parse(req.body);
+  sendSuccess(req, res, await authService.resetPassword(input));
 }
 
 export async function refresh(req: Request, res: Response) {

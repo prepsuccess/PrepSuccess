@@ -113,8 +113,9 @@ Every table must include these fields (Prisma has no model inheritance, so they 
 - Use structured logging (`pino` + `pino-http`) outputting JSON logs in production with keys: `timestamp`, `level`, `request_id`, `user_id`, `path`, `method`, `status_code`, `duration_ms`.
 
 ### 4.2 Error Tracking
-- Integrate the **Sentry** Node SDK (`@sentry/node`), initialized at startup only when `SENTRY_DSN` is set.
-- Capture unhandled exceptions with full stack trace and correlation `request_id`.
+- Integrate the **Sentry** Node SDK (`@sentry/node`), initialized at startup only when `SENTRY_DSN` is set (`src/instrument.ts`, `src/lib/monitoring.ts`).
+- Capture unhandled exceptions with full stack trace and correlation `request_id`. Expected failures (`AppError`) are not reported.
+- Frontend: `@sentry/nextjs` via `instrumentation*.ts`, only when `NEXT_PUBLIC_SENTRY_DSN` is set. See `docs/DEPLOYMENT.md` §2 for alerting.
 
 ---
 
@@ -124,8 +125,8 @@ Every table must include these fields (Prisma has no model inheritance, so they 
 - **ESLint** (`typescript-eslint`) for linting and **Prettier** for formatting.
 - **TypeScript `strict` mode** (`tsc --noEmit`) for type-checking; **zod** validates every request body and the environment.
 - **Vitest + supertest** for unit and API tests.
-- CI (`.github/workflows/backend-ci.yml`) runs format, lint, typecheck, tests and build on every PR.
-- **Pre-commit hooks**: Ensure clean code before every commit.
+- CI (`.github/workflows/backend-ci.yml`, `frontend-ci.yml`) runs format, lint, typecheck, tests and build on every PR, applies every migration to a fresh Postgres and seeds it, checks the OpenAPI spec and frontend API types aren't stale, and runs the Playwright journeys.
+- **Pre-commit hooks**: `.githooks/pre-commit` runs Prettier and ESLint on staged files of each app. `npm install` in either app installs it (the `prepare` script sets `core.hooksPath`).
 
 ### 5.2 Containerization
 - Optional for now (Render deploys Node apps directly). If added: multi-stage `Dockerfile` based on `node:22-slim`, running as the non-root `node` user.

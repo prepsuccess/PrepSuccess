@@ -21,12 +21,16 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "openapi:export": "tsx scripts/export-openapi.ts"
+    "admin:promote": "tsx scripts/promote-admin.ts",
+    "sentry:test": "tsx scripts/sentry-test.ts",
+    "openapi:export": "tsx scripts/export-openapi.ts",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@google/genai": "^2.26.0",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "@sentry/node": "^10.76.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -62,5 +66,9 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.0",
     "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "mysql2": "^3.22.0",
+    "deepmerge-ts": "^8.0.0"
   }
 }

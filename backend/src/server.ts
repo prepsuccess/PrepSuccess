@@ -1,7 +1,10 @@
+import "./instrument.js";
+
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./db/prisma.js";
 import { logger } from "./lib/logger.js";
+import { flushMonitoring } from "./lib/monitoring.js";
 
 const server = createApp().listen(env.PORT, () => {
   logger.info(`API listening on http://localhost:${env.PORT}`);
@@ -10,7 +13,7 @@ const server = createApp().listen(env.PORT, () => {
 function shutdown(signal: string) {
   logger.info(`${signal} received, shutting down`);
   server.close(async () => {
-    await prisma.$disconnect();
+    await Promise.all([prisma.$disconnect(), flushMonitoring()]);
     process.exit(0);
   });
 }

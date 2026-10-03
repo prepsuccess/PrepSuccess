@@ -7,6 +7,7 @@ import {
   MessageCircle,
   NotebookPen,
   PlayCircle,
+  SquareTerminal,
 } from "lucide-react";
 import type { NextStep } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
@@ -18,6 +19,7 @@ const KIND: Record<NextStep["kind"], { icon: LucideIcon; chip: string }> = {
   revise: { icon: NotebookPen, chip: "bg-dash-coral/15 text-dash-coral-ink" },
   check: { icon: ListChecks, chip: "bg-dash-indigo/12 text-dash-indigo" },
   aptitude: { icon: Calculator, chip: "bg-dash-coral/15 text-dash-coral-ink" },
+  task: { icon: SquareTerminal, chip: "bg-dash-indigo/12 text-dash-indigo" },
 };
 
 /** Rule-based actions, most important first; each opens the page that does it. */

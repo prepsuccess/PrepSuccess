@@ -32,6 +32,8 @@ const db = vi.hoisted(() => {
     profile: null as null | Record<string, unknown>,
     assessments: [] as Record<string, unknown>[],
     conversation: null as null | { id: string; messages: unknown },
+    tasks: [] as { id: string; title: string; skillId: string }[],
+    submissions: [] as { taskId: string; passed: boolean }[],
   };
   return {
     state,
@@ -54,6 +56,12 @@ const db = vi.hoisted(() => {
         update: vi.fn(async ({ data }) => (state.conversation = { id: "conv", ...data })),
       },
       aiUsage: { count: vi.fn(async () => 0), create: vi.fn(async () => ({})) },
+      practicalTask: {
+        findMany: vi.fn(async ({ where }: { where: { skillId: { in: string[] } } }) =>
+          state.tasks.filter((t) => where.skillId.in.includes(t.skillId)),
+        ),
+      },
+      userTaskSubmission: { findMany: vi.fn(async () => state.submissions) },
     },
   };
 });
@@ -104,6 +112,8 @@ beforeEach(() => {
   };
   db.state.assessments = [];
   db.state.conversation = null;
+  db.state.tasks = [];
+  db.state.submissions = [];
   db.prisma.skill.findMany.mockResolvedValue(
     Object.values(SKILLS).map((s) => ({ ...s, isActive: true })) as never,
   );
@@ -187,6 +197,23 @@ describe("readiness rules", () => {
       "aptitude",
     ]);
     expect(steps[1]!.href).toBe("/assessment/a1");
+    expect(steps[2]!.href).toBe("/learn/dsa");
+  });
+
+  it("suggests a practical task last, once the rest is done", () => {
+    const steps = buildNextSteps({
+      onboardingCompleted: true,
+      inProgress: [],
+      claimedUnchecked: [],
+      results: latestPerSkill([check("quant", "aptitude", 80, 1)]),
+      suggestedTasks: [
+        { taskId: "t1", title: "Three word problems", skillName: "Quant" },
+        { taskId: "t2", title: "Another", skillName: "Quant" },
+      ],
+    });
+    expect(steps).toEqual([
+      expect.objectContaining({ kind: "task", href: "/tasks/t1", title: "Try a Quant task" }),
+    ]);
   });
 
   it("drops AI gaps about skills the student wasn't checked on or already mastered", () => {
@@ -259,7 +286,29 @@ describe("GET /api/v1/dashboard", () => {
     expect(data.next_steps[0]).toMatchObject({
       kind: "revise",
       title: "Revise Data structures & algorithms",
+      href: "/learn/dsa",
     });
+  });
+
+  it("counts practical tasks and suggests an unpassed one on a mastered skill", async () => {
+    db.state.assessments = [finished(SKILLS.quant, 9, 30), finished(SKILLS.sql, 9, 20)];
+    db.state.tasks = [
+      { id: uuid(901), title: "Word problems", skillId: SKILLS.quant.id },
+      { id: uuid(902), title: "Top earners", skillId: SKILLS.sql.id },
+    ];
+    db.state.submissions = [
+      { taskId: uuid(901), passed: false },
+      { taskId: uuid(901), passed: true },
+      { taskId: uuid(902), passed: false },
+    ];
+    // Claims checked, aptitude done: the task suggestion has room to show.
+    db.state.profile!.profileData = { skills: ["SQL"] };
+
+    const data = (await request(app).get("/api/v1/dashboard").set(auth())).body.data;
+    expect(data.counts).toMatchObject({ tasks_attempted: 2, tasks_passed: 1 });
+    expect(data.next_steps).toEqual([
+      expect.objectContaining({ kind: "task", href: `/tasks/${uuid(902)}` }),
+    ]);
   });
 
   it("is for students only", async () => {

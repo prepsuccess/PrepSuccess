@@ -2,6 +2,18 @@ PREPSUCCESS
 COMPLETE PRODUCT REQUIREMENTS DOCUMENT
 ALL PHASES, ALL FEATURES, ALL TICKETS
 
+[Revision note, 2026-10-03: the backend is
+Node.js 22 + Express 5 + TypeScript with
+Prisma on Supabase Postgres (decided
+2026-10-02). Ticket text below that mentions
+FastAPI, SQLAlchemy, Alembic, Pydantic or
+Python is the historical first design pass;
+read it as the Node.js equivalent (Express
+routes, Prisma models and migrations, zod
+schemas). For the current state see
+docs/PROJECT_CONTEXT.md, docs/DATA_MODEL.md and
+docs/prds/PRD-01-core-mvp.md.]
+
 SECTION 1. INTRODUCTION AND VISION
 
 PrepSuccess is a placement readiness and 

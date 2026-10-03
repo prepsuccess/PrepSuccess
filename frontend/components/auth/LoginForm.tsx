@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
@@ -68,6 +69,16 @@ export function LoginForm({ next, error }: { next?: string; error?: string | nul
         error={errors.password}
         required
       />
+      <Link
+        href={
+          email.trim()
+            ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+            : "/forgot-password"
+        }
+        className="text-text hover:text-heading -mt-2 self-end text-[14px] underline-offset-4 hover:underline"
+      >
+        Forgot password?
+      </Link>
       <Button type="submit" label="Log in" loading={submitting} fullWidth className="mt-2" />
     </form>
   );

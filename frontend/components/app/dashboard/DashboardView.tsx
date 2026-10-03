@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Skeleton } from "@/components/shadcn/skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useDelayedFlag } from "@/lib/hooks/useDelayedFlag";
 import { useGetDashboardQuery } from "@/lib/api/endpoints/dashboard";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils/cn";
 import { AiUsageNotice } from "./AiUsageNotice";
 import { CategoryBars, CoverageBar } from "./Bars";
@@ -93,6 +95,14 @@ function DashboardSkeleton() {
 export function DashboardView() {
   const query = useGetDashboardQuery();
   const showSkeleton = useDelayedFlag(query.isLoading);
+  const hasData = Boolean(query.data);
+  const hasResults = (query.data?.counts.checked ?? 0) > 0;
+  const viewed = useRef(false);
+  useEffect(() => {
+    if (!hasData || viewed.current) return;
+    viewed.current = true;
+    track("dashboard_viewed", { has_results: hasResults });
+  }, [hasData, hasResults]);
 
   if (query.isLoading) return showSkeleton ? <DashboardSkeleton /> : null;
   if (query.isError || !query.data) {
@@ -106,7 +116,6 @@ export function DashboardView() {
   }
 
   const data = query.data;
-  const hasResults = data.counts.checked > 0;
   const history = data.readiness.history;
 
   // A chart only shows once it has something to say; the rest are listed in

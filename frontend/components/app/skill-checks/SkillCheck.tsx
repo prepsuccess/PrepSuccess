@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Check, CircleAlert, RotateCw, X } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert, GraduationCap, RotateCw, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
 import { Badge } from "@/components/shadcn/badge";
 import { Button } from "@/components/shadcn/button";
@@ -15,6 +15,8 @@ import { errorMessage, isApiError } from "@/lib/api/errors";
 import { useAnswerQuestionMutation, useGetAssessmentQuery } from "@/lib/api/endpoints/skills";
 import type { AnsweredQuestion, AssessmentQuestion, AssessmentState } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
+import { track } from "@/lib/analytics";
+import { ResourceList } from "@/components/app/learning/ResourceList";
 import { InlineText, RichText } from "./RichText";
 import { useStartCheck } from "./useStartCheck";
 
@@ -85,7 +87,17 @@ function QuestionStep({
     event.preventDefault();
     if (choice === null || isLoading) return;
     try {
-      await answer({ id: state.id, question_id: question.id, choice_index: choice }).unwrap();
+      const next = await answer({
+        id: state.id,
+        question_id: question.id,
+        choice_index: choice,
+      }).unwrap();
+      if (next.status === "completed" && next.result) {
+        track("skill_check_completed", {
+          category: next.skill.category,
+          mastered: next.result.mastery === "mastered",
+        });
+      }
     } catch {
       // Shown below.
     }
@@ -355,8 +367,35 @@ function ResultStep({ state }: { state: AssessmentState }) {
             <RotateCw />
             Retake
           </Button>
+          <Button asChild variant="ghost">
+            <Link href={`/learn/${state.skill.slug}`}>
+              <GraduationCap />
+              Study {state.skill.name}
+            </Link>
+          </Button>
         </CardFooter>
       </Card>
+
+      {mastered ? null : (
+        <section aria-labelledby="study-first" className="space-y-3">
+          <div>
+            <h2 id="study-first" className="text-foreground text-base font-semibold">
+              Study before you retake
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Hand-picked material for {state.skill.name}.{" "}
+              <Link
+                href={`/learn/${state.skill.slug}`}
+                className="text-foreground underline underline-offset-4"
+              >
+                See everything, plus practical tasks
+              </Link>
+              .
+            </p>
+          </div>
+          <ResourceList slug={state.skill.slug} limit={3} />
+        </section>
+      )}
 
       <section aria-labelledby="your-answers" className="space-y-3">
         <h2 id="your-answers" className="text-foreground text-base font-semibold">

@@ -11,6 +11,8 @@ export const authRouter = Router();
 authRouter.post("/send-otp", rateLimitPerMinute(5), auth.sendOtp);
 authRouter.post("/register", rateLimitPerMinute(10), auth.register);
 authRouter.post("/login", rateLimitPerMinute(10), auth.login);
+authRouter.post("/forgot-password", rateLimitPerMinute(5), auth.forgotPassword);
+authRouter.post("/reset-password", rateLimitPerMinute(10), auth.resetPassword);
 authRouter.post("/refresh", rateLimitPerMinute(30), auth.refresh);
 authRouter.post("/logout", auth.logout);
 authRouter.get("/me", requireAuth(), auth.me);

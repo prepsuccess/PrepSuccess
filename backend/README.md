@@ -9,6 +9,8 @@ cd backend
 npm install
 cp .env.example .env     # fill in DATABASE_URL / DIRECT_URL (Supabase or local Postgres)
 npm run db:generate      # generate the Prisma client into src/generated/
+npm run db:deploy        # apply migrations
+npm run db:seed          # skills, learning resources and practical tasks (safe to re-run)
 npm run dev              # http://localhost:8000
 ```
 
@@ -20,15 +22,19 @@ set `API_DOCS_ENABLED=true|false` to override.
 
 ## Scripts
 
-| Script                                  | What it does                                           |
-| --------------------------------------- | ------------------------------------------------------ |
-| `npm run dev`                           | Start with hot reload (tsx)                            |
-| `npm run build` / `npm start`           | Compile to `dist/` and run it                          |
-| `npm test`                              | Vitest + supertest                                     |
-| `npm run lint` / `typecheck` / `format` | ESLint, `tsc --noEmit`, Prettier                       |
-| `npm run db:migrate`                    | Create + apply a migration from `prisma/schema.prisma` |
-| `npm run db:deploy`                     | Apply pending migrations (staging/prod)                |
-| `npm run db:studio`                     | Browse the database                                    |
+| Script                                  | What it does                                             |
+| --------------------------------------- | -------------------------------------------------------- |
+| `npm run dev`                           | Start with hot reload (tsx)                              |
+| `npm run build` / `npm start`           | Compile to `dist/` and run it                            |
+| `npm test`                              | Vitest + supertest                                       |
+| `npm run lint` / `typecheck` / `format` | ESLint, `tsc --noEmit`, Prettier                         |
+| `npm run db:migrate`                    | Create + apply a migration from `prisma/schema.prisma`   |
+| `npm run db:deploy`                     | Apply pending migrations (staging/prod)                  |
+| `npm run db:studio`                     | Browse the database                                      |
+| `npm run db:seed`                       | Upsert the skill, resource and task catalogues           |
+| `npm run admin:promote -- <email>`      | Make an existing account an admin (first admin)          |
+| `npm run sentry:test`                   | Send a test error to Sentry (needs `SENTRY_DSN`)         |
+| `npm run openapi:export`                | Write `openapi.json` (the frontend's types come from it) |
 
 ## Folder structure
 
@@ -44,25 +50,29 @@ backend/
 │   ├── db/prisma.ts         # single PrismaClient (pooled DATABASE_URL)
 │   ├── generated/prisma/    # generated Prisma client (git-ignored)
 │   ├── docs/                # OpenAPI document + Swagger UI route; helpers.ts for module docs
-│   ├── lib/                 # logger (pino), response envelope + AppError, crypto helpers
-│   ├── middleware/          # request ID, 404 + error handler (auth guard goes here)
+│   ├── lib/                 # logger (pino), response envelope + AppError, crypto, Sentry (monitoring.ts)
+│   ├── middleware/          # request ID, auth guard, rate limits, 404 + error handler
 │   ├── routes/v1.ts         # mounts every module under /api/v1
 │   ├── modules/             # one folder per feature
 │   │   ├── health/          # /health/live, /health/ready
-│   │   ├── auth/            # signup, OTP, login, Google OAuth (SCRUM-11/12)
+│   │   ├── auth/            # signup + OTP, login, refresh, password reset, Google OAuth (SCRUM-11/12)
 │   │   ├── users/           # /users/me profile (SCRUM-13)
+│   │   ├── ai/              # /ai routes: AI status, and mounts onboarding, assessment, insight
 │   │   ├── onboarding/      # AI onboarding conversation
-│   │   ├── assessment/      # AI adaptive assessment (SCRUM-14)
-│   │   ├── tasks/           # practical tasks + submissions
-│   │   ├── resources/       # learning resources
-│   │   ├── dashboard/       # readiness dashboard (SCRUM-15)
-│   │   └── admin/           # admin users/content/analytics
+│   │   ├── skills/          # skill catalogue (catalogue.ts) + "my skills"
+│   │   ├── assessment/      # AI adaptive skill checks (SCRUM-14)
+│   │   ├── resources/       # learning resources per skill (catalogue.ts) (SCRUM-126)
+│   │   ├── tasks/           # practical tasks (catalogue.ts) + AI-reviewed submissions (SCRUM-125)
+│   │   ├── dashboard/       # readiness scoring, next steps, AI coach's take (SCRUM-15)
+│   │   ├── notifications/   # in-app notifications (SCRUM-48)
+│   │   └── admin/           # users, aggregate analytics, content management (PRD-04)
 │   ├── services/            # cross-module logic, no HTTP
 │   │   ├── ai-agent/        # provider-agnostic AI layer (Gemini first) — see "AI calls"
-│   │   ├── scoring/         # mastery threshold + readiness scoring
+│   │   ├── notifications/   # notify(): never blocks the action that triggered it
 │   │   └── email/           # Gmail SMTP (OTP emails)
 │   └── types/               # Express type augmentations
-└── tests/                   # Vitest + supertest
+├── scripts/                 # export-openapi, promote-admin, sentry-test
+└── tests/                   # Vitest + supertest (Prisma mocked in memory)
 ```
 
 ### Module convention
@@ -74,6 +84,7 @@ modules/<feature>/
 ├── <feature>.routes.ts      # Express Router — wires paths to controller functions
 ├── <feature>.controller.ts  # parse/validate input (zod), call service, sendSuccess()
 ├── <feature>.service.ts     # business logic + Prisma calls; throws AppError
+├── <feature>.logic.ts       # pure rules (scoring, prompts) — unit-tested without a database
 ├── <feature>.schemas.ts     # zod request/response schemas (+ .meta() examples)
 └── <feature>.docs.ts        # OpenAPI paths built from those schemas
 ```
@@ -104,3 +115,19 @@ the student's real data in the prompt and never ask the model to invent skills o
 - Use `req.log` / `logger`, never `console.log`.
 - The frontend never talks to Supabase directly — only this API does. Never expose
   database URLs or keys to `frontend/`.
+
+## Content catalogues
+
+Skills, learning resources and practical tasks start life as code —
+`modules/skills/catalogue.ts`, `modules/resources/catalogue.ts` and
+`modules/tasks/catalogue.ts` — and `npm run db:seed` upserts them. A test checks
+every skill has at least one resource and one task, every link is https, and every
+rubric totals 10 points. Admins can then edit, hide or add content from the admin
+panel; the seed never deletes or un-hides anything an admin changed.
+
+## Practical task scoring
+
+The AI only scores each rubric criterion and writes feedback
+(`tasks.logic.ts → buildReviewPrompt`). The server clamps each score to the
+criterion's points and computes the percentage and pass/fail (60%), so a
+submission that asks for full marks can't get more than the rubric allows.

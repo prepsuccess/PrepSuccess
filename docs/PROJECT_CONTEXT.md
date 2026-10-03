@@ -194,8 +194,8 @@ backend/
 │   ├── app.ts               # Express app: middleware, routes, error handling
 │   ├── config/env.ts        # zod-validated environment variables
 │   ├── db/prisma.ts         # single Prisma client (pooled DATABASE_URL)
-│   ├── lib/                 # logger (pino), response envelope + AppError
-│   ├── middleware/          # request ID, error handler, auth guard
+│   ├── lib/                 # logger (pino), response envelope + AppError, Sentry
+│   ├── middleware/          # request ID, error handler, auth guard, rate limits
 │   ├── routes/v1.ts         # mounts every module under /api/v1
 │   ├── modules/             # one folder per feature: routes → controller → service
 │   │   ├── health/          # /health/live, /health/ready
@@ -203,14 +203,16 @@ backend/
 │   │   ├── users/           # /users/me profile
 │   │   ├── onboarding/      # AI onboarding conversation
 │   │   ├── assessment/      # AI adaptive assessment
-│   │   ├── tasks/           # practical tasks + submissions
+│   │   ├── skills/          # skill catalogue
+│   │   ├── tasks/           # practical tasks + AI-reviewed submissions
 │   │   ├── resources/       # learning resources
-│   │   ├── dashboard/       # readiness dashboard
+│   │   ├── dashboard/       # readiness scoring + dashboard
+│   │   ├── notifications/   # in-app notifications
 │   │   └── admin/           # admin users/content/analytics
 │   └── services/            # cross-module logic, no HTTP
 │       ├── ai-agent/        # provider-agnostic AI layer (Gemini first):
-│       │                    # onboarding, adaptive assessment, next steps
-│       ├── scoring/         # mastery threshold + readiness scoring
+│       │                    # onboarding, adaptive assessment, next steps, task review
+│       ├── notifications/   # notify()
 │       └── email/           # Gmail SMTP (OTP emails)
 └── tests/                   # Vitest + supertest
 ```
@@ -221,8 +223,8 @@ See `backend/README.md` for the module convention.
 frontend/
 ├── app/
 │   ├── (marketing)/          # public landing + marketing pages
-│   ├── (auth)/login, signup
-│   ├── (app)/dashboard, assessment, profile   # signed-in student area
+│   ├── (auth)/login, signup, forgot-password
+│   ├── (app)/dashboard, onboarding, assessment, learn, tasks, profile   # student area
 │   └── admin/                # admin panel
 ├── components/               # ui/, shell/, auth/, marketing/, motion/
 └── lib/                      # api client, auth/session helpers, content
@@ -267,22 +269,31 @@ understand and improve their placement readiness?*
 
 ## 12. Open Questions / Next Steps
 
-- Design the detailed database schema (tables, columns, relationships,
-  constraints) for the AI-first entities above (`UserProfile`,
-  `AIConversation`, `PracticalTask`, `UserTaskSubmission`,
-  `LearningResource`) alongside the original Phase 1 tables.
-- Define exact mastery thresholds per skill/topic (e.g. is "below 40%"
-  universal, or does it vary by topic difficulty?).
-- Decide the source of curated learning resources (hand-authored by admins
-  vs. AI-generated on the fly vs. links to existing sites like W3Schools)
-  and how `LearningResource` content gets seeded before real students
-  arrive.
-- Design the AI provider abstraction (Gemini first) including fallback
-  behavior if the free-tier API is rate-limited or unavailable.
-- ~~Decide on a hosting approach~~ — decided 2026-10-02, all free tiers:
-  Postgres on Supabase, frontend on Vercel, backend on Render.
-- Decide the trigger/mechanism for the AI free-trial window (time-boxed
-  from signup? from platform launch date?) and what happens after it ends.
+Resolved (2026-10-03):
+
+- ~~Detailed database schema for the AI-first entities~~ — built; see
+  `docs/DATA_MODEL.md`.
+- ~~Mastery thresholds~~ — per skill (`skills.mastery_threshold`), default
+  40%, editable by admins; each result keeps the threshold it was scored
+  with. Practical tasks pass at 60% of their rubric.
+- ~~Source of learning resources~~ — hand-picked links to official docs and
+  long-lived tutorial sites, plus short notes we host, seeded from
+  `backend/src/modules/resources/catalogue.ts` and editable in the admin
+  panel. AI-written explanations can be added later.
+- ~~AI provider abstraction and fallback~~ — `services/ai-agent`: retries,
+  a fallback Gemini model, per-model cooldowns, per-user daily limit.
+- ~~Hosting~~ — decided 2026-10-02, all free tiers: Postgres on Supabase,
+  frontend on Vercel, backend on Render (`docs/DEPLOYMENT.md`).
+- ~~AI free-trial trigger~~ — time-boxed from each user's signup
+  (`AI_TRIAL_DAYS`, default 120). Usage is metered from day one; blocking
+  after the trial is off until `AI_TRIAL_ENFORCED=true`.
+
+Still open:
+
+- What happens after the AI trial ends (paid tier, reduced limits, or free).
+- Target-role taxonomy mapped to skills for scoring emphasis (PRD-04 §3.5).
+- Design-side Phase 1 tickets: wireframes, high-fidelity mockups, WCAG AA
+  audit (SCRUM-24–38).
 
 ## 13. One-Line Summary (for quick recall)
 

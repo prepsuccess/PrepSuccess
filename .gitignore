@@ -35,3 +35,8 @@ Thumbs.db
 # ---- Logs / misc ----
 *.log
 logs/
+
+# ---- Playwright (frontend/e2e) ----
+test-results/
+playwright-report/
+blob-report/

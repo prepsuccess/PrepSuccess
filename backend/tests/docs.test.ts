@@ -5,10 +5,14 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { buildOpenApiDocument } from "../src/docs/openapi.js";
 import { authUserSchema } from "../src/modules/auth/auth.schemas.js";
+import { adminRouter } from "../src/modules/admin/admin.routes.js";
 import { aiRouter } from "../src/modules/ai/ai.routes.js";
 import { authRouter } from "../src/modules/auth/auth.routes.js";
 import { dashboardRouter } from "../src/modules/dashboard/dashboard.routes.js";
+import { notificationsRouter } from "../src/modules/notifications/notifications.routes.js";
+import { resourcesRouter } from "../src/modules/resources/resources.routes.js";
 import { skillsRouter } from "../src/modules/skills/skills.routes.js";
+import { tasksRouter } from "../src/modules/tasks/tasks.routes.js";
 import { usersRouter } from "../src/modules/users/users.routes.js";
 import { toAuthUser } from "../src/modules/auth/auth.dto.js";
 
@@ -22,6 +26,10 @@ const MOUNTED: [prefix: string, router: Router][] = [
   ["/api/v1/ai", aiRouter],
   ["/api/v1/skills", skillsRouter],
   ["/api/v1/dashboard", dashboardRouter],
+  ["/api/v1/resources", resourcesRouter],
+  ["/api/v1/tasks", tasksRouter],
+  ["/api/v1/notifications", notificationsRouter],
+  ["/api/v1/admin", adminRouter],
 ];
 
 function routesOf(prefix: string, router: Router) {

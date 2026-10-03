@@ -38,15 +38,34 @@ async function send(mail: Mail) {
   await transporter.sendMail({ from: `PrepSuccess <${env.SMTP_USER}>`, ...mail });
 }
 
-export async function sendOtpEmail(to: string, code: string, ttlMinutes: number) {
+const OTP_COPY = {
+  SIGNUP: {
+    subject: "is your PrepSuccess verification code",
+    heading: "Verify your email",
+    lead: "Use this code to finish creating your PrepSuccess account:",
+  },
+  PASSWORD_RESET: {
+    subject: "is your PrepSuccess password reset code",
+    heading: "Reset your password",
+    lead: "Use this code to set a new password for your PrepSuccess account:",
+  },
+} as const;
+
+export async function sendOtpEmail(
+  to: string,
+  code: string,
+  ttlMinutes: number,
+  purpose: keyof typeof OTP_COPY = "SIGNUP",
+) {
+  const copy = OTP_COPY[purpose];
   await send({
     to,
-    subject: `${code} is your PrepSuccess verification code`,
-    text: `Your PrepSuccess verification code is ${code}. It expires in ${ttlMinutes} minutes. If you didn't request this, you can ignore this email.`,
+    subject: `${code} ${copy.subject}`,
+    text: `${copy.lead} ${code}. It expires in ${ttlMinutes} minutes. If you didn't request this, you can ignore this email.`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2937">
-        <h2 style="margin:0 0 16px">Verify your email</h2>
-        <p style="margin:0 0 16px">Use this code to finish creating your PrepSuccess account:</p>
+        <h2 style="margin:0 0 16px">${copy.heading}</h2>
+        <p style="margin:0 0 16px">${copy.lead}</p>
         <p style="font-size:32px;font-weight:bold;letter-spacing:8px;margin:0 0 16px">${code}</p>
         <p style="margin:0;color:#6b7280;font-size:14px">It expires in ${ttlMinutes} minutes. If you didn't request this, you can ignore this email.</p>
       </div>`,

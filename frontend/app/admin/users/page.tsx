@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { UsersTable } from "@/components/admin/UsersTable";
+import { AdminUsers } from "@/components/admin/AdminUsers";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 export const metadata: Metadata = { title: "Users" };
@@ -9,9 +9,9 @@ export default function AdminUsersPage() {
     <>
       <PageHeader
         title="Users"
-        description="Students and mentors on PrepSuccess. Search, sort and manage accounts."
+        description="Every account on PrepSuccess. Deactivate accounts or change roles — account details only, never anyone's results."
       />
-      <UsersTable users={[]} />
+      <AdminUsers />
     </>
   );
 }

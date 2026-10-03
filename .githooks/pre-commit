@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+# Pre-commit check (PRODUCTION_STANDARDS §5.1): Prettier and ESLint on the
+# staged files of each app, using that app's own versions. Fast enough to run
+# on every commit; the full test suite runs in CI.
+# Installed automatically by `npm install` in backend/ or frontend/ (the
+# "prepare" script sets core.hooksPath). Skip once with `git commit --no-verify`.
+
+status=0
+
+check_app() {
+  app="$1"
+  files=$(git diff --cached --name-only --diff-filter=ACMR -- "$app/" \
+    | grep -E '\.(ts|tsx|js|mjs|cjs|json|css|md|ya?ml)$' \
+    | sed "s#^$app/##")
+  [ -z "$files" ] && return 0
+  if [ ! -d "$app/node_modules" ]; then
+    echo "pre-commit: skipping $app (run npm install there first)"
+    return 0
+  fi
+  echo "pre-commit: checking $app"
+  lintable=$(echo "$files" | grep -E '\.(ts|tsx|js|mjs|cjs)$' || true)
+  (
+    cd "$app" || exit 1
+    # shellcheck disable=SC2086
+    npx --no-install prettier --check --ignore-unknown $files || exit 1
+    if [ -n "$lintable" ]; then
+      # shellcheck disable=SC2086
+      npx --no-install eslint --no-warn-ignored $lintable || exit 1
+    fi
+  ) || status=1
+}
+
+check_app backend
+check_app frontend
+
+if [ "$status" -ne 0 ]; then
+  echo "pre-commit: fix the issues above (npm run format / npm run lint), then commit again."
+fi
+exit "$status"

@@ -25,6 +25,7 @@ import {
 } from "@/lib/api/endpoints/onboarding";
 import type { OnboardingMessage, OnboardingState, StudentProfile } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
+import { track } from "@/lib/analytics";
 
 const MAX_LENGTH = 1000;
 
@@ -221,7 +222,8 @@ function Chat({ state }: { state: OnboardingState }) {
   async function deliver(content: string) {
     setFailed(null);
     try {
-      await send(content).unwrap();
+      const reply = await send(content).unwrap();
+      if (reply.onboarding.completed && !state.completed) track("onboarding_completed");
       inputRef.current?.focus();
     } catch (error) {
       // Nothing was saved; give the text back so it can be resent or edited.

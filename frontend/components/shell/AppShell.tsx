@@ -47,6 +47,7 @@ import { LogoMark } from "@/components/ui/Logo";
 import { useSession, useSignOut } from "@/lib/auth/useSession";
 import { applyTheme, useAppTheme, type ThemePreference } from "@/lib/theme/appTheme";
 import { activeNavItem, navByArea, type NavArea } from "./nav";
+import { NotificationBell } from "./NotificationBell";
 
 function initialsOf(first: string, last: string | null) {
   return `${first[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase();
@@ -253,6 +254,7 @@ export function AppShell({
               </BreadcrumbList>
             </Breadcrumb>
             <div className="ml-auto flex items-center gap-1">
+              <NotificationBell />
               <ThemeMenu />
               <UserMenu />
             </div>

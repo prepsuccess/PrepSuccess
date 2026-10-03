@@ -61,6 +61,11 @@ export const dashboardSchema = z
       claimed: z.number().int().meta({ description: "Skills named in the onboarding chat." }),
       claimed_checked: z.number().int(),
       in_progress: z.number().int(),
+      tasks_attempted: z
+        .number()
+        .int()
+        .meta({ description: "Practical tasks submitted at least once." }),
+      tasks_passed: z.number().int().meta({ description: "Practical tasks passed at least once." }),
     }),
     skills: z.array(skillResultSchema).meta({ description: "Latest result per checked skill." }),
     gaps: z
@@ -69,7 +74,7 @@ export const dashboardSchema = z
     next_steps: z.array(
       z.object({
         id: z.string(),
-        kind: z.enum(["onboarding", "resume", "check", "revise", "aptitude"]),
+        kind: z.enum(["onboarding", "resume", "check", "revise", "aptitude", "task"]),
         title: z.string(),
         detail: z.string(),
         href: z.string().meta({ description: "App path for the step's action." }),

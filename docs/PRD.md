@@ -31,7 +31,7 @@ how roles are managed across the platform.
 |------|-------------------------------|
 | Self-assessment | Technical + soft skills + aptitude, scored |
 | Readiness dashboard | One place to see overall and category-wise readiness |
-| AI guidance *(future)* | Personalized "what to improve next" and resume feedback |
+| AI guidance | Personalized "what to improve next" *(Phase 1, built)*; resume feedback *(Phase 4)* |
 | Interview prep material *(future)* | Question banks + downloadable prep PDFs |
 | Mentorship *(future)* | 1:1 video calls and chat with developers/mentors |
 | Progress tracking | See improvement over time, not just a one-time score |
@@ -133,7 +133,8 @@ the product's phases, it grows to include:
 | Skill-gap highlights | Phase 1 | Weakest specific skills, ranked |
 | Progress over time | Phase 2 | Score history / trend as the student retakes assessments and solves questions |
 | Bookmarked/solved questions | Phase 2 | Interview question bank progress |
-| AI-suggested next steps | Phase 4 (AI) | Personalized action list, refreshed as data changes |
+| AI-suggested next steps | Phase 1 (AI-first) | Rule-based next steps plus the AI coach's take, refreshed as data changes |
+| Learning resources & practical tasks | Phase 1 | Study material for weak skills; hands-on tasks with AI rubric feedback |
 | Downloadable prep PDFs | Phase 2–4 | Curated guides + personalized readiness PDF |
 | Upcoming mentor sessions | Phase 3 | Scheduled 1:1 calls, chat access |
 | Mentor session notes/follow-ups | Phase 3 | Notes and action items from past sessions |

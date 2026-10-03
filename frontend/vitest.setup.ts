@@ -9,6 +9,9 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 };
 
+// jsdom doesn't lay pages out, so it has no scrollIntoView.
+Element.prototype.scrollIntoView ??= function scrollIntoView() {};
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   server.resetHandlers();

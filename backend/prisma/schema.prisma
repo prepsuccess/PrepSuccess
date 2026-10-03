@@ -15,6 +15,7 @@
 //   ai_conversations   turn-by-turn AI chat log
 //   practical_tasks / user_task_submissions / learning_resources
 //   ai_usage           one row per AI call — the free-trial meter (SCRUM-129)
+//   notifications      in-app notifications (SCRUM-48)
 
 generator client {
   provider = "prisma-client"
@@ -118,6 +119,7 @@ model User {
   assessments     Assessment[]
   taskSubmissions UserTaskSubmission[]
   aiUsage         AiUsage[]
+  notifications   Notification[]
 
   @@map("users")
 }
@@ -345,4 +347,30 @@ model AiUsage {
 
   @@index([userId, createdAt])
   @@map("ai_usage")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications (SCRUM-48)
+// ---------------------------------------------------------------------------
+
+/// In-app notifications. Written by services/notifications; a failed write
+/// never blocks the action that triggered it.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// e.g. WELCOME, TASK_REVIEWED, PASSWORD_CHANGED. A string, not an enum, so
+  /// Phase 2/3 events (session booked, mentor note) don't need a migration.
+  type      String    @db.VarChar(50)
+  title     String    @db.VarChar(200)
+  body      String?   @db.VarChar(1000)
+  /// App path the notification opens, e.g. /tasks/<id>.
+  href      String?   @db.VarChar(500)
+  payload   Json      @default("{}")
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

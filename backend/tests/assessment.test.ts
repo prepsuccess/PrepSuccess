@@ -2,15 +2,23 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  MAX_SCORE,
+  LEVEL_TARGET,
+  drawPool,
+  fingerprint,
+  levelsToTopUp,
+  maxScoreFor,
   nextDifficulty,
   pickQuestion,
   scoreOf,
-  toStoredQuestions,
+  seenBankIds,
+  toBankRows,
   verdict,
+  type BankQuestion,
   type StoredQuestion,
 } from "../src/modules/assessment/assessment.logic.js";
+import { SKILL_CATALOGUE } from "../src/modules/skills/catalogue.js";
 import { matchClaims, normalizeSkillName } from "../src/modules/skills/skills.logic.js";
+import { STACKS } from "../src/modules/skills/stacks.js";
 
 const USER_ID = "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d";
 const SKILL_ID = "5c8b4d2f-3a1e-4b7c-8d9f-2e3a4b5c6d7e";
@@ -38,6 +46,7 @@ const db = vi.hoisted(() => {
     result: null as null | Record<string, unknown>,
     profileData: {} as Record<string, unknown>,
     tick: 0,
+    bank: [] as Record<string, unknown>[],
   };
   const full = () =>
     state.assessment ? { ...state.assessment, skill, result: state.result } : null;
@@ -49,6 +58,7 @@ const db = vi.hoisted(() => {
       state.result = null;
       state.profileData = { degree: "B.Tech", student_year: 3, skills: ["DSA basics", "Kotlin"] };
       state.tick = 0;
+      state.bank = [];
     },
     prisma: {
       user: {
@@ -77,6 +87,7 @@ const db = vi.hoisted(() => {
             skillId: data.skillId,
             mode: "DIAGNOSTIC",
             status: "IN_PROGRESS",
+            questionCount: data.questionCount,
             questions: data.questions,
             startedAt: now,
             completedAt: null,
@@ -95,6 +106,28 @@ const db = vi.hoisted(() => {
           return { count: 1 };
         }),
         findUniqueOrThrow: vi.fn(async () => full()),
+      },
+      checkQuestion: {
+        findMany: vi.fn(async ({ where }) =>
+          state.bank.filter(
+            (q) => q.skillId === where.skillId && (where.isDeleted === undefined || !q.isDeleted),
+          ),
+        ),
+        createMany: vi.fn(async ({ data }) => {
+          for (const row of data) {
+            state.bank.push({
+              id: `00000000-0000-4000-9000-${String(state.bank.length + 1).padStart(12, "0")}`,
+              timesAsked: 0,
+              timesCorrect: 0,
+              isActive: true,
+              isDeleted: false,
+              createdAt: new Date(now.getTime() + state.bank.length),
+              ...row,
+            });
+          }
+          return { count: data.length };
+        }),
+        updateMany: vi.fn(async () => ({ count: 1 })),
       },
       assessmentResult: {
         create: vi.fn(async ({ data }) => (state.result = { ...data, createdAt: now })),
@@ -122,14 +155,40 @@ const question = (level: string, n: number) => ({
   answer_index: 0,
   explanation: `Because ${level} ${n}.`,
 });
-const pool = () => ({
-  easy: [1, 2, 3, 4].map((n) => question("easy", n)),
-  medium: [1, 2, 3, 4].map((n) => question("medium", n)),
-  hard: [1, 2, 3, 4].map((n) => question("hard", n)),
-});
+let batchNo = 0;
+/** What the model returns for one top-up: 8 new questions per level. */
+const batch = () => {
+  const from = ++batchNo * 100;
+  const eight = (level: string) => Array.from({ length: 8 }, (_, i) => question(level, from + i));
+  return { easy: eight("easy"), medium: eight("medium"), hard: eight("hard") };
+};
+/** A full bank (34/33/33) for the skill, so a check needs no AI call. */
+function fillBank() {
+  for (const [level, n] of Object.entries(LEVEL_TARGET)) {
+    for (let i = 0; i < n; i++) {
+      const q = question(level.toLowerCase(), i);
+      db.state.bank.push({
+        id: `10000000-0000-4000-9000-${String(db.state.bank.length + 1).padStart(12, "0")}`,
+        skillId: SKILL_ID,
+        difficulty: level,
+        question: q.question,
+        options: q.options,
+        answerIndex: 0,
+        explanation: q.explanation,
+        fingerprint: fingerprint(q.question),
+        timesAsked: 0,
+        isActive: true,
+        isDeleted: false,
+      });
+    }
+  }
+}
 
-const start = () =>
-  request(app).post("/api/v1/ai/assessment/start").set(auth()).send({ skill_id: SKILL_ID });
+const start = (questionCount?: number) =>
+  request(app)
+    .post("/api/v1/ai/assessment/start")
+    .set(auth())
+    .send({ skill_id: SKILL_ID, ...(questionCount ? { question_count: questionCount } : {}) });
 
 /** The stored right answer for a question — the client never sees it before answering. */
 function rightAnswer(questionId: string) {
@@ -157,8 +216,10 @@ describe("adaptive rules", () => {
     expect(nextDifficulty("EASY", false)).toBe("EASY");
   });
 
-  it("scores harder questions higher, as a percentage of a perfect run", () => {
-    expect(MAX_SCORE).toBe(14); // medium + 4 hard
+  it("scores harder questions higher, as a percentage of a perfect run of any length", () => {
+    expect(maxScoreFor(5)).toBe(14); // medium + 4 hard: checks from before the bank
+    expect(maxScoreFor(10)).toBe(29);
+    expect(maxScoreFor(30)).toBe(89);
     const asked = (difficulty: StoredQuestion["difficulty"], correct: boolean, order: number) =>
       ({ difficulty, correct, asked_order: order }) as StoredQuestion;
     // medium ✓, hard ✗, medium ✓, hard ✗, medium ✗ = 4 points
@@ -170,22 +231,84 @@ describe("adaptive rules", () => {
       asked("MEDIUM", false, 5),
     ];
     expect(scoreOf(run)).toBe(4);
-    expect(verdict(4, 40)).toEqual({ percent: 29, mastery: "NEEDS_REVISION" });
-    expect(verdict(6, 40)).toEqual({ percent: 43, mastery: "MASTERED" });
-    expect(verdict(14, 40)).toEqual({ percent: 100, mastery: "MASTERED" });
+    expect(verdict(4, 14, 40)).toEqual({ percent: 29, mastery: "NEEDS_REVISION" });
+    expect(verdict(6, 14, 40)).toEqual({ percent: 43, mastery: "MASTERED" });
+    expect(verdict(29, 29, 40)).toEqual({ percent: 100, mastery: "MASTERED" });
+  });
+
+  const bankQ = (
+    id: string,
+    difficulty: BankQuestion["difficulty"],
+    timesAsked = 0,
+  ): BankQuestion => ({
+    id,
+    difficulty,
+    question: `Question ${id}?`,
+    options: [`right ${id}`, "b", "c", "d"],
+    answerIndex: 0,
+    explanation: "x",
+    timesAsked,
+  });
+
+  it("draws unseen questions first, then the least-asked repeats, with shuffled options", () => {
+    const bank = [
+      bankQ("e1", "EASY"),
+      bankQ("e2", "EASY", 5),
+      bankQ("e3", "EASY", 1),
+      bankQ("m1", "MEDIUM"),
+      bankQ("h1", "HARD"),
+    ];
+    const pool = drawPool(bank, new Set(["e2", "e3"]), 2);
+    const easy = pool.filter((q) => q.difficulty === "EASY").map((q) => q.bank_id);
+    expect(easy).toEqual(["e1", "e3"]); // unseen e1, then e3 (asked once) before e2 (5 times)
+    for (const q of pool) expect(q.options[q.answer_index]).toMatch(/^right/);
+    expect(new Set(pool.map((q) => q.id)).size).toBe(pool.length);
+  });
+
+  it("knows what this student has already been asked", () => {
+    const seen = seenBankIds([
+      {
+        questions: [
+          { bank_id: "a", asked_order: 1 },
+          { bank_id: "b", asked_order: null },
+          { asked_order: 2 },
+        ],
+      },
+    ]);
+    expect([...seen]).toEqual(["a"]);
+  });
+
+  it("tops up only levels short of fresh questions with room left", () => {
+    const bank = [
+      ...Array.from({ length: 6 }, (_, i) => bankQ(`e${i}`, "EASY")),
+      ...Array.from({ length: 2 }, (_, i) => bankQ(`m${i}`, "MEDIUM")),
+      ...Array.from({ length: 33 }, (_, i) => bankQ(`h${i}`, "HARD")),
+    ];
+    // 10 questions need 5 fresh per level: easy has 6, medium 2, hard is full and fresh.
+    expect(levelsToTopUp(bank, new Set(), 10)).toEqual(["MEDIUM"]);
+    // Every hard one seen, but the hard share is full: nothing more to write there.
+    const seenHard = new Set(bank.filter((q) => q.difficulty === "HARD").map((q) => q.id));
+    expect(levelsToTopUp(bank, seenHard, 10)).toEqual(["MEDIUM"]);
+  });
+
+  it("cleans a batch for the bank: no duplicates, no ambiguous options, capped per level", () => {
+    const b = batch();
+    b.easy[0]!.options = ["same", "Same", "x", "y"];
+    b.medium[1] = { ...b.medium[0]!, question: `  ${b.medium[0]!.question.toUpperCase()}  ` };
+    const existing = Array.from({ length: LEVEL_TARGET.HARD - 3 }, (_, i) => ({
+      difficulty: "HARD" as const,
+      fingerprint: `h${i}`,
+    }));
+    const rows = toBankRows(b, existing, [fingerprint(b.easy[1]!.question)]);
+    const count = (d: string) => rows.filter((r) => r.difficulty === d).length;
+    expect(count("EASY")).toBe(6); // 8 − ambiguous − retired
+    expect(count("MEDIUM")).toBe(7); // 8 − same question reworded in case/spacing
+    expect(count("HARD")).toBe(3); // only 3 places left in the hard share
   });
 
   it("falls back to the nearest level when one runs out", () => {
-    const questions = toStoredQuestions({ ...pool(), hard: [] } as never);
+    const questions = drawPool([bankQ("m1", "MEDIUM"), bankQ("e1", "EASY")], new Set(), 5);
     expect(pickQuestion(questions, "HARD")!.difficulty).toBe("MEDIUM");
-  });
-
-  it("shuffles options but keeps the right answer, and drops ambiguous questions", () => {
-    const p = pool();
-    p.easy[0]!.options = ["same", "Same", "x", "y"];
-    const stored = toStoredQuestions(p);
-    expect(stored).toHaveLength(11);
-    for (const q of stored) expect(q.options[q.answer_index]).toMatch(/^right/);
   });
 });
 
@@ -215,31 +338,56 @@ describe("GET /api/v1/skills/mine", () => {
 });
 
 describe("POST /api/v1/ai/assessment/start", () => {
-  it("generates a pool and asks a medium question, without revealing the answer", async () => {
-    fakeAi.reply(pool());
+  it("fills an empty bank once, then asks a medium question without revealing the answer", async () => {
+    fakeAi.reply(batch());
     const res = await start();
 
     expect(res.status).toBe(200);
     const state = res.body.data;
-    expect(state).toMatchObject({ status: "in_progress", total_questions: 5, answered: 0 });
+    expect(state).toMatchObject({ status: "in_progress", total_questions: 10, answered: 0 });
     expect(state.current_question).toMatchObject({ number: 1, difficulty: "medium" });
     expect(state.current_question.options).toHaveLength(4);
     expect(JSON.stringify(state)).not.toContain("answer_index");
     expect(JSON.stringify(state)).not.toContain("correct_index");
-    // The prompt is grounded in the skill and the student's profile.
+    // One AI call wrote 24 questions into the shared bank.
+    expect(fakeAi.calls).toHaveLength(1);
+    expect(db.state.bank).toHaveLength(24);
     expect(fakeAi.calls[0]!.system).toContain("Data structures & algorithms");
-    expect(fakeAi.calls[0]!.system).toContain("B.Tech, year 3");
+    // Shared across students, so not tailored to this one's profile.
+    expect(fakeAi.calls[0]!.system).not.toContain("B.Tech");
   });
 
-  it("resumes an unfinished check instead of paying for a new one", async () => {
-    fakeAi.reply(pool());
+  it("makes no AI call when the bank already has fresh questions", async () => {
+    fillBank();
+    const res = await start(20);
+    expect(res.status).toBe(200);
+    expect(res.body.data.total_questions).toBe(20);
+    expect(fakeAi.calls).toHaveLength(0);
+    // The pool is up to 20 per level, all from the bank.
+    const stored = db.state.assessment!.questions as StoredQuestion[];
+    expect(stored.every((q) => q.bank_id)).toBe(true);
+    expect(stored.filter((q) => q.difficulty === "EASY")).toHaveLength(20);
+  });
+
+  it("lets the student choose 10 to 30 questions", async () => {
+    fillBank();
+    expect((await start(9)).status).toBe(422);
+    expect((await start(31)).status).toBe(422);
+    const ok = await start(30);
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.total_questions).toBe(30);
+  });
+
+  it("resumes an unfinished check instead of starting another", async () => {
+    fakeAi.reply(batch());
     const first = await start();
-    const again = await start();
+    const again = await start(25);
     expect(again.body.data.id).toBe(first.body.data.id);
+    expect(again.body.data.total_questions).toBe(10);
     expect(fakeAi.calls).toHaveLength(1);
   });
 
-  it("saves nothing when the AI fails", async () => {
+  it("saves nothing when the AI fails and the bank is empty", async () => {
     fakeAi.fail();
     fakeAi.fail();
     fakeAi.fail();
@@ -248,13 +396,12 @@ describe("POST /api/v1/ai/assessment/start", () => {
     expect(db.prisma.assessment.create).not.toHaveBeenCalled();
   });
 
-  it("rejects a pool the model got wrong", async () => {
-    fakeAi.reply({ easy: [], medium: [], hard: [] });
-    fakeAi.reply({ easy: [], medium: [], hard: [] });
+  it("explains when there aren't enough questions to start", async () => {
     fakeAi.reply({ easy: [], medium: [], hard: [] });
     const res = await start();
-    expect(res.status).toBe(502);
-    expect(res.body.error.code).toBe("AI_BAD_RESPONSE");
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("NOT_ENOUGH_QUESTIONS");
+    expect(db.prisma.assessment.create).not.toHaveBeenCalled();
   });
 
   it("404s for an unknown skill and 403s for non-students", async () => {
@@ -274,12 +421,11 @@ describe("POST /api/v1/ai/assessment/start", () => {
 });
 
 describe("POST /api/v1/ai/assessment/:id/answer", () => {
-  it("adapts to each answer, then scores the check", async () => {
-    fakeAi.reply(pool());
-    let state = (await start()).body.data;
+  it("adapts to each answer, then scores the check out of its own length", async () => {
+    fillBank();
+    let state = (await start(10)).body.data;
 
-    // ✓ medium → hard ✓ → hard ✗ → medium ✓ → hard ✗
-    const plan = [true, true, false, true, false];
+    const plan = [true, true, false, true, false, false, true, true, true, true];
     const levels: string[] = [];
     for (const right of plan) {
       const q = state.current_question;
@@ -290,35 +436,44 @@ describe("POST /api/v1/ai/assessment/:id/answer", () => {
       state = res.body.data;
     }
 
-    expect(levels).toEqual(["medium", "hard", "hard", "medium", "hard"]);
+    expect(levels).toEqual([
+      "medium",
+      "hard",
+      "hard",
+      "medium",
+      "hard",
+      "medium",
+      "easy",
+      "medium",
+      "hard",
+      "hard",
+    ]);
     expect(state.status).toBe("completed");
     expect(state.current_question).toBeNull();
-    expect(state.answers).toHaveLength(5);
-    expect(state.answers[2]).toMatchObject({ correct: false, explanation: expect.any(String) });
-    // 2 + 3 + 0 + 2 + 0 = 7 of 14
+    expect(state.answers).toHaveLength(10);
+    // 2+3+0+2+0+0+1+2+3+3 = 16 of 29
     expect(state.result).toEqual({
-      score: 7,
-      max_score: 14,
-      percent: 50,
+      score: 16,
+      max_score: 29,
+      percent: 55,
       threshold: 40,
       mastery: "mastered",
     });
     expect(db.prisma.assessmentResult.create).toHaveBeenCalledTimes(1);
-    // No AI call after the pool: marking is done by the server.
-    expect(fakeAi.calls).toHaveLength(1);
+    // Every answer updated its bank question's stats; marking needed no AI.
+    expect(db.prisma.checkQuestion.updateMany).toHaveBeenCalledTimes(10);
+    expect(fakeAi.calls).toHaveLength(0);
   });
 
   it("flags needs_revision below the pass mark", async () => {
-    fakeAi.reply(pool());
+    fillBank();
     let state = (await start()).body.data;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       const q = state.current_question;
       state = (await answer(q.id, (rightAnswer(q.id) + 1) % 4)).body.data;
     }
-    expect(state.answers.map((a: { difficulty: string }) => a.difficulty)).toEqual([
+    expect(state.answers.slice(0, 3).map((a: { difficulty: string }) => a.difficulty)).toEqual([
       "medium",
-      "easy",
-      "easy",
       "easy",
       "easy",
     ]);
@@ -326,7 +481,7 @@ describe("POST /api/v1/ai/assessment/:id/answer", () => {
   });
 
   it("refuses a stale question id (double submit)", async () => {
-    fakeAi.reply(pool());
+    fillBank();
     const q = (await start()).body.data.current_question;
     await answer(q.id, 0);
     const again = await answer(q.id, 1);
@@ -335,26 +490,63 @@ describe("POST /api/v1/ai/assessment/:id/answer", () => {
   });
 
   it("refuses answers once the check is complete", async () => {
-    fakeAi.reply(pool());
+    fillBank();
     let state = (await start()).body.data;
-    for (let i = 0; i < 5; i++) state = (await answer(state.current_question.id, 0)).body.data;
-    const res = await answer(state.answers[4].id, 0);
+    for (let i = 0; i < 10; i++) state = (await answer(state.current_question.id, 0)).body.data;
+    const res = await answer(state.answers[9].id, 0);
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("ASSESSMENT_COMPLETE");
   });
 
   it("validates the choice", async () => {
-    fakeAi.reply(pool());
+    fillBank();
     const q = (await start()).body.data.current_question;
     expect((await answer(q.id, 7)).status).toBe(422);
   });
 
   it("hides someone else's check", async () => {
-    fakeAi.reply(pool());
+    fillBank();
     await start();
     db.state.assessment!.userId = "00000000-0000-4000-8000-000000000000";
     const res = await request(app).get(`/api/v1/ai/assessment/${ASSESSMENT_ID}`).set(auth());
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+  });
+});
+
+describe("stacks", () => {
+  it("expands a stack into its catalogue skills, however it's written", () => {
+    const mern = ["mongodb", "expressjs", "react", "nodejs", "javascript"];
+    expect(matchClaims(["MERN stack"]).slugs).toEqual(mern);
+    expect(matchClaims(["mern"]).slugs).toEqual(mern);
+    expect(matchClaims(["MERN developer"]).slugs).toEqual(mern);
+    expect(matchClaims(["Full Stack", "frontend"]).slugs).toEqual([
+      "html",
+      "css",
+      "javascript",
+      "react",
+      "nodejs",
+      "expressjs",
+      "sql",
+    ]);
+  });
+
+  it("lets an exact stack name win over a single-skill alias, and keeps single skills single", () => {
+    expect(matchClaims(["Data analytics"]).slugs).toEqual([
+      "excel",
+      "sql",
+      "python",
+      "data-analysis-python",
+    ]);
+    expect(matchClaims(["data analysis"]).slugs).toEqual(["data-analysis-python"]);
+    expect(matchClaims(["React"]).slugs).toEqual(["react"]);
+    expect(matchClaims(["MERN stack", "Kotlin"]).unmatched).toEqual(["Kotlin"]);
+  });
+
+  it("only points at real catalogue skills", () => {
+    const slugs = new Set(SKILL_CATALOGUE.map((s) => s.slug));
+    for (const stack of STACKS) {
+      for (const slug of stack.skills) expect(slugs.has(slug), `${stack.name}: ${slug}`).toBe(true);
+    }
   });
 });

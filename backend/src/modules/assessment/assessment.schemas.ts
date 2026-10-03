@@ -1,9 +1,22 @@
 import { z } from "zod";
 
 import { skillSchema } from "../skills/skills.schemas.js";
+import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MIN_QUESTIONS } from "./assessment.logic.js";
 
 export const startAssessmentSchema = z
-  .object({ skill_id: z.uuid("Pick a skill to check.") })
+  .object({
+    skill_id: z.uuid("Pick a skill to check."),
+    question_count: z
+      .number()
+      .int()
+      .min(MIN_QUESTIONS, `Pick at least ${MIN_QUESTIONS} questions.`)
+      .max(MAX_QUESTIONS, `Pick at most ${MAX_QUESTIONS} questions.`)
+      .default(DEFAULT_QUESTIONS)
+      .meta({
+        description: `How many questions to ask (${MIN_QUESTIONS}-${MAX_QUESTIONS}). Ignored when resuming an unfinished check.`,
+        example: 10,
+      }),
+  })
   .meta({ id: "StartAssessmentRequest" });
 
 export const answerSchema = z

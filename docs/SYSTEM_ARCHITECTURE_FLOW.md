@@ -153,15 +153,18 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
 ### 3.2 Flow B: 1-Click Google OAuth 2.0 (SSO)
 
 ```
-[ Frontend: Student clicks "Continue with Google" ]
+[ Frontend: Student clicks "Continue with Google" — a plain link, not fetch ]
+              │
+              ▼ GET /api/v1/auth/google?next=/dashboard
+[ Backend: sets a short-lived state + PKCE cookie, redirects to Google ]
               │
               ▼
 [ Google OAuth 2.0 Consent Screen ]
               │
-              ▼ Google returns authorization code
-[ Backend: POST /api/v1/auth/google ]
+              ▼ Google redirects with an authorization code
+[ Backend: GET /api/v1/auth/google/callback ]
               │
-              ▼ Verify ID Token with Google APIs
+              ▼ Check state + PKCE, exchange the code, verify the ID token
     Extract: `google_id`, `email`, `given_name`, `family_name`, `picture`
               │
               ├── Case 1: User with `google_id` exists?
@@ -179,7 +182,11 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
                     │   - is_verified = True
                     │   - password_hash = None
                     │   + empty `user_profiles` row (AI onboarding fills it on first login)
-                    └── Issue JWT Tokens & Return 200 OK.
+                    └── Issue JWT Tokens.
+              │
+              ▼
+[ Redirect to the frontend: /auth/callback#access_token=…&refresh_token=…&next=… ]
+  (tokens in the URL fragment, never sent to a server; errors go to /login?error=<code>)
 ```
 
 ---
@@ -203,6 +210,34 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
 
 ---
 
+### 3.4 Flow D: Forgot / Reset Password
+
+```
+[ POST /api/v1/auth/forgot-password ] with { email }
+              │
+              ├── Account missing, deactivated, or a code sent < 60s ago?
+              │     └── Send nothing — but answer exactly as below (no account enumeration).
+              │
+              ├── Otherwise: store a hashed 6-digit code (purpose = PASSWORD_RESET,
+              │   10-minute expiry, 3 attempts; only the newest code works) and email it.
+              ▼
+    200 OK "If <email> has a PrepSuccess account, we sent a 6-digit code to it."
+
+[ POST /api/v1/auth/reset-password ] with { email, otp, new password }
+              │
+              ├── Check the code (same rules as signup; a SIGNUP code is not accepted).
+              ├── In one transaction: consume the code, bcrypt the new password,
+              │   revoke every refresh token (signs out all other sessions).
+              ├── Issue fresh tokens and add a "password changed" notification.
+              ▼
+    200 OK with tokens + user — the student is signed in.
+```
+
+A Google-only account can use this flow to add a password; the code proves
+control of the email.
+
+---
+
 ## 4. Jira SCRUM Ticket Breakdown for Auth & Models
 
 | Ticket ID | Epic | Task Description |
@@ -211,5 +246,7 @@ Stores cryptographically hashed, short-lived one-time passwords for email verifi
 | **`SCRUM-11`** | Auth & Onboarding | Email + Password Authentication API (`/send-otp`, `/register`, `/login`, `/me`). |
 | **`SCRUM-12`** | Auth & Onboarding | Google OAuth 2.0 Integration Endpoint (`/auth/google`). |
 | **`SCRUM-13`** | Student Profile | Profile API (`GET/PATCH /api/v1/users/me`) — reads/edits `user_profiles.profile_data`; primary entry is AI onboarding. |
-| **`SCRUM-14`** | Student Assessment | Assessment Submission & Storage API (`/assessment/start`, `/assessment/{id}/submit`). |
+| **`SCRUM-14`** | Student Assessment | AI adaptive skill checks (`/ai/assessment/start`, `/ai/assessment/{id}`, `/ai/assessment/{id}/answer`). |
+| **`SCRUM-125/126`** | Student Assessment | Practical tasks (`/tasks`, `/tasks/{id}/submit`) and learning resources (`/resources?skill=`). |
+| **`SCRUM-48`** | Admin & Notifications | In-app notifications (`/notifications`). |
 | **`SCRUM-15`** | Readiness Dashboard | Scoring Service & Placement Readiness Dashboard API (`/dashboard`). |

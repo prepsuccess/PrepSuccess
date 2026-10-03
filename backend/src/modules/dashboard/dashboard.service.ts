@@ -73,6 +73,28 @@ async function loadStanding(userId: string) {
     .filter((a) => a.status === "IN_PROGRESS")
     .map((a) => ({ assessmentId: a.id, name: a.skill.name }));
 
+  // Practical tasks: what the student has tried and passed, and an unpassed
+  // task on a mastered skill to suggest next.
+  const masteredIds = results.filter((r) => r.mastered).map((r) => r.skillId);
+  const [submissions, masteredTasks] = await Promise.all([
+    prisma.userTaskSubmission.findMany({
+      where: { userId },
+      select: { taskId: true, passed: true },
+    }),
+    masteredIds.length
+      ? prisma.practicalTask.findMany({
+          where: { skillId: { in: masteredIds }, isActive: true, isDeleted: false },
+          select: { id: true, title: true, skillId: true },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+  const passedTaskIds = new Set(submissions.filter((s) => s.passed).map((s) => s.taskId));
+  const nameOf = new Map(results.map((r) => [r.skillId, r.name]));
+  const suggestedTasks = masteredTasks
+    .filter((t) => !passedTaskIds.has(t.id))
+    .map((t) => ({ taskId: t.id, title: t.title, skillName: nameOf.get(t.skillId)! }));
+
   return {
     user,
     profile,
@@ -81,6 +103,11 @@ async function loadStanding(userId: string) {
     claimedSlugs,
     claimedUnchecked,
     inProgress,
+    tasks: {
+      attempted: new Set(submissions.map((s) => s.taskId)).size,
+      passed: passedTaskIds.size,
+      suggested: suggestedTasks,
+    },
     onboardingCompleted: Boolean(user.profile?.onboardingCompletedAt),
   };
 }
@@ -130,6 +157,8 @@ export async function getDashboard(userId: string): Promise<DashboardResponse> {
       claimed: standing.claimedSlugs.length,
       claimed_checked: standing.claimedSlugs.filter((slug) => checkedSlugs.has(slug)).length,
       in_progress: standing.inProgress.length,
+      tasks_attempted: standing.tasks.attempted,
+      tasks_passed: standing.tasks.passed,
     },
     // Weakest first: what needs attention leads.
     skills: [...results].sort((a, b) => a.percent - b.percent).map(toSkillResult),
@@ -139,6 +168,7 @@ export async function getDashboard(userId: string): Promise<DashboardResponse> {
       inProgress: standing.inProgress,
       claimedUnchecked: standing.claimedUnchecked,
       results,
+      suggestedTasks: standing.tasks.suggested,
     }),
   };
 }

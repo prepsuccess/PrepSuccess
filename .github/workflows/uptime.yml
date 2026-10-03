@@ -1,0 +1,42 @@
+name: Uptime
+
+# Pings each environment's readiness probe (API + database) once an hour.
+# A failed run emails the repo's watchers via GitHub's normal notifications;
+# for faster alerts add an external monitor too (docs/DEPLOYMENT.md §Monitoring).
+# Set the URLs as repository variables: STAGING_API_URL and PRODUCTION_API_URL
+# (no trailing slash). An environment without a URL is skipped.
+
+on:
+  schedule:
+    # Hourly, not more: every ping wakes a sleeping free Render instance, and the
+    # free plan's 750 instance-hours a month are shared by staging and production.
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    name: Ping ${{ matrix.env }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: staging
+            url_var: STAGING_API_URL
+          - env: production
+            url_var: PRODUCTION_API_URL
+    steps:
+      - name: GET /health/ready
+        env:
+          BASE_URL: ${{ vars[matrix.url_var] }}
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "No ${{ matrix.url_var }} set; skipping ${{ matrix.env }}."
+            exit 0
+          fi
+          # Free instances sleep when idle, so allow a slow first response and retry.
+          curl --fail --silent --show-error --max-time 60 \
+            --retry 3 --retry-delay 20 --retry-all-errors \
+            "$BASE_URL/health/ready"

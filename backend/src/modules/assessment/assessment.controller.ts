@@ -8,8 +8,8 @@ import * as assessment from "./assessment.service.js";
 const idParam = z.object({ id: z.uuid() });
 
 export async function start(req: Request, res: Response) {
-  const { skill_id } = startAssessmentSchema.parse(req.body);
-  sendSuccess(req, res, await assessment.startAssessment(req.user!.id, skill_id));
+  const { skill_id, question_count } = startAssessmentSchema.parse(req.body);
+  sendSuccess(req, res, await assessment.startAssessment(req.user!.id, skill_id, question_count));
 }
 
 export async function get(req: Request, res: Response) {

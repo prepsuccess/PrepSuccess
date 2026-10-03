@@ -10,11 +10,13 @@ import {
   REQUIRED_FIELDS,
   aiTurnSchema,
   buildSystemPrompt,
+  cleanPicks,
   greeting,
   isComplete,
   mergeProfile,
   missingFields,
   sanitizeExtracted,
+  skillOptions,
   type ProfileData,
 } from "./onboarding.logic.js";
 import type { ChatMessage, OnboardingState } from "./onboarding.schemas.js";
@@ -71,6 +73,7 @@ function toState(
     completed: missing.size === 0,
     progress: { collected: items.filter((item) => item.done).length, total: items.length, items },
     profile,
+    skill_options: skillOptions(),
   };
 }
 
@@ -91,7 +94,7 @@ export async function getOnboarding(userId: string) {
  * reply is saved. Nothing is saved if the AI call fails, so the student can
  * simply send again.
  */
-export async function sendMessage(userId: string, content: string) {
+export async function sendMessage(userId: string, content: string, picked: string[] = []) {
   const user = await loadUser(userId);
   if (user.profile?.onboardingCompletedAt) {
     throw new AppError(
@@ -111,7 +114,13 @@ export async function sendMessage(userId: string, content: string) {
     );
   }
 
-  const profile = asProfile(user.profile?.profileData);
+  // Picked skills are saved exactly as chosen, before the AI sees the turn —
+  // the student, not the model, decides what's on the list.
+  const picks = cleanPicks(picked);
+  const profile = mergeProfile(
+    asProfile(user.profile?.profileData),
+    picks.length ? { skills: picks } : {},
+  );
   const studentMessage: ChatMessage = {
     role: "user",
     content,

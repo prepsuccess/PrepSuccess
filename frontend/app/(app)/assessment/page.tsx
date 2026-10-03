@@ -9,7 +9,7 @@ export default function AssessmentPage() {
     <>
       <PageHeader
         title="Skill checks"
-        description="Five questions per skill. They get harder when you're right and easier when you're not. Score 40% or more to count it as mastered."
+        description="Pick 10 to 30 questions per check. They get harder when you're right and easier when you're not. Score 40% or more to count it as mastered."
       />
       <SkillChecks />
     </>

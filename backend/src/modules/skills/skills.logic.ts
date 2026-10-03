@@ -1,4 +1,5 @@
 import { SKILL_CATALOGUE } from "./catalogue.js";
+import { STACKS, type Stack } from "./stacks.js";
 
 /**
  * Matches what students typed in the onboarding chat ("DSA basics", "React.js",
@@ -54,14 +55,50 @@ export function slugForClaim(claim: string): string | null {
   return ALIAS_INDEX.get(normalizeSkillName(claim)) ?? null;
 }
 
-/** Splits claims into catalogue slugs (deduplicated, in claim order) and the rest. */
+/** normalised stack name or alias (with and without "stack") → the stack. */
+const STACK_INDEX = new Map<string, Stack>();
+/** Single-word stack names ("mern") that also count inside a longer claim ("MERN developer"). */
+const STACK_WORDS = new Map<string, Stack>();
+for (const stack of STACKS) {
+  for (const name of [stack.name, ...stack.aliases]) {
+    const key = normalizeSkillName(name);
+    STACK_INDEX.set(key, stack);
+    STACK_INDEX.set(key.replace(/ stack$/, ""), stack);
+    STACK_INDEX.set(`${key.replace(/ stack$/, "")} stack`, stack);
+  }
+  for (const alias of stack.aliases) if (!alias.includes(" ")) STACK_WORDS.set(alias, stack);
+}
+
+/** The stack a claim names ("MERN stack", "full stack developer"), if any. */
+export function stackForClaim(claim: string): Stack | null {
+  const key = normalizeSkillName(claim);
+  const exact = STACK_INDEX.get(key);
+  if (exact) return exact;
+  for (const word of key.split(" ")) {
+    const stack = STACK_WORDS.get(word);
+    if (stack) return stack;
+  }
+  return null;
+}
+
+/**
+ * Splits claims into catalogue slugs (deduplicated, in claim order) and the
+ * rest. A stack expands to all its skills; an exact stack name wins over a
+ * single-skill alias, so picking "Data analytics" brings the whole set.
+ */
 export function matchClaims(claims: string[]) {
   const slugs: string[] = [];
   const unmatched: string[] = [];
+  const add = (slug: string) => {
+    if (!slugs.includes(slug)) slugs.push(slug);
+  };
   for (const claim of claims) {
-    const slug = slugForClaim(claim);
-    if (!slug) unmatched.push(claim);
-    else if (!slugs.includes(slug)) slugs.push(slug);
+    const exactStack = STACK_INDEX.get(normalizeSkillName(claim));
+    const slug = exactStack ? null : slugForClaim(claim);
+    const stack = exactStack ?? (slug ? null : stackForClaim(claim));
+    if (stack) stack.skills.forEach(add);
+    else if (slug) add(slug);
+    else unmatched.push(claim);
   }
   return { slugs, unmatched };
 }

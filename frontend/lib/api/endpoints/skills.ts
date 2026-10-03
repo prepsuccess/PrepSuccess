@@ -12,14 +12,15 @@ export const skillsApi = baseApi.injectEndpoints({
       query: (id) => `/api/v1/ai/assessment/${id}`,
       providesTags: (_result, _error, id) => [{ type: "Assessment", id }],
     }),
-    startAssessment: build.mutation<AssessmentState, string>({
-      query: (skillId) => ({
+    /** Starts a check of `questionCount` questions (10-30), or resumes an unfinished one. */
+    startAssessment: build.mutation<AssessmentState, { skillId: string; questionCount: number }>({
+      query: ({ skillId, questionCount }) => ({
         url: "/api/v1/ai/assessment/start",
         method: "POST",
-        body: { skill_id: skillId },
+        body: { skill_id: skillId, question_count: questionCount },
       }),
       // Seed the check's cache so its page opens without another request.
-      async onQueryStarted(_skillId, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           dispatch(

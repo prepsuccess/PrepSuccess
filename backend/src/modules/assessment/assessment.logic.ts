@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 
 import { z } from "zod";
 
@@ -6,33 +6,89 @@ import { z } from "zod";
  * Pure rules for the adaptive skill check — no database, no AI — so scoring
  * and mastery are deterministic and unit-testable (PRD-01 §5).
  *
- * One AI call at the start generates a pool of multiple-choice questions at
- * three difficulties. The check then asks QUESTIONS_PER_CHECK of them: it
- * starts at MEDIUM, steps up after a right answer and down after a wrong one.
- * The server marks every answer itself; the model never scores the student.
+ * Questions come from a per-skill bank (check_questions, up to BANK_TARGET),
+ * which the AI fills in batches and every student shares. A check draws a
+ * pool of questions the student hasn't seen, then asks the number they
+ * chose: it starts at MEDIUM, steps up after a right answer and down after a
+ * wrong one. The server marks every answer itself; the model never scores.
  */
 
 export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
-export const QUESTIONS_PER_CHECK = 5;
+/** Lengths a student can choose; 10 is the minimum. */
+export const QUESTION_COUNTS = [10, 15, 20, 25, 30] as const;
+export const MIN_QUESTIONS = 10;
+export const MAX_QUESTIONS = 30;
+export const DEFAULT_QUESTIONS = 10;
 export const START_DIFFICULTY: Difficulty = "MEDIUM";
-/** Enough per level for any path: at most 4 EASY or 4 HARD, or 3 MEDIUM, get asked. */
-export const POOL_PER_LEVEL = 4;
 
-const LEVELS: Difficulty[] = ["EASY", "MEDIUM", "HARD"];
+export const LEVELS: Difficulty[] = ["EASY", "MEDIUM", "HARD"];
 
 /** Points for a right answer; harder questions are worth more. */
 export const POINTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 
 /**
- * The best possible score: right at MEDIUM, then right at HARD every time.
- * Scores are a percentage of this, so a perfect run is 100.
+ * The best possible score for a check of `count` questions: right at MEDIUM,
+ * then right at HARD every time. Scores are a percentage of this, so a
+ * perfect run is 100 whatever the length.
  */
-export const MAX_SCORE = POINTS[START_DIFFICULTY] + POINTS.HARD * (QUESTIONS_PER_CHECK - 1);
+export const maxScoreFor = (count: number) => POINTS[START_DIFFICULTY] + POINTS.HARD * (count - 1);
+
+// ---------------------------------------------------------------------------
+// The bank
+// ---------------------------------------------------------------------------
+
+/** Questions kept per skill; the bank stops growing here. */
+export const BANK_TARGET = 100;
+/** How the target splits across levels (sums to BANK_TARGET). */
+export const LEVEL_TARGET: Record<Difficulty, number> = { EASY: 34, MEDIUM: 33, HARD: 33 };
+/** Questions the AI writes per level in one call. */
+export const BATCH_PER_LEVEL = 8;
+
+/** One bank question, as the draw needs it. */
+export interface BankQuestion {
+  id: string;
+  difficulty: Difficulty;
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+  timesAsked: number;
+}
+
+/** Same question, however it's spaced or punctuated, gets the same fingerprint. */
+export function fingerprint(question: string) {
+  const normal = question
+    .toLowerCase()
+    .replace(/```[\s\S]*?```/g, (code) => code.replace(/\s+/g, " "))
+    .replace(/[^a-z0-9+#]+/g, " ")
+    .trim();
+  return createHash("sha256").update(normal).digest("hex");
+}
+
+/**
+ * Whether a check of `count` questions needs the AI to add to the bank first:
+ * true when some level has fewer unseen questions than a run could ask
+ * there (about half the check) and that level's share of the bank isn't full.
+ */
+export function levelsToTopUp(
+  bank: BankQuestion[],
+  seen: Set<string>,
+  count: number,
+): Difficulty[] {
+  const need = Math.ceil(count / 2);
+  return LEVELS.filter((level) => {
+    const atLevel = bank.filter((q) => q.difficulty === level);
+    const unseen = atLevel.filter((q) => !seen.has(q.id)).length;
+    return unseen < need && atLevel.length < LEVEL_TARGET[level];
+  });
+}
 
 /** One question as stored in assessments.questions. answer_index stays on the server. */
 export interface StoredQuestion {
   id: string;
+  /** The check_questions row it came from (absent on checks from before the bank). */
+  bank_id?: string;
   difficulty: Difficulty;
   question: string;
   options: string[];
@@ -44,6 +100,77 @@ export interface StoredQuestion {
   correct: boolean | null;
   answered_at: string | null;
 }
+
+/** Bank ids this student has already been asked, across all their checks on the skill. */
+export function seenBankIds(attempts: { questions: unknown }[]) {
+  const seen = new Set<string>();
+  for (const attempt of attempts) {
+    const questions = Array.isArray(attempt.questions)
+      ? (attempt.questions as StoredQuestion[])
+      : [];
+    for (const q of questions) if (q.bank_id && q.asked_order !== null) seen.add(q.bank_id);
+  }
+  return seen;
+}
+
+/** Fisher–Yates with a crypto RNG. */
+function shuffled<T>(items: T[]) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+  }
+  return copy;
+}
+
+/** Moves the right answer to a random position, fresh for every check. */
+function shuffleOptions(options: string[], answerIndex: number) {
+  const order = shuffled(options.map((_, i) => i));
+  return { options: order.map((i) => options[i]!), answer_index: order.indexOf(answerIndex) };
+}
+
+/**
+ * A check's pool: up to `count` questions per level, unseen ones first in
+ * random order, then — only if the bank is exhausted — the least-asked seen
+ * ones. Options are shuffled per check.
+ */
+export function drawPool(bank: BankQuestion[], seen: Set<string>, count: number): StoredQuestion[] {
+  const pool: StoredQuestion[] = [];
+  for (const level of LEVELS) {
+    const atLevel = bank.filter((q) => q.difficulty === level);
+    const fresh = shuffled(atLevel.filter((q) => !seen.has(q.id)));
+    const repeats = atLevel
+      .filter((q) => seen.has(q.id))
+      .sort((a, b) => a.timesAsked - b.timesAsked);
+    for (const q of [...fresh, ...repeats].slice(0, count)) {
+      pool.push({
+        id: `q${pool.length + 1}`,
+        bank_id: q.id,
+        difficulty: q.difficulty,
+        question: q.question,
+        ...shuffleOptions(q.options, q.answerIndex),
+        explanation: q.explanation,
+        asked_order: null,
+        chosen_index: null,
+        correct: null,
+        answered_at: null,
+      });
+    }
+  }
+  return pool;
+}
+
+/** Enough questions for the whole check, and every level represented. */
+export function poolIsUsable(questions: StoredQuestion[], count: number) {
+  return (
+    questions.length >= count &&
+    LEVELS.every((level) => questions.some((q) => q.difficulty === level))
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Running a check
+// ---------------------------------------------------------------------------
 
 export function nextDifficulty(current: Difficulty, wasCorrect: boolean): Difficulty {
   const index = LEVELS.indexOf(current) + (wasCorrect ? 1 : -1);
@@ -64,8 +191,7 @@ export function currentQuestion(questions: StoredQuestion[]) {
 
 /**
  * An unasked question at `difficulty`, or the nearest level that still has
- * one (the pool is sized so this never needs to happen, but a short pool
- * must not end the check early).
+ * one, so a level running out never ends the check early.
  */
 export function pickQuestion(questions: StoredQuestion[], difficulty: Difficulty) {
   const byDistance = [...LEVELS].sort(
@@ -89,9 +215,9 @@ export function scoreOf(questions: StoredQuestion[]) {
 
 export const percentOf = (score: number, maxScore: number) => Math.round((score / maxScore) * 100);
 
-/** Score as a whole percentage of MAX_SCORE, and the verdict against the skill's pass mark. */
-export function verdict(score: number, threshold: number) {
-  const percent = percentOf(score, MAX_SCORE);
+/** Score as a whole percentage of the best possible, and the verdict against the pass mark. */
+export function verdict(score: number, maxScore: number, threshold: number) {
+  const percent = percentOf(score, maxScore);
   return {
     percent,
     mastery: percent >= threshold ? ("MASTERED" as const) : ("NEEDS_REVISION" as const),
@@ -99,7 +225,7 @@ export function verdict(score: number, threshold: number) {
 }
 
 // ---------------------------------------------------------------------------
-// The question pool the model generates
+// What the model writes
 // ---------------------------------------------------------------------------
 
 const generatedQuestion = z.object({
@@ -111,59 +237,67 @@ const generatedQuestion = z.object({
 
 const level = z
   .array(generatedQuestion)
-  .min(POOL_PER_LEVEL)
-  .max(POOL_PER_LEVEL + 2);
+  .max(BATCH_PER_LEVEL + 2)
+  .default([]);
 
-export const questionPoolSchema = z.object({ easy: level, medium: level, hard: level });
-export type QuestionPool = z.infer<typeof questionPoolSchema>;
+export const questionBatchSchema = z.object({ easy: level, medium: level, hard: level });
+export type QuestionBatch = z.infer<typeof questionBatchSchema>;
 
-/** Moves the right answer to a random position — models put it first far too often. */
-function shuffleOptions(options: string[], answerIndex: number) {
-  const order = options.map((_, i) => i);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = randomInt(i + 1);
-    [order[i], order[j]] = [order[j]!, order[i]!];
-  }
-  return { options: order.map((i) => options[i]!), answer_index: order.indexOf(answerIndex) };
+export interface NewBankQuestion {
+  difficulty: Difficulty;
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+  fingerprint: string;
 }
 
 /**
- * Turns the model's pool into stored questions: drops any with duplicate
- * options (ambiguous), shuffles answers, and gives each an id.
+ * Cleans a batch for the bank: drops questions with duplicate options
+ * (ambiguous) or already in the bank (by fingerprint), keeps only levels that
+ * still have room, and never lets a level go past its share of BANK_TARGET.
+ * `retired` are fingerprints of deleted questions: never re-added, but they
+ * don't take up room.
  */
-export function toStoredQuestions(pool: QuestionPool): StoredQuestion[] {
-  const stored: StoredQuestion[] = [];
-  const entries: [Difficulty, QuestionPool["easy"]][] = [
-    ["EASY", pool.easy],
-    ["MEDIUM", pool.medium],
-    ["HARD", pool.hard],
+export function toBankRows(
+  batch: QuestionBatch,
+  existing: { difficulty: Difficulty; fingerprint: string }[],
+  retired: string[] = [],
+): NewBankQuestion[] {
+  const known = new Set([...existing.map((q) => q.fingerprint), ...retired]);
+  const room = Object.fromEntries(
+    LEVELS.map((lvl) => [
+      lvl,
+      LEVEL_TARGET[lvl] - existing.filter((q) => q.difficulty === lvl).length,
+    ]),
+  ) as Record<Difficulty, number>;
+
+  const rows: NewBankQuestion[] = [];
+  const entries: [Difficulty, QuestionBatch["easy"]][] = [
+    ["EASY", batch.easy],
+    ["MEDIUM", batch.medium],
+    ["HARD", batch.hard],
   ];
   for (const [difficulty, questions] of entries) {
     for (const q of questions) {
+      if (room[difficulty] <= 0) break;
       const options = q.options.map((option) => option.trim());
       if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) continue;
-      stored.push({
-        id: `q${stored.length + 1}`,
+      const print = fingerprint(q.question);
+      if (known.has(print)) continue;
+      known.add(print);
+      room[difficulty] -= 1;
+      rows.push({
         difficulty,
         question: q.question.trim(),
-        ...shuffleOptions(options, q.answer_index),
+        options,
+        answerIndex: q.answer_index,
         explanation: q.explanation.trim(),
-        asked_order: null,
-        chosen_index: null,
-        correct: null,
-        answered_at: null,
+        fingerprint: print,
       });
     }
   }
-  return stored;
-}
-
-/** After cleaning, every level needs a question and there must be enough for a full check. */
-export function poolIsUsable(questions: StoredQuestion[]) {
-  return (
-    questions.length >= QUESTIONS_PER_CHECK &&
-    LEVELS.every((level) => questions.some((q) => q.difficulty === level))
-  );
+  return rows;
 }
 
 export interface SkillForPrompt {
@@ -172,15 +306,12 @@ export interface SkillForPrompt {
   description: string | null;
 }
 
-export function buildQuestionPrompt(skill: SkillForPrompt, profile: Record<string, unknown>) {
-  const who = [
-    typeof profile.degree === "string" ? profile.degree : null,
-    typeof profile.student_year === "number" ? `year ${profile.student_year}` : null,
-    typeof profile.target_role === "string" ? `aiming for ${profile.target_role}` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
+/**
+ * Asks for a batch for the shared bank — not tailored to one student, since
+ * every student checking the skill draws from it. `avoid` lists questions
+ * already in the bank so the model covers new ground.
+ */
+export function buildQuestionPrompt(skill: SkillForPrompt, levels: Difficulty[], avoid: string[]) {
   const style = {
     TECHNICAL:
       "Test real understanding, not trivia: concepts, reading a short code snippet, predicting output, choosing the right approach.",
@@ -188,17 +319,21 @@ export function buildQuestionPrompt(skill: SkillForPrompt, profile: Record<strin
       "Placement-style aptitude questions with one exact answer. Work every calculation out step by step before writing the options, and double-check the answer.",
     SOFT: "Situational judgement: a short realistic workplace or college scenario, and four plausible responses where exactly one is clearly best.",
   }[skill.category];
+  const wanted = levels.map((l) => l.toLowerCase()).join(", ");
 
   return [
     "You write multiple-choice questions for PrepSuccess, which checks Indian college students' skills before campus placements.",
     `Skill: ${skill.name}.${skill.description ? ` Covers: ${skill.description}` : ""}`,
-    who ? `The student: ${who}.` : "",
     "",
-    `Write ${POOL_PER_LEVEL} questions at each level — easy, medium and hard — all different, covering different parts of the skill.`,
+    `Write ${BATCH_PER_LEVEL} new questions for each of these levels: ${wanted}. Leave the other levels empty.`,
     "- easy: core definitions and basics a beginner should know.",
     "- medium: applying the basics; what a placement interview would ask.",
     "- hard: deeper understanding, edge cases or combining ideas — still fair, never a trick.",
+    "Spread them across different parts of the skill.",
     style,
+    avoid.length
+      ? `Already in the bank — do NOT repeat or lightly reword any of these:\n${avoid.map((q) => `- ${q}`).join("\n")}`
+      : "",
     "",
     "Rules:",
     "- Exactly 4 options, exactly one correct. Wrong options must be plausible but clearly wrong to someone who knows the topic.",
@@ -210,4 +345,12 @@ export function buildQuestionPrompt(skill: SkillForPrompt, profile: Record<strin
   ]
     .filter((line, i, all) => line !== "" || all[i - 1] !== "")
     .join("\n");
+}
+
+/** The first line of each bank question, for the prompt's "don't repeat" list. */
+export function avoidList(questions: { question: string }[], limit = 60) {
+  return questions
+    .slice(-limit)
+    .map((q) => q.question.split("\n")[0]!.slice(0, 120).trim())
+    .filter(Boolean);
 }

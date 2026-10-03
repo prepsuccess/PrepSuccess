@@ -382,6 +382,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a password-reset code
+         * @description Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. Always answers 200 with the same message, whether or not the email is registered and even inside the 60-second resend cooldown, so it can't be used to discover accounts.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ForgotPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description Code sent if the account exists. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["SendOtpResponse"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS` — rate limit hit; wait a minute. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `EMAIL_SEND_FAILED` — try again. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with the emailed code
+         * @description Step 2. Verifies the code (3 attempts), sets the new password, signs the account out of every other session and signs this one in. A Google-only account gains a password this way.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description Password changed and signed in. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["TokenResponse"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `OTP_INVALID`, `OTP_EXPIRED` or `OTP_TOO_MANY_ATTEMPTS`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS` — rate limit hit; wait a minute. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -1057,7 +1219,7 @@ export interface paths {
         put?: never;
         /**
          * Start (or resume) a skill check
-         * @description Resumes an unfinished check on the skill if there is one. Otherwise one AI call writes a pool of multiple-choice questions (easy, medium, hard) and the first — a medium one — is returned. Correct answers never leave the server until a question is answered. Nothing is saved if the AI call fails.
+         * @description Resumes an unfinished check on the skill if there is one (question_count is ignored then). Otherwise starts a check of question_count questions (10-30, default 10) drawn from the skill's shared question bank, preferring ones this student hasn't seen. If the bank is short of fresh questions, the AI first adds a batch (the bank grows to 100 per skill), so most starts make no AI call. The first question, a medium one, is returned. Correct answers never leave the server until a question is answered.
          */
         post: {
             parameters: {
@@ -1146,7 +1308,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly. */
+                /** @description `AI_UNAVAILABLE`, `AI_NOT_CONFIGURED` or `NOT_ENOUGH_QUESTIONS` — try again shortly. */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1635,6 +1797,1893 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Learning resources for a skill
+         * @description Curated material for one skill: outside links (official docs, tutorials, practice sites) and short notes hosted by PrepSuccess. Shown whenever a check lands below the pass mark, so a gap always comes with something to study.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description The skill's slug. */
+                    skill: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The skill and its resources, notes and references first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["SkillResources"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Practical tasks for a skill
+         * @description Small hands-on tasks for one skill, easiest first, with how many times the student tried each and their best score.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description The skill's slug. */
+                    skill: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The skill and its tasks. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["SkillTasks"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A task, its rubric and my attempts */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The task. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["TaskDetail"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TASK_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit an answer for AI review
+         * @description One AI call. The AI scores each rubric criterion and writes feedback; the total, the percentage and pass/fail (60%) are computed by the server, never by the AI. The submission is treated strictly as the answer to mark — instructions inside it are ignored. Nothing is saved if the AI call fails.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SubmitTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description The reviewed submission. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["TaskSubmission"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TASK_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_BAD_RESPONSE` — try again. */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My notifications
+         * @description The 30 newest in-app notifications (welcome, task feedback ready, password changed) and the unread count.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notifications. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["NotificationList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark one notification read
+         * @description Idempotent. Returns the updated list.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated notifications. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["NotificationList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `NOTIFICATION_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark every notification read */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated notifications. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["NotificationList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List users
+         * @description Search and filter accounts. Account fields only — no assessment results; admins never browse an individual student's results (PRD-04 §4).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Matches name or email. */
+                    q?: string;
+                    role?: "student" | "mentor" | "admin";
+                    status?: "active" | "inactive";
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One page of users. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminUserList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            meta: {
+                                page: number;
+                                limit: number;
+                                total: number;
+                            };
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Activate, deactivate or change a user's role
+         * @description Signs the user out of every session. A deactivated user can't log in or refresh; their current access token lapses within 30 minutes.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminUpdateUserRequest"];
+                };
+            };
+            responses: {
+                /** @description The updated user. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminUser"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `CANNOT_CHANGE_SELF`. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `USER_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/admin/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform analytics
+         * @description Totals and rates only — nothing that identifies a student.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Aggregates. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminAnalytics"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List skills (including inactive) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Skills with resource, task and check counts. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminSkillList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a skill
+         * @description Onboarding claims are matched against the built-in catalogue's aliases, so a new skill can be checked from the skill list but isn't auto-matched from the chat yet.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminCreateSkillRequest"];
+                };
+            };
+            responses: {
+                /** @description Created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminSkill"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SLUG_TAKEN`. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/skills/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a skill (soft)
+         * @description Soft delete — students' past checks on it stay intact.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminDeleted"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Update a skill
+         * @description A new pass mark applies to new checks only; past results keep the threshold they were scored with. Set `is_active: false` to hide a skill from students without deleting it.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminUpdateSkillRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminSkill"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/admin/skills/{id}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a skill's resources */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Resources. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminResourceList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/skills/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a skill's practical tasks */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tasks. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminTaskList"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a learning resource
+         * @description Either a `url` (http/https) or hosted `content` notes — exactly one.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminCreateResourceRequest"];
+                };
+            };
+            responses: {
+                /** @description Created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminResource"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/resources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a learning resource (soft) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminDeleted"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `RESOURCE_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a learning resource */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminUpdateResourceRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminResource"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `RESOURCE_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/admin/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a practical task
+         * @description The rubric is what the AI scores against; aim for points that total 10.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminCreateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description Created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminTask"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SKILL_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a practical task (soft)
+         * @description Soft delete — students' submissions stay intact.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminDeleted"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TASK_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a practical task */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminUpdateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminTask"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TASK_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1678,6 +3727,27 @@ export interface components {
             /** @example correct-horse-battery */
             password: string;
         };
+        ForgotPasswordRequest: {
+            /**
+             * @description Trimmed and lowercased before use.
+             * @example asha@college.edu
+             */
+            email: string;
+        };
+        ResetPasswordRequest: {
+            /**
+             * @description Trimmed and lowercased before use.
+             * @example asha@college.edu
+             */
+            email: string;
+            /**
+             * @description Code emailed by /auth/forgot-password.
+             * @example 482913
+             */
+            otp: string;
+            /** @example correct-horse-battery */
+            password: string;
+        };
         RefreshRequest: {
             /** @description Opaque refresh token from login/register/refresh. */
             refresh_token: string;
@@ -1709,16 +3779,102 @@ export interface components {
         OnboardingMessageRequest: {
             /** @example Final year BCA. I know HTML, CSS and a bit of SQL. */
             content: string;
+            /**
+             * @description Skills or stacks picked from `skill_options`. Saved exactly as picked (no AI), so the student controls the list. Names not in the options are ignored.
+             * @example [
+             *       "MERN stack",
+             *       "Git & GitHub"
+             *     ]
+             */
+            skills?: string[];
         };
         StartAssessmentRequest: {
             /** Format: uuid */
             skill_id: string;
+            /**
+             * @description How many questions to ask (10-30). Ignored when resuming an unfinished check.
+             * @default 10
+             * @example 10
+             */
+            question_count: number;
         };
         AssessmentAnswerRequest: {
             /** @example q5 */
             question_id: string;
             /** @description 0-based index of the chosen option. */
             choice_index: number;
+        };
+        SubmitTaskRequest: {
+            /** @description The student's code or written answer. */
+            content: string;
+        };
+        AdminUpdateUserRequest: {
+            is_active?: boolean;
+            /** @enum {string} */
+            role?: "student" | "mentor" | "admin";
+        };
+        AdminCreateSkillRequest: {
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            category: "technical" | "aptitude" | "soft";
+            topic?: string | null;
+            description?: string | null;
+            /** @default 40 */
+            mastery_threshold: number;
+        };
+        AdminUpdateSkillRequest: {
+            name?: string;
+            /** @enum {string} */
+            category?: "technical" | "aptitude" | "soft";
+            topic?: string | null;
+            description?: string | null;
+            mastery_threshold?: number;
+            is_active?: boolean;
+        };
+        AdminCreateResourceRequest: {
+            /** Format: uuid */
+            skill_id: string;
+            title: string;
+            /** @enum {string} */
+            type: "reference" | "example" | "lecture" | "practice";
+            url?: string | null;
+            content?: string | null;
+            source?: string | null;
+        };
+        AdminUpdateResourceRequest: {
+            title?: string;
+            /** @enum {string} */
+            type?: "reference" | "example" | "lecture" | "practice";
+            url?: string | null;
+            content?: string | null;
+            source?: string | null;
+            is_active?: boolean;
+        };
+        AdminCreateTaskRequest: {
+            /** Format: uuid */
+            skill_id: string;
+            title: string;
+            description: string;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            rubric: {
+                id: string;
+                description: string;
+                points: number;
+            }[];
+        };
+        AdminUpdateTaskRequest: {
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            difficulty?: "easy" | "medium" | "hard";
+            rubric?: {
+                id: string;
+                description: string;
+                points: number;
+            }[];
+            is_active?: boolean;
         };
         ErrorResponse: {
             /** @constant */
@@ -1841,6 +3997,35 @@ export interface components {
             /** @description Everything collected so far (user_profiles.profile_data). */
             profile: {
                 [key: string]: unknown;
+            };
+            /** @description What the student can pick for `skills`: common stacks and every catalogue skill. */
+            skill_options: {
+                stacks: {
+                    /** @example MERN stack */
+                    name: string;
+                    /**
+                     * @example [
+                     *       "MongoDB",
+                     *       "Express.js",
+                     *       "React",
+                     *       "Node.js",
+                     *       "JavaScript"
+                     *     ]
+                     */
+                    skills: string[];
+                }[];
+                topics: {
+                    /** @example Web development */
+                    topic: string;
+                    /**
+                     * @example [
+                     *       "HTML",
+                     *       "CSS",
+                     *       "JavaScript"
+                     *     ]
+                     */
+                    skills: string[];
+                }[];
             };
         };
         OnboardingReply: {
@@ -2010,6 +4195,10 @@ export interface components {
                 claimed: number;
                 claimed_checked: number;
                 in_progress: number;
+                /** @description Practical tasks submitted at least once. */
+                tasks_attempted: number;
+                /** @description Practical tasks passed at least once. */
+                tasks_passed: number;
             };
             /** @description Latest result per checked skill. */
             skills: components["schemas"]["DashboardSkillResult"][];
@@ -2018,7 +4207,7 @@ export interface components {
             next_steps: {
                 id: string;
                 /** @enum {string} */
-                kind: "onboarding" | "resume" | "check" | "revise" | "aptitude";
+                kind: "onboarding" | "resume" | "check" | "revise" | "aptitude" | "task";
                 title: string;
                 detail: string;
                 /** @description App path for the step's action. */
@@ -2071,6 +4260,255 @@ export interface components {
                 detail: string;
             }[];
             generated_at: string | null;
+        };
+        SkillResources: {
+            skill: components["schemas"]["Skill"];
+            resources: components["schemas"]["LearningResource"][];
+        };
+        LearningResource: {
+            /** Format: uuid */
+            id: string;
+            /** @example Interactive SQL lessons */
+            title: string;
+            /** @enum {string} */
+            type: "reference" | "example" | "lecture" | "practice";
+            /** @description Outside link; null for notes hosted by PrepSuccess. */
+            url: string | null;
+            /** @description Hosted notes (blank line = new paragraph, lines starting '- ' are a list); null for links. */
+            content: string | null;
+            /** @example SQLBolt */
+            source: string | null;
+        };
+        SkillTasks: {
+            skill: components["schemas"]["Skill"];
+            tasks: components["schemas"]["TaskSummary"][];
+        };
+        TaskSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            skill_id: string;
+            /** @example Top earners per department */
+            title: string;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            /**
+             * @description Editor language. 'text' is a plain written answer.
+             * @example javascript
+             * @enum {string}
+             */
+            language: "html" | "javascript" | "typescript" | "jsx" | "python" | "java" | "c" | "cpp" | "sql" | "shell" | "text";
+            /** @description How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither. */
+            runner: ("run" | "preview") | null;
+            attempts: number;
+            /** @description The student's best attempt so far; null if never attempted. */
+            best: {
+                percent: number;
+                passed: boolean;
+            } | null;
+        };
+        TaskDetail: {
+            /** Format: uuid */
+            id: string;
+            skill: components["schemas"]["Skill"];
+            title: string;
+            /** @description Blank line = new paragraph, lines starting '- ' are a list, ``` fences are code. */
+            description: string;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            /**
+             * @description Editor language. 'text' is a plain written answer.
+             * @example javascript
+             * @enum {string}
+             */
+            language: "html" | "javascript" | "typescript" | "jsx" | "python" | "java" | "c" | "cpp" | "sql" | "shell" | "text";
+            /** @description How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither. */
+            runner: ("run" | "preview") | null;
+            /** @description Code or an outline pre-filled in the editor. */
+            starter_code: string | null;
+            /** @example 60 */
+            pass_mark: number;
+            rubric: components["schemas"]["RubricCriterion"][];
+            /** @description The student's attempts, newest first. */
+            submissions: components["schemas"]["TaskSubmission"][];
+        };
+        RubricCriterion: {
+            /** @example join */
+            id: string;
+            description: string;
+            points: number;
+        };
+        TaskSubmission: {
+            /** Format: uuid */
+            id: string;
+            content: string;
+            /** @example 70 */
+            percent: number;
+            passed: boolean;
+            /** @example 60 */
+            pass_mark: number;
+            feedback: {
+                summary: string;
+                strengths: string[];
+                improvements: string[];
+                criteria: {
+                    /** @example join */
+                    id: string;
+                    description: string;
+                    points: number;
+                    /** @description Points awarded, in halves. */
+                    score: number;
+                    comment: string;
+                }[];
+            };
+            /** Format: date-time */
+            created_at: string;
+        };
+        NotificationList: {
+            /** @description Newest first (last 30). */
+            notifications: components["schemas"]["Notification"][];
+            unread_count: number;
+        };
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            /** @example TASK_REVIEWED */
+            type: string;
+            /** @example Task passed: Top earners per department */
+            title: string;
+            body: string | null;
+            /**
+             * @description App path to open.
+             * @example /tasks/…
+             */
+            href: string | null;
+            read: boolean;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminUserList: components["schemas"]["AdminUser"][];
+        AdminUser: {
+            /** Format: uuid */
+            id: string;
+            first_name: string;
+            last_name: string | null;
+            email: string;
+            /** @enum {string} */
+            role: "student" | "mentor" | "admin";
+            /** @enum {string} */
+            auth_provider: "local" | "google";
+            is_active: boolean;
+            is_verified: boolean;
+            onboarding_completed: boolean;
+            last_login_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminAnalytics: {
+            users: {
+                total: number;
+                students: number;
+                mentors: number;
+                admins: number;
+                inactive: number;
+                /** @description Finished the onboarding chat. */
+                onboarded: number;
+                signups_7d: number;
+                signups_30d: number;
+            };
+            /** @description The last 30 days (India time), oldest first, zero-filled. */
+            signups_by_day: {
+                /** Format: date */
+                date: string;
+                count: number;
+            }[];
+            checks: {
+                completed: number;
+                in_progress: number;
+                /** @description Students with a finished check. */
+                students_checked: number;
+                /** @description Percent of finished checks that reached the pass mark. */
+                mastered_rate: number | null;
+                average_percent: number | null;
+            };
+            categories: {
+                /** @enum {string} */
+                category: "technical" | "aptitude" | "soft";
+                checks: number;
+                average_percent: number | null;
+            }[];
+            /** @description Most-checked skills (finished checks), top 8. */
+            top_skills: {
+                name: string;
+                checks: number;
+            }[];
+            tasks: {
+                submissions: number;
+                pass_rate: number | null;
+            };
+            ai: {
+                requests_today: number;
+                requests_30d: number;
+                /** @description Percent of failed calls. */
+                failure_rate_30d: number | null;
+                tokens_30d: number;
+            };
+        };
+        AdminSkillList: components["schemas"]["AdminSkill"][];
+        AdminSkill: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            /** @enum {string} */
+            category: "technical" | "aptitude" | "soft";
+            topic: string | null;
+            description: string | null;
+            mastery_threshold: number;
+            is_active: boolean;
+            /** @description Active learning resources. */
+            resources: number;
+            /** @description Active practical tasks. */
+            tasks: number;
+            /** @description Finished checks, all students. */
+            checks: number;
+        };
+        AdminDeleted: {
+            /** Format: uuid */
+            id: string;
+            /** @constant */
+            deleted: true;
+        };
+        AdminResourceList: components["schemas"]["AdminResource"][];
+        AdminResource: {
+            /** Format: uuid */
+            id: string;
+            /** @example Interactive SQL lessons */
+            title: string;
+            /** @enum {string} */
+            type: "reference" | "example" | "lecture" | "practice";
+            /** @description Outside link; null for notes hosted by PrepSuccess. */
+            url: string | null;
+            /** @description Hosted notes (blank line = new paragraph, lines starting '- ' are a list); null for links. */
+            content: string | null;
+            /** @example SQLBolt */
+            source: string | null;
+            /** Format: uuid */
+            skill_id: string;
+            is_active: boolean;
+        };
+        AdminTaskList: components["schemas"]["AdminTask"][];
+        AdminTask: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            skill_id: string;
+            title: string;
+            description: string;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            rubric: components["schemas"]["RubricCriterion"][];
+            is_active: boolean;
         };
     };
     responses: never;

@@ -4,6 +4,8 @@ import type { ZodOpenApiPathsObject } from "zod-openapi";
 import { RATE_LIMIT_429, VALIDATION_422, bearerAuth, errors, ok } from "../../docs/helpers.js";
 import {
   authUserSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   loginSchema,
   messageSchema,
   refreshSchema,
@@ -63,6 +65,43 @@ export const authPaths: ZodOpenApiPathsObject = {
         ...errors({
           401: "`INVALID_CREDENTIALS` — same message whether the email or the password is wrong.",
           403: "`ACCOUNT_DEACTIVATED`.",
+          ...VALIDATION_422,
+          ...RATE_LIMIT_429,
+        }),
+      },
+    },
+  },
+  "/api/v1/auth/forgot-password": {
+    post: {
+      tags: ["Auth"],
+      summary: "Email a password-reset code",
+      description:
+        "Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. " +
+        "Always answers 200 with the same message, whether or not the email is registered and even " +
+        "inside the 60-second resend cooldown, so it can't be used to discover accounts.",
+      requestBody: json(forgotPasswordSchema),
+      responses: {
+        ...ok(sendOtpResponseSchema, "Code sent if the account exists."),
+        ...errors({
+          ...VALIDATION_422,
+          ...RATE_LIMIT_429,
+          503: "`EMAIL_SEND_FAILED` — try again.",
+        }),
+      },
+    },
+  },
+  "/api/v1/auth/reset-password": {
+    post: {
+      tags: ["Auth"],
+      summary: "Set a new password with the emailed code",
+      description:
+        "Step 2. Verifies the code (3 attempts), sets the new password, signs the account out of " +
+        "every other session and signs this one in. A Google-only account gains a password this way.",
+      requestBody: json(resetPasswordSchema),
+      responses: {
+        ...ok(tokenResponseSchema, "Password changed and signed in."),
+        ...errors({
+          400: "`OTP_INVALID`, `OTP_EXPIRED` or `OTP_TOO_MANY_ATTEMPTS`.",
           ...VALIDATION_422,
           ...RATE_LIMIT_429,
         }),

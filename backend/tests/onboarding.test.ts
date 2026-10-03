@@ -167,6 +167,37 @@ describe("POST /api/v1/ai/onboarding/messages", () => {
     expect(fakeAi.calls[0]!.system).toContain("Still needed");
   });
 
+  it("saves picked skills exactly as picked, before the AI, ignoring unknown names", async () => {
+    db.state.user!.profile = {
+      profileData: { degree: "BCA", student_year: 3, skills: ["html"] },
+      onboardingCompletedAt: null,
+    };
+    // Even if the model "extracts" something else, the picks stand.
+    fakeAi.reply({
+      reply: "Great picks! What role are you aiming for?",
+      extracted: {},
+      done: false,
+    });
+
+    const res = await request(app)
+      .post("/api/v1/ai/onboarding/messages")
+      .set(auth())
+      .send({
+        content: "I know: MERN stack, Git & GitHub",
+        skills: ["mern STACK", "Git & GitHub", "Kubernetes wizardry", "HTML"],
+      });
+
+    expect(res.status).toBe(200);
+    // Canonical spelling, unioned with what was there (html ≈ HTML), unknown dropped.
+    expect(res.body.data.onboarding.profile.skills).toEqual(["html", "MERN stack", "Git & GitHub"]);
+    // The model was told the skills are already known.
+    expect(fakeAi.calls[0]!.system).toContain("MERN stack");
+    expect(res.body.data.onboarding.skill_options.stacks[0]).toEqual({
+      name: "MERN stack",
+      skills: ["MongoDB", "Express.js", "React", "Node.js", "JavaScript"],
+    });
+  });
+
   it("completes once every required detail is in — decided by the server", async () => {
     db.state.user!.profile = {
       profileData: {

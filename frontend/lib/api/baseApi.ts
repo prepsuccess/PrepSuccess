@@ -38,6 +38,8 @@ const NO_REFRESH = [
   "/auth/login",
   "/auth/register",
   "/auth/send-otp",
+  "/auth/forgot-password",
+  "/auth/reset-password",
   "/auth/refresh",
   "/auth/logout",
 ];
@@ -84,7 +86,16 @@ function refreshSession(api: Parameters<BaseQueryFn>[1], extra: object): Promise
   return refreshing;
 }
 
-const baseQuery: BaseQueryFn<string | FetchArgs, unknown, ApiError> = async (args, api, extra) => {
+/** The envelope's pagination `meta`, for list endpoints that send one (read it in transformResponse). */
+export interface ResponseMeta {
+  pagination?: { page: number; limit: number; total: number };
+}
+
+const baseQuery: BaseQueryFn<string | FetchArgs, unknown, ApiError, object, ResponseMeta> = async (
+  args,
+  api,
+  extra,
+) => {
   if (refreshing) await refreshing;
   let result = await rawQuery(args, api, extra);
 
@@ -105,13 +116,33 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, ApiError> = async (arg
 
   if (result.error) return { error: toApiError(result.error as FetchBaseQueryError) };
   // 204s have no body; everything else is the success envelope.
-  const envelope = result.data as { data?: unknown } | undefined;
-  return { data: envelope && "data" in envelope ? envelope.data : envelope };
+  const envelope = result.data as { data?: unknown; meta?: ResponseMeta["pagination"] } | undefined;
+  return {
+    data: envelope && "data" in envelope ? envelope.data : envelope,
+    meta: { pagination: envelope?.meta },
+  };
 };
 
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery,
-  tagTypes: ["Me", "AiStatus", "Onboarding", "MySkills", "Assessment", "Dashboard", "Insight"],
+  tagTypes: [
+    "Me",
+    "AiStatus",
+    "Onboarding",
+    "MySkills",
+    "Assessment",
+    "Dashboard",
+    "Insight",
+    "Resources",
+    "Tasks",
+    "Task",
+    "Notifications",
+    "AdminUsers",
+    "AdminAnalytics",
+    "AdminSkills",
+    "AdminResources",
+    "AdminTasks",
+  ],
   endpoints: () => ({}),
 });

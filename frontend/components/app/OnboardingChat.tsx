@@ -25,6 +25,8 @@ import {
 } from "@/lib/api/endpoints/onboarding";
 import type { OnboardingMessage, OnboardingState, StudentProfile } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
+import { track } from "@/lib/analytics";
+import { SkillPicker } from "./SkillPicker";
 
 const MAX_LENGTH = 1000;
 
@@ -208,9 +210,21 @@ function CompletionCard({ profile }: { profile: StudentProfile }) {
 function Chat({ state }: { state: OnboardingState }) {
   const [send, { isLoading: sending }] = useSendOnboardingMessageMutation();
   const [draft, setDraft] = useState("");
-  const [failed, setFailed] = useState<{ content: string; error: unknown } | null>(null);
+  const [failed, setFailed] = useState<{
+    content: string;
+    skills?: string[];
+    error: unknown;
+  } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // The coach is on the skills question: offer chips so the student picks
+  // exactly what's saved, instead of trusting free text to the AI. Only when
+  // the server sent the options (an older API doesn't); typing always works.
+  const skillOptions = state.skill_options as OnboardingState["skill_options"] | undefined;
+  const askingSkills =
+    Boolean(skillOptions?.stacks?.length || skillOptions?.topics?.length) &&
+    state.progress.items.find((item) => !item.done)?.field === "skills";
 
   // Keep the newest message (or the typing dots) in view.
   useEffect(() => {
@@ -218,15 +232,16 @@ function Chat({ state }: { state: OnboardingState }) {
     list?.scrollTo?.({ top: list.scrollHeight, behavior: "smooth" });
   }, [state.messages.length, sending, failed]);
 
-  async function deliver(content: string) {
+  async function deliver(content: string, skills?: string[]) {
     setFailed(null);
     try {
-      await send(content).unwrap();
+      const reply = await send({ content, skills }).unwrap();
+      if (reply.onboarding.completed && !state.completed) track("onboarding_completed");
       inputRef.current?.focus();
     } catch (error) {
       // Nothing was saved; give the text back so it can be resent or edited.
-      setFailed({ content, error });
-      setDraft((current) => current || content);
+      setFailed({ content, skills, error });
+      if (!skills) setDraft((current) => current || content);
     }
   }
 
@@ -286,7 +301,7 @@ function Chat({ state }: { state: OnboardingState }) {
                     className="mt-2"
                     onClick={() => {
                       setDraft("");
-                      void deliver(failed.content);
+                      void deliver(failed.content, failed.skills);
                     }}
                     disabled={sending}
                   >
@@ -295,6 +310,13 @@ function Chat({ state }: { state: OnboardingState }) {
                   </Button>
                 </AlertDescription>
               </Alert>
+            ) : null}
+            {askingSkills ? (
+              <SkillPicker
+                options={skillOptions!}
+                disabled={sending}
+                onSubmit={(skills) => void deliver(`I know: ${skills.join(", ")}`, skills)}
+              />
             ) : null}
             <form onSubmit={onSubmit} className="flex items-end gap-2">
               <label htmlFor="onboarding-message" className="sr-only">

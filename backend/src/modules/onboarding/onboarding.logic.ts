@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { SKILL_CATALOGUE } from "../skills/catalogue.js";
+import { STACKS } from "../skills/stacks.js";
 import { profileFields } from "../users/users.schemas.js";
 
 /**
@@ -115,6 +117,35 @@ export function mergeProfile(current: ProfileData, extracted: ProfileData): Prof
   return merged;
 }
 
+/** The chips the chat offers for skills: common stacks, then every skill by topic. */
+export function skillOptions() {
+  const nameOf = new Map(SKILL_CATALOGUE.map((s) => [s.slug, s.name]));
+  const topics = new Map<string, string[]>();
+  for (const skill of SKILL_CATALOGUE) {
+    topics.set(skill.topic, [...(topics.get(skill.topic) ?? []), skill.name]);
+  }
+  return {
+    stacks: STACKS.map((stack) => ({
+      name: stack.name,
+      skills: stack.skills.map((slug) => nameOf.get(slug) ?? slug),
+    })),
+    topics: [...topics].map(([topic, skills]) => ({ topic, skills })),
+  };
+}
+
+const PICKABLE = new Map(
+  [...STACKS.map((s) => s.name), ...SKILL_CATALOGUE.map((s) => s.name)].map((name) => [
+    name.toLowerCase(),
+    name,
+  ]),
+);
+
+/** Keeps only picks that are real options, in their canonical spelling, without duplicates. */
+export function cleanPicks(picks: string[]) {
+  const names = picks.flatMap((pick) => PICKABLE.get(pick.trim().toLowerCase()) ?? []);
+  return [...new Set(names)];
+}
+
 /** Fixed opening line — no AI call, so opening the chat costs nothing. */
 export function greeting(firstName: string) {
   return `Hi ${firstName}! I'm your PrepSuccess coach. I'll ask a few quick questions so I can check the right skills for you. To start: what are you studying, and which year are you in?`;
@@ -139,7 +170,8 @@ export function buildSystemPrompt(firstName: string, profile: ProfileData) {
     "Extraction rules for `extracted`:",
     "- Take facts ONLY from the student's latest message. Never guess, assume or invent.",
     '- degree: e.g. "BCA", "B.Tech". student_year: a number 1-6. target_role: e.g. "Frontend developer", "SDE".',
-    '- skills: concrete technologies or subjects, each a short name ("HTML", "SQL", "Data structures"). Only skills they say they know.',
+    '- skills: concrete technologies or subjects, each a short name ("HTML", "SQL", "Data structures"). Only skills they say they know. Keep a stack name as one item ("MERN stack") rather than splitting it.',
+    "- The student may pick skills from a list instead of typing; those are already saved, so just acknowledge them and move on.",
     "- goals and interests: short phrases. Leave out anything they didn't clearly say.",
     "",
     "Set done=true only when nothing is still needed. Then thank them, sum up what you learned in one sentence, and tell them their skill checks are next.",

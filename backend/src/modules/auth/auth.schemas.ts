@@ -65,12 +65,26 @@ export const loginSchema = z
   })
   .meta({ id: "LoginRequest" });
 
+export const forgotPasswordSchema = z.object({ email }).meta({ id: "ForgotPasswordRequest" });
+
+export const resetPasswordSchema = z
+  .object({
+    email,
+    otp: z
+      .string()
+      .regex(/^\d{6}$/, "Enter the 6-digit code from your email.")
+      .meta({ description: "Code emailed by /auth/forgot-password.", example: "482913" }),
+    password,
+  })
+  .meta({ id: "ResetPasswordRequest" });
+
 export const refreshSchema = z
   .object({ refresh_token: refreshToken })
   .meta({ id: "RefreshRequest" });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 // ---- Responses ----
 

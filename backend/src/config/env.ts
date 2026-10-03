@@ -44,6 +44,13 @@ const envSchema = z.object({
   AI_TRIAL_ENFORCED: z.enum(["true", "false"]).default("false"),
   /** Successful AI calls per user per day — protects the shared free-tier quota. */
   AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(200),
+  // ---- Monitoring ----
+  /** Sentry project DSN. Empty disables error tracking. */
+  SENTRY_DSN: z.string().optional(),
+  /** Defaults to NODE_ENV; set "staging" on the staging service. */
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  /** Share of requests traced for performance (0-1). Errors are always sent. */
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   /** Serve Swagger UI at /docs. Defaults to on outside production. */
   API_DOCS_ENABLED: z.enum(["true", "false"]).optional(),

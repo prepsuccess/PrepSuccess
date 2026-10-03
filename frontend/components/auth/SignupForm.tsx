@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
@@ -11,6 +11,8 @@ import { useRegisterMutation, useSendOtpMutation } from "@/lib/api/endpoints/aut
 import { errorMessage } from "@/lib/api/errors";
 import { homeFor } from "@/lib/auth/session";
 import { useStartSession } from "@/lib/auth/useSession";
+import { useCountdown } from "@/lib/hooks/useCountdown";
+import { track } from "@/lib/analytics";
 import {
   isValid,
   validateEmail,
@@ -36,30 +38,6 @@ type Details = {
 };
 
 type DetailErrors = Partial<Record<keyof Details, string>>;
-
-/** Seconds left on a countdown, and a function that (re)starts it. */
-function useCountdown(seconds: number) {
-  const [until, setUntil] = useState(0);
-  const [now, setNow] = useState(0);
-
-  useEffect(() => {
-    if (!until) return;
-    const timer = window.setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= until) window.clearInterval(timer);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [until]);
-
-  const start = () => {
-    const t = Date.now();
-    setNow(t);
-    setUntil(t + seconds * 1000);
-  };
-
-  return [until ? Math.max(0, Math.ceil((until - now) / 1000)) : 0, start] as const;
-}
 
 /** Two steps: details, then the 6-digit code the backend emails before it creates the account. */
 export function SignupForm() {
@@ -129,6 +107,7 @@ export function SignupForm() {
         otp,
       }).unwrap();
       startSession(session);
+      track("signup_completed", { method: "email" });
       router.replace(homeFor(session.user));
     } catch (error) {
       setFormError(errorMessage(error));

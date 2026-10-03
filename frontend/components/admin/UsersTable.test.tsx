@@ -10,6 +10,10 @@ const makeUser = (i: number, overrides: Partial<AdminUserRow> = {}): AdminUserRo
   last_name: null,
   email: `student${i}@college.edu`,
   role: "student",
+  auth_provider: "local",
+  is_verified: true,
+  onboarding_completed: false,
+  last_login_at: null,
   created_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T00:00:00.000Z`,
   is_active: true,
   ...overrides,
@@ -29,9 +33,9 @@ const users = [
 const bodyRows = () => within(screen.getAllByRole("rowgroup")[1]!).getAllByRole("row");
 
 describe("UsersTable", () => {
-  it("shows an honest empty state when there are no users", () => {
+  it("shows an empty state when there are no users", () => {
     render(<UsersTable users={[]} />);
-    expect(screen.getByText(/No users to show yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No users match these filters/)).toBeInTheDocument();
     expect(screen.getByText("0 rows")).toBeInTheDocument();
   });
 
@@ -91,6 +95,44 @@ describe("UsersTable", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Copy email" }));
 
     expect(writeText).toHaveBeenCalledWith("zoya@college.edu");
+  });
+
+  it("asks before deactivating, then applies the change", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn(async () => {});
+    render(
+      <UsersTable users={users.slice(0, 2)} onChange={onChange} currentUserId="someone-else" />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Actions for Zoya Khan" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Deactivate" }));
+    expect(
+      await screen.findByRole("alertdialog", { name: "Deactivate Zoya Khan?" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Deactivate" }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "active",
+        value: false,
+        user: expect.objectContaining({ id: "user-1" }),
+      }),
+    );
+  });
+
+  it("offers reactivation for a deactivated account and no actions on your own", async () => {
+    const user = userEvent.setup();
+    render(<UsersTable users={users.slice(0, 2)} onChange={vi.fn()} currentUserId="user-1" />);
+
+    await user.click(screen.getByRole("button", { name: "Actions for Aarav Shah" }));
+    expect(await screen.findByRole("menuitem", { name: "Reactivate" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByText("(you)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Actions for Zoya Khan/ }));
+    expect(await screen.findByRole("menuitem", { name: "Copy email" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Deactivate" })).not.toBeInTheDocument();
   });
 
   it("shows skeleton rows while loading", () => {

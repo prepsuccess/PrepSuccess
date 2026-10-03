@@ -30,6 +30,7 @@ export type OnboardingState = Omit<Schemas["OnboardingState"], "profile"> & {
   profile: StudentProfile;
 };
 export type OnboardingMessage = OnboardingState["messages"][number];
+export type SkillOptions = OnboardingState["skill_options"];
 export type OnboardingReply = { onboarding: OnboardingState; user: AuthUser };
 
 export type Skill = Schemas["Skill"];
@@ -45,3 +46,27 @@ export type Dashboard = Schemas["Dashboard"];
 export type DashboardSkillResult = Schemas["DashboardSkillResult"];
 export type NextStep = Dashboard["next_steps"][number];
 export type AiInsight = Schemas["AiInsight"];
+
+export type ForgotPasswordRequest = Schemas["ForgotPasswordRequest"];
+export type ResetPasswordRequest = Schemas["ResetPasswordRequest"];
+
+export type LearningResource = Schemas["LearningResource"];
+export type SkillResources = Schemas["SkillResources"];
+export type TaskSummary = Schemas["TaskSummary"];
+export type SkillTasks = Schemas["SkillTasks"];
+export type TaskDetail = Schemas["TaskDetail"];
+export type TaskSubmission = Schemas["TaskSubmission"];
+export type RubricCriterion = Schemas["RubricCriterion"];
+
+export type AppNotification = Schemas["Notification"];
+export type NotificationList = Schemas["NotificationList"];
+
+export type AdminUser = Schemas["AdminUser"];
+export type AdminUpdateUserRequest = Schemas["AdminUpdateUserRequest"];
+export type AdminAnalytics = Schemas["AdminAnalytics"];
+export type AdminSkill = Schemas["AdminSkill"];
+export type AdminUpdateSkillRequest = Schemas["AdminUpdateSkillRequest"];
+export type AdminResource = Schemas["AdminResource"];
+export type AdminCreateResourceRequest = Schemas["AdminCreateResourceRequest"];
+export type AdminTask = Schemas["AdminTask"];
+export type PageMeta = { page: number; limit: number; total: number };

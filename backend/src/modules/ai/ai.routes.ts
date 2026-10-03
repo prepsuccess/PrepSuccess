@@ -16,7 +16,7 @@ aiRouter.get("/status", requireAuth(), ai.status);
 aiRouter.get("/onboarding", requireAuth(), onboarding.get);
 aiRouter.post("/onboarding/messages", requireAuth(), rateLimitPerMinute(20), onboarding.send);
 
-// Adaptive skill checks (SCRUM-14). Students only; starting costs one AI call.
+// Adaptive skill checks (SCRUM-14). Students only; starting may top up the question bank (AI).
 const student = requireAuth("STUDENT");
 aiRouter.post("/assessment/start", student, rateLimitPerMinute(10), assessment.start);
 aiRouter.get("/assessment/:id", student, assessment.get);

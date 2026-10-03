@@ -126,7 +126,7 @@ export function topGaps(results: SkillResult[], limit = 3) {
 
 export interface NextStep {
   id: string;
-  kind: "onboarding" | "resume" | "check" | "revise" | "aptitude";
+  kind: "onboarding" | "resume" | "check" | "revise" | "aptitude" | "task";
   title: string;
   detail: string;
   href: string;
@@ -141,6 +141,8 @@ export function buildNextSteps(input: {
   inProgress: { assessmentId: string; name: string }[];
   claimedUnchecked: { name: string }[];
   results: SkillResult[];
+  /** Practical tasks not yet passed, on skills the student has mastered. */
+  suggestedTasks?: { taskId: string; title: string; skillName: string }[];
   limit?: number;
 }): NextStep[] {
   const steps: NextStep[] = [];
@@ -167,8 +169,8 @@ export function buildNextSteps(input: {
       id: `revise-${gap.skillId}`,
       kind: "revise",
       title: `Revise ${gap.name}`,
-      detail: `You scored ${gap.percent}%. Go through the answers you missed, then retake it.`,
-      href: `/assessment/${gap.assessmentId}`,
+      detail: `You scored ${gap.percent}%. Study the resources and review your answers, then retake it.`,
+      href: `/learn/${gap.slug}`,
     });
   }
   for (const skill of input.claimedUnchecked.slice(0, 2)) {
@@ -176,7 +178,7 @@ export function buildNextSteps(input: {
       id: `check-${skill.name}`,
       kind: "check",
       title: `Check your ${skill.name}`,
-      detail: "You said you know it — five questions show where you really stand.",
+      detail: "You said you know it — a short check shows where you really stand.",
       href: "/assessment",
     });
   }
@@ -187,6 +189,15 @@ export function buildNextSteps(input: {
       title: "Take an aptitude check",
       detail: "Most placement tests start with a quant and reasoning round.",
       href: "/assessment",
+    });
+  }
+  for (const task of (input.suggestedTasks ?? []).slice(0, 1)) {
+    steps.push({
+      id: `task-${task.taskId}`,
+      kind: "task",
+      title: `Try a ${task.skillName} task`,
+      detail: `"${task.title}" — put what you know into practice and get AI feedback.`,
+      href: `/tasks/${task.taskId}`,
     });
   }
   return steps.slice(0, input.limit ?? 4);

@@ -26,6 +26,7 @@ const onboardingState: OnboardingState = {
   completed: false,
   progress: { collected: 0, total: 5, items: [] },
   profile: {},
+  skill_options: { stacks: [], topics: [] },
 };
 
 const emptyInsight: AiInsight = {
@@ -207,10 +208,14 @@ describe("AI usage stays current", () => {
     );
     const { store, calls } = await watchingAiStatus();
 
-    await store.dispatch(onboardingApi.endpoints.sendOnboardingMessage.initiate("BCA"));
+    await store.dispatch(
+      onboardingApi.endpoints.sendOnboardingMessage.initiate({ content: "BCA" }),
+    );
     await waitFor(() => expect(calls.count).toBe(2));
 
-    await store.dispatch(onboardingApi.endpoints.sendOnboardingMessage.initiate("BCA"));
+    await store.dispatch(
+      onboardingApi.endpoints.sendOnboardingMessage.initiate({ content: "BCA" }),
+    );
     await waitFor(() => expect(calls.count).toBe(3));
   });
 

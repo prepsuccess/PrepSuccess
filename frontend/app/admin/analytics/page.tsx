@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { BarChart3 } from "lucide-react";
-import { EmptyPanel } from "@/components/app/EmptyPanel";
+import { AnalyticsView } from "@/components/admin/AnalyticsView";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 export const metadata: Metadata = { title: "Analytics" };
@@ -10,13 +9,9 @@ export default function AdminAnalyticsPage() {
     <>
       <PageHeader
         title="Analytics"
-        description="Signups, skill checks, average readiness and session volume over time — totals only."
+        description="Signups, skill checks, practical tasks and AI usage — totals and rates only, never an individual student."
       />
-      <EmptyPanel
-        icon={BarChart3}
-        title="No data yet"
-        description="Charts appear here once the analytics endpoint is live."
-      />
+      <AnalyticsView />
     </>
   );
 }

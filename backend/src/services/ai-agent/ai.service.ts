@@ -32,6 +32,11 @@ export interface AiRequest {
   thinking?: boolean;
   /** Overall deadline for all attempts; defaults to AI_TIMEOUT_MS. */
   timeoutMs?: number;
+  /**
+   * A platform job (e.g. filling the question bank), not a student request:
+   * skips the trial and daily limit. Usage is still recorded against userId.
+   */
+  systemCall?: boolean;
 }
 
 export interface AiResult<T> {
@@ -104,7 +109,9 @@ async function run<T>(
     select: { createdAt: true },
   });
   if (!user) throw new AppError(401, "UNAUTHORIZED", "Sign in to continue.");
-  const access = await getAiAccess(request.userId, user.createdAt);
+  const access = request.systemCall
+    ? { reason: null }
+    : await getAiAccess(request.userId, user.createdAt);
   if (access.reason === "AI_TRIAL_ENDED") {
     throw new AppError(403, "AI_TRIAL_ENDED", "Your AI free trial has ended.");
   }

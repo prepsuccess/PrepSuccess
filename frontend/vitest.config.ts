@@ -9,6 +9,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     css: true,
+    // Playwright owns e2e/ (npm run e2e).
+    exclude: ["node_modules/**", "e2e/**"],
   },
   resolve: {
     alias: {

@@ -55,3 +55,49 @@ jobs:
         run: |
           npm run openapi:export
           git diff --exit-code openapi.json || (echo "::error::backend/openapi.json is stale. Run 'npm run openapi:export' in backend/ and commit it." && exit 1)
+
+  migrations:
+    name: Migrations apply and seed runs
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: prepsuccess
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/prepsuccess
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/prepsuccess
+      JWT_ACCESS_SECRET: ci-access-secret-ci-access-secret-ci-0001
+      JWT_REFRESH_SECRET: ci-refresh-secret-ci-refresh-secret-ci-01
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      # The same command the deploy runs; a failing migration fails here first.
+      - name: Apply migrations
+        run: npm run db:deploy
+
+      - name: Schema matches the migrations
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - name: Seed (twice, to prove it's re-runnable)
+        run: npm run db:seed && npm run db:seed

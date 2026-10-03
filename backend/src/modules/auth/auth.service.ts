@@ -6,9 +6,13 @@ import { generateOtp, hashSecret, safeEqual } from "../../lib/crypto.js";
 import { AppError } from "../../lib/http.js";
 import { logger } from "../../lib/logger.js";
 import { sendOtpEmail } from "../../services/email/email.service.js";
+import {
+  notify,
+  type NewNotification,
+} from "../../services/notifications/notifications.service.js";
 import { toAuthUser } from "./auth.dto.js";
 import type { GoogleIdentity } from "./google.client.js";
-import type { LoginInput, RegisterInput } from "./auth.schemas.js";
+import type { LoginInput, RegisterInput, ResetPasswordInput } from "./auth.schemas.js";
 import { issueTokens } from "./tokens.js";
 
 // Flow details: docs/SYSTEM_ARCHITECTURE_FLOW.md §3.
@@ -23,43 +27,40 @@ const DUMMY_HASH = bcrypt.hashSync("prepsuccess-timing-guard", BCRYPT_ROUNDS);
 
 const withProfile = { profile: true } as const;
 
+const WELCOME: NewNotification = {
+  type: "WELCOME",
+  title: "Welcome to PrepSuccess",
+  body: "Start with a short chat so your skill checks match your skills and target role.",
+  href: "/onboarding",
+};
+
+type OtpPurpose = "SIGNUP" | "PASSWORD_RESET";
+
 /** OTP codes are hashed together with the email they were sent to. */
 const hashOtp = (email: string, code: string) => hashSecret(`otp:${email}:${code}`);
 
-export async function sendSignupOtp(email: string) {
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) {
-    throw new AppError(
-      409,
-      "EMAIL_ALREADY_REGISTERED",
-      "This email is already registered. Log in instead.",
-    );
-  }
-
+/** True when a code for this email + purpose went out less than a minute ago. */
+async function recentlySent(email: string, purpose: OtpPurpose) {
   const latest = await prisma.emailOtp.findFirst({
-    where: { email, purpose: "SIGNUP" },
+    where: { email, purpose },
     orderBy: { createdAt: "desc" },
     select: { createdAt: true },
   });
-  if (latest && Date.now() - latest.createdAt.getTime() < OTP_RESEND_SECONDS * 1000) {
-    throw new AppError(
-      429,
-      "OTP_RECENTLY_SENT",
-      `Please wait ${OTP_RESEND_SECONDS} seconds before requesting a new code.`,
-    );
-  }
+  return Boolean(latest && Date.now() - latest.createdAt.getTime() < OTP_RESEND_SECONDS * 1000);
+}
 
+/** Stores a fresh code (only the newest one is valid) and emails it. */
+async function issueOtp(email: string, purpose: OtpPurpose) {
   const code = generateOtp();
   const [, created] = await prisma.$transaction([
-    // Only the newest code is valid.
     prisma.emailOtp.updateMany({
-      where: { email, purpose: "SIGNUP", isUsed: false },
+      where: { email, purpose, isUsed: false },
       data: { isUsed: true },
     }),
     prisma.emailOtp.create({
       data: {
         email,
-        purpose: "SIGNUP",
+        purpose,
         otpHash: hashOtp(email, code),
         expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000),
       },
@@ -68,9 +69,9 @@ export async function sendSignupOtp(email: string) {
   ]);
 
   try {
-    await sendOtpEmail(email, code, OTP_TTL_MINUTES);
+    await sendOtpEmail(email, code, OTP_TTL_MINUTES, purpose);
   } catch (error) {
-    logger.error({ err: error }, "OTP email failed");
+    logger.error({ err: error, purpose }, "OTP email failed");
     // Drop the undelivered code so the resend cooldown doesn't block a retry.
     await prisma.emailOtp.delete({ where: { id: created.id } }).catch(() => {});
     throw new AppError(
@@ -79,13 +80,17 @@ export async function sendSignupOtp(email: string) {
       "We couldn't send the code right now. Please try again.",
     );
   }
-
-  return { message: `We sent a 6-digit code to ${email}.`, email };
 }
 
-export async function register(input: RegisterInput) {
+/**
+ * Checks a code against the newest unused one for this email + purpose. A
+ * wrong code uses up an attempt; the third wrong one burns the code. A right
+ * code isn't consumed here — consumeOtp does that inside the transaction
+ * that acts on it.
+ */
+async function checkOtp(email: string, purpose: OtpPurpose, code: string) {
   const otp = await prisma.emailOtp.findFirst({
-    where: { email: input.email, purpose: "SIGNUP", isUsed: false },
+    where: { email, purpose, isUsed: false },
     orderBy: { createdAt: "desc" },
   });
 
@@ -102,7 +107,7 @@ export async function register(input: RegisterInput) {
       "Too many wrong attempts. Request a new code.",
     );
   }
-  if (!safeEqual(otp.otpHash, hashOtp(input.email, input.otp))) {
+  if (!safeEqual(otp.otpHash, hashOtp(email, code))) {
     const attempts = otp.attempts + 1;
     await prisma.emailOtp.update({
       where: { id: otp.id },
@@ -117,23 +122,49 @@ export async function register(input: RegisterInput) {
         : "Too many wrong attempts. Request a new code.",
     );
   }
+  return otp;
+}
 
+/** Marks a checked code used, atomically, so two concurrent requests can't both use it. */
+async function consumeOtp(tx: Prisma.TransactionClient, otpId: string) {
+  const consumed = await tx.emailOtp.updateMany({
+    where: { id: otpId, isUsed: false },
+    data: { isUsed: true },
+  });
+  if (consumed.count !== 1) {
+    throw new AppError(400, "OTP_INVALID", "That code has already been used. Request a new one.");
+  }
+}
+
+export async function sendSignupOtp(email: string) {
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing) {
+    throw new AppError(
+      409,
+      "EMAIL_ALREADY_REGISTERED",
+      "This email is already registered. Log in instead.",
+    );
+  }
+  if (await recentlySent(email, "SIGNUP")) {
+    throw new AppError(
+      429,
+      "OTP_RECENTLY_SENT",
+      `Please wait ${OTP_RESEND_SECONDS} seconds before requesting a new code.`,
+    );
+  }
+
+  await issueOtp(email, "SIGNUP");
+  return { message: `We sent a 6-digit code to ${email}.`, email };
+}
+
+export async function register(input: RegisterInput) {
+  const otp = await checkOtp(input.email, "SIGNUP", input.otp);
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
+  let result;
   try {
-    return await prisma.$transaction(async (tx) => {
-      // Consume the code atomically so two concurrent requests can't both use it.
-      const consumed = await tx.emailOtp.updateMany({
-        where: { id: otp.id, isUsed: false },
-        data: { isUsed: true },
-      });
-      if (consumed.count !== 1) {
-        throw new AppError(
-          400,
-          "OTP_INVALID",
-          "That code has already been used. Request a new one.",
-        );
-      }
+    result = await prisma.$transaction(async (tx) => {
+      await consumeOtp(tx, otp.id);
 
       const user = await tx.user.create({
         data: {
@@ -165,6 +196,66 @@ export async function register(input: RegisterInput) {
     }
     throw error;
   }
+
+  await notify(result.user.id, WELCOME);
+  return result;
+}
+
+/**
+ * POST /auth/forgot-password. Answers the same way whether or not the email
+ * has an account (and inside the resend cooldown), so it can't be used to
+ * find out who's registered. Only active accounts are sent a code.
+ */
+export async function sendPasswordResetOtp(email: string) {
+  const response = {
+    message: `If ${email} has a PrepSuccess account, we sent a 6-digit code to it.`,
+    email,
+  };
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { isActive: true, isDeleted: true },
+  });
+  if (!user || !user.isActive || user.isDeleted) return response;
+  if (await recentlySent(email, "PASSWORD_RESET")) return response;
+
+  await issueOtp(email, "PASSWORD_RESET");
+  return response;
+}
+
+/**
+ * POST /auth/reset-password. Sets the new password, signs every existing
+ * session out, and signs this one in. A Google-only account gains a password
+ * this way — safe, because the code proves control of the email.
+ */
+export async function resetPassword(input: ResetPasswordInput) {
+  const otp = await checkOtp(input.email, "PASSWORD_RESET", input.otp);
+  const user = await prisma.user.findUnique({ where: { email: input.email } });
+  if (!user || user.isDeleted || !user.isActive) {
+    throw new AppError(400, "OTP_INVALID", "That code isn't valid. Request a new one.");
+  }
+  const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+
+  const result = await prisma.$transaction(async (tx) => {
+    await consumeOtp(tx, otp.id);
+    const updated = await tx.user.update({
+      where: { id: user.id },
+      data: { passwordHash, isVerified: true, lastLoginAt: new Date() },
+      include: withProfile,
+    });
+    // Every other session ends; this one gets fresh tokens below.
+    await tx.refreshToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { ...(await issueTokens(updated.id, updated.role, tx)), user: toAuthUser(updated) };
+  });
+
+  await notify(user.id, {
+    type: "PASSWORD_CHANGED",
+    title: "Your password was changed",
+    body: "You were signed out on your other devices. If this wasn't you, reset your password again and contact us.",
+  });
+  return result;
 }
 
 export async function login(input: LoginInput) {
@@ -301,6 +392,7 @@ export async function loginWithGoogle(identity: GoogleIdentity) {
         }
         throw error;
       }
+      await notify(user.id, WELCOME);
     }
   }
 

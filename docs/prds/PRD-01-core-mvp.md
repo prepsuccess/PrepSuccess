@@ -15,6 +15,13 @@ Personalization (SCRUM-117, Phase-1 core slice)
 > been pulled forward into Phase 1, since they are now inseparable from the
 > onboarding/assessment loop itself.
 
+> **Status (2026-10-03):** Phase 1 is feature-complete on branch
+> `Prep-phase1-completion`. Endpoint names below match the built API — the
+> OpenAPI spec (`backend/openapi.json`, served at `/docs`) is the authoritative
+> reference. What remains before launch is operational: provisioning staging and
+> production (`docs/DEPLOYMENT.md`) and the design-side tickets (wireframes,
+> mockups, WCAG audit) tracked in Jira.
+
 ## 1. Purpose
 
 Ship the smallest usable version of PrepSuccess: a student signs up, is
@@ -62,16 +69,19 @@ mentors, payments, or a job portal yet.
 designed for reuse by the Phase 3 Mentor/Session tables.
 
 ### 3.3 Auth
-- Email + password signup/login (bcrypt-hashed, JWT-issued)
-- Google OAuth login (redirect → callback → JWT)
-- `get_current_user` dependency protecting all authenticated routes
+- Email + password signup with an emailed OTP, and login (bcrypt-hashed, JWT-issued);
+  `POST /api/v1/auth/send-otp`, `/register`, `/login`, `/refresh`, `/logout`, `GET /me`
+- Password reset with an emailed OTP: `POST /api/v1/auth/forgot-password`,
+  `/reset-password` (answers identically whether or not the account exists)
+- Google OAuth login (`GET /api/v1/auth/google` → Google → `/google/callback` → JWT)
+- `requireAuth(...roles)` middleware protecting all authenticated routes
 
 ### 3.4 AI Onboarding (replaces the static profile form)
-- `POST /api/v1/ai/onboarding/message` — turn-by-turn conversation endpoint;
+- `GET /api/v1/ai/onboarding` + `POST /api/v1/ai/onboarding/messages` — turn-by-turn conversation;
   the AI agent asks for age, location, education, current skills,
   experience, interests, and goals, and extracts each answer into
   `UserProfile.profile_data` as it goes
-- `GET/PATCH /api/v1/users/me/profile` — read/manually-correct the
+- `GET/PATCH /api/v1/users/me` — read/manually-correct the
   structured profile after the conversation (fallback/edit path, not the
   primary entry point)
 - Every conversation turn is persisted to `AIConversation` for
@@ -84,16 +94,17 @@ designed for reuse by the Phase 3 Mentor/Session tables.
 - `POST /api/v1/ai/assessment/{id}/answer` — submits an answer/task result;
   the agent scores it and compares against that skill's mastery threshold
   (e.g. below ~40% flags `needs_revision`, at/above flags `mastered`)
-- `GET /api/v1/resources?skill=` — serves curated `LearningResource`
+- `GET /api/v1/resources?skill=<slug>` — serves curated `LearningResource`
   entries for any topic flagged `needs_revision`, so a gap always comes
   with material to fix it, not just a label
-- `POST /api/v1/tasks/{id}/submit` — submits a `PracticalTask` attempt;
-  agent evaluates and records `UserTaskSubmission`
+- `GET /api/v1/tasks?skill=<slug>`, `GET /api/v1/tasks/{id}`, `POST /api/v1/tasks/{id}/submit` —
+  submits a `PracticalTask` attempt; the agent scores each rubric criterion, the
+  server computes the percentage and pass/fail (60%) and records `UserTaskSubmission`
 - Retaking a skill's assessment creates a new `Assessment` row (supports
   Phase 2 progress-over-time, same as the original design)
 
 ### 3.6 Dashboard
-- `GET /api/v1/dashboard` — overall readiness score (0–100), per-skill
+- `GET /api/v1/dashboard` (+ `GET /api/v1/ai/insight` for the AI coach's take) — overall readiness score (0–100), per-skill
   mastery status, learning progress, topics completed, topics needing
   revision, AI-recommended next steps (grounded in the student's actual
   `AssessmentResult` rows — never a skill absent from their real data),
@@ -111,7 +122,7 @@ designed for reuse by the Phase 3 Mentor/Session tables.
 - Responsive pass + WCAG AA accessibility audit
 
 ### 3.8 AI Agent & Provider Layer
-- `services/ai_agent/` — provider-agnostic interface; the onboarding
+- `services/ai-agent/` — provider-agnostic interface; the onboarding
   conversation, adaptive assessment scoring, and next-steps generation all
   call through this layer rather than directly against one vendor's SDK
 - Starts on **Gemini's free tier**; interface must support swapping to or

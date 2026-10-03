@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  GraduationCap,
   LayoutDashboard,
   ListChecks,
   ShieldCheck,
@@ -14,6 +15,7 @@ export type ShellNavItem = { href: string; label: string; icon: LucideIcon };
 export const studentNav: ShellNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/assessment", label: "Skill checks", icon: ListChecks },
+  { href: "/learn", label: "Learn", icon: GraduationCap },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
@@ -21,7 +23,7 @@ export const adminNav: ShellNavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/mentors", label: "Mentor approvals", icon: ShieldCheck },
-  { href: "/admin/content", label: "Skills & questions", icon: BookOpen },
+  { href: "/admin/content", label: "Skills & content", icon: BookOpen },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

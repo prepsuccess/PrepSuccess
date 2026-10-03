@@ -18,9 +18,11 @@ export const assessmentPaths: ZodOpenApiPathsObject = {
       tags: ["AI"],
       summary: "Start (or resume) a skill check",
       description:
-        "Resumes an unfinished check on the skill if there is one. Otherwise one AI call writes a pool " +
-        "of multiple-choice questions (easy, medium, hard) and the first — a medium one — is returned. " +
-        "Correct answers never leave the server until a question is answered. Nothing is saved if the AI call fails.",
+        "Resumes an unfinished check on the skill if there is one (question_count is ignored then). Otherwise " +
+        "starts a check of question_count questions (10-30, default 10) drawn from the skill's shared question " +
+        "bank, preferring ones this student hasn't seen. If the bank is short of fresh questions, the AI first " +
+        "adds a batch (the bank grows to 100 per skill), so most starts make no AI call. The first question, a " +
+        "medium one, is returned. Correct answers never leave the server until a question is answered.",
       security: bearerAuth,
       requestBody: { content: { "application/json": { schema: startAssessmentSchema } } },
       responses: {
@@ -32,7 +34,7 @@ export const assessmentPaths: ZodOpenApiPathsObject = {
           ...VALIDATION_422,
           429: "`AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
           502: "`AI_BAD_RESPONSE` — try again.",
-          503: "`AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly.",
+          503: "`AI_UNAVAILABLE`, `AI_NOT_CONFIGURED` or `NOT_ENOUGH_QUESTIONS` — try again shortly.",
         }),
       },
     },

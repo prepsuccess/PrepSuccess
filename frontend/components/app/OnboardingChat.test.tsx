@@ -84,7 +84,9 @@ describe("OnboardingChat", () => {
     await userEvent.type(await screen.findByLabelText("Your message"), "Final year BCA{Enter}");
 
     // Optimistic: the student's message and the typing dots appear before the reply.
-    expect(within(log()).getByText("Final year BCA")).toBeInTheDocument();
+    // The reply is held at the gate, so waiting here still proves the message is
+    // optimistic; the cache patch can land a render after the pending state.
+    expect(await within(log()).findByText("Final year BCA")).toBeInTheDocument();
     expect(screen.getByLabelText("Coach is typing")).toBeInTheDocument();
     expect(screen.getByLabelText("Your message")).toHaveValue("");
 
@@ -133,8 +135,9 @@ describe("OnboardingChat", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Your message wasn't sent");
     expect(alert).toHaveTextContent("The AI is busy right now.");
-    // Rolled back: the message isn't in the chat, it's back in the box.
-    expect(within(log()).queryByText("BCA")).not.toBeInTheDocument();
+    // Rolled back: the message isn't in the chat, it's back in the box. The undo
+    // runs after the rejected action, so it can land a render after the alert.
+    await waitFor(() => expect(within(log()).queryByText("BCA")).not.toBeInTheDocument());
     expect(screen.getByLabelText("Your message")).toHaveValue("BCA");
 
     await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));

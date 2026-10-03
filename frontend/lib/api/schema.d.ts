@@ -4308,6 +4308,16 @@ export interface components {
             description: string;
             /** @enum {string} */
             difficulty: "easy" | "medium" | "hard";
+            /**
+             * @description Editor language. 'text' is a plain written answer.
+             * @example javascript
+             * @enum {string}
+             */
+            language: "html" | "javascript" | "typescript" | "jsx" | "python" | "java" | "c" | "cpp" | "sql" | "shell" | "text";
+            /** @description How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither. */
+            runner: ("run" | "preview") | null;
+            /** @description Code or an outline pre-filled in the editor. */
+            starter_code: string | null;
             /** @example 60 */
             pass_mark: number;
             rubric: components["schemas"]["RubricCriterion"][];

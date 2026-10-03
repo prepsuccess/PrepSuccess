@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import { skillSchema } from "../skills/skills.schemas.js";
-import { MAX_SUBMISSION_CHARS, MIN_SUBMISSION_CHARS, TASK_PASS_PERCENT } from "./tasks.logic.js";
+import {
+  MAX_SUBMISSION_CHARS,
+  MIN_SUBMISSION_CHARS,
+  TASK_LANGUAGES,
+  TASK_PASS_PERCENT,
+} from "./tasks.logic.js";
 
 export const listTasksQuerySchema = z
   .object({
@@ -95,6 +100,18 @@ export const taskDetailSchema = z
         "Blank line = new paragraph, lines starting '- ' are a list, ``` fences are code.",
     }),
     difficulty,
+    language: z.enum(TASK_LANGUAGES).meta({
+      description: "Editor language. 'text' is a plain written answer.",
+      example: "javascript",
+    }),
+    runner: z.enum(["run", "preview"]).nullable().meta({
+      description:
+        "How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither.",
+    }),
+    starter_code: z
+      .string()
+      .nullable()
+      .meta({ description: "Code or an outline pre-filled in the editor." }),
     pass_mark: z.number().int().meta({ example: TASK_PASS_PERCENT }),
     rubric: z.array(rubricCriterionSchema),
     submissions: z

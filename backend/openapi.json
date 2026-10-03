@@ -6765,6 +6765,46 @@
               "hard"
             ]
           },
+          "language": {
+            "type": "string",
+            "enum": [
+              "html",
+              "javascript",
+              "typescript",
+              "jsx",
+              "python",
+              "java",
+              "c",
+              "cpp",
+              "sql",
+              "shell",
+              "text"
+            ],
+            "description": "Editor language. 'text' is a plain written answer.",
+            "example": "javascript"
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "run",
+                  "preview"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither."
+          },
+          "starter_code": {
+            "description": "Code or an outline pre-filled in the editor.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "pass_mark": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -6791,6 +6831,9 @@
           "title",
           "description",
           "difficulty",
+          "language",
+          "runner",
+          "starter_code",
           "pass_mark",
           "rubric",
           "submissions"

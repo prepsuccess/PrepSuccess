@@ -64,11 +64,12 @@ test("a failed check leads to study material, a task and AI feedback", async ({ 
 
   await page.getByRole("link", { name: /Top earners per department/ }).click();
   await expect(page).toHaveURL(/\/tasks\//);
-  await page
-    .getByLabel("Your answer")
-    .fill(
-      "SELECT d.name, AVG(e.salary) FROM employees e JOIN departments d ON d.id = e.department_id GROUP BY d.name;",
-    );
+  // A real SQL editor, pre-filled with the starter code.
+  const editor = page.getByRole("textbox", { name: "Your SQL answer" });
+  await expect(editor).toContainText("departments(id, name)");
+  await editor.fill(
+    "SELECT d.name, AVG(e.salary) FROM employees e JOIN departments d ON d.id = e.department_id GROUP BY d.name;",
+  );
   await page.getByRole("button", { name: "Submit for review" }).click();
 
   await expect(page.getByText("Latest feedback")).toBeVisible();

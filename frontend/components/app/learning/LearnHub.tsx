@@ -24,7 +24,7 @@ import {
   statusOf,
   type SkillStatus,
 } from "@/components/app/skill-checks/skillsView";
-import { topicStyle } from "@/components/app/skill-checks/topicStyle";
+import { TopicIcon } from "@/components/app/skill-checks/TopicIcon";
 import { QueryState } from "@/components/ui/QueryState";
 import { useGetMySkillsQuery } from "@/lib/api/endpoints/skills";
 import type { MySkill } from "@/lib/api/types";
@@ -70,24 +70,6 @@ function Status({ skill }: { skill: MySkill }) {
       <Icon aria-hidden className="size-3.5 shrink-0" />
       {label}
       {percent}
-    </span>
-  );
-}
-
-function TopicIcon({ topic, className }: { topic: string | null; className?: string }) {
-  const style = topicStyle(topic);
-  const Icon = style.icon;
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg",
-        style.tint,
-        style.ink,
-        className,
-      )}
-    >
-      <Icon className="size-1/2" />
     </span>
   );
 }

@@ -308,6 +308,8 @@ model PracticalTask {
   difficulty         Difficulty @default(EASY)
   /// Rubric the AI evaluator scores against.
   evaluationCriteria Json       @default("{}") @map("evaluation_criteria")
+  /// Code (or an answer outline) pre-filled in the editor.
+  starterCode        String?    @map("starter_code")
   isActive           Boolean    @default(true) @map("is_active")
   isDeleted          Boolean    @default(false) @map("is_deleted")
   createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)

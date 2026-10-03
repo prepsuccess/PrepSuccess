@@ -5,9 +5,5 @@ export const metadata: Metadata = { title: "Practical task — PrepSuccess" };
 
 export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return (
-    <div className="mx-auto max-w-3xl">
-      <TaskView id={id} />
-    </div>
-  );
+  return <TaskView id={id} />;
 }

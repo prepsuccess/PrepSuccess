@@ -8,6 +8,8 @@ import {
   TASK_PASS_PERCENT,
   parseRubric,
   scoreReview,
+  taskLanguage,
+  taskRunner,
   type Rubric,
 } from "../src/modules/tasks/tasks.logic.js";
 
@@ -51,6 +53,7 @@ const db = vi.hoisted(() => {
     title: "Top earners per department",
     description: "Write the queries.",
     difficulty: "MEDIUM",
+    starterCode: null,
     evaluationCriteria: {
       criteria: [
         { id: "join", description: "Correct JOIN", points: 4 },
@@ -171,6 +174,28 @@ describe("content catalogues", () => {
       ).toBe(10);
       expect(new Set(t.rubric.map((c) => c.id)).size, t.title).toBe(t.rubric.length);
     }
+  });
+
+  it("gives every skill five distinct tasks: two easy, two medium, one hard", () => {
+    for (const slug of slugs) {
+      const tasks = TASK_CATALOGUE.filter((t) => t.skill === slug);
+      const mix = tasks
+        .map((t) => t.difficulty[0])
+        .sort()
+        .join("");
+      expect(mix, slug).toBe("EEHMM");
+      expect(new Set(tasks.map((t) => t.title)).size, slug).toBe(5);
+    }
+  });
+
+  it("gives tasks the browser can run or preview starter code", () => {
+    for (const t of TASK_CATALOGUE.filter((t) => taskRunner(t.skill))) {
+      expect(t.starter, t.title).toBeTruthy();
+    }
+    expect(taskLanguage("css")).toBe("html");
+    expect(taskRunner("javascript")).toBe("run");
+    expect(taskLanguage("communication")).toBe("text");
+    expect(taskRunner("python")).toBeNull();
   });
 });
 
@@ -330,6 +355,8 @@ describe("practical tasks", () => {
 
     const detail = await request(app).get(`/api/v1/tasks/${TASK_ID}`).set(auth());
     expect(detail.body.data.rubric).toHaveLength(2);
+    // SQL is written in a SQL editor; the browser can't run it, so the AI reviews it.
+    expect(detail.body.data).toMatchObject({ language: "sql", runner: null });
     expect(detail.body.data.submissions.map((s: { percent: number }) => s.percent)).toEqual([
       70, 20,
     ]);

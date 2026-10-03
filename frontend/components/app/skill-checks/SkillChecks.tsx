@@ -23,7 +23,7 @@ import type { MySkill } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
 import { groupByTopic, matches, statusOf, summarise, upNext, type SkillStatus } from "./skillsView";
 import { actionLabel } from "./status";
-import { topicStyle } from "./topicStyle";
+import { TopicIcon } from "./TopicIcon";
 import { useStartCheck } from "./useStartCheck";
 
 type StartCheck = ReturnType<typeof useStartCheck>["startCheck"];
@@ -193,25 +193,6 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
   );
 }
 
-/** The topic's colour, as a small icon chip. */
-function TopicIcon({ topic, size = "md" }: { topic: string | null; size?: "sm" | "md" }) {
-  const style = topicStyle(topic);
-  const Icon = style.icon;
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg",
-        style.tint,
-        style.ink,
-        size === "md" ? "size-10" : "size-8",
-      )}
-    >
-      <Icon className={size === "md" ? "size-5" : "size-4"} />
-    </span>
-  );
-}
-
 /** One of the student's own skills. */
 function SkillCard({
   skill,
@@ -225,7 +206,7 @@ function SkillCard({
   return (
     <li className="bg-card flex flex-col gap-4 rounded-2xl border p-5 shadow-xs">
       <div className="flex items-start gap-3">
-        <TopicIcon topic={skill.topic} />
+        <TopicIcon topic={skill.topic} className="size-10" />
         <div className="min-w-0 space-y-1">
           <Link
             href={`/learn/${skill.slug}`}
@@ -303,7 +284,7 @@ function TopicGroup({
   return (
     <section aria-labelledby={headingId} className="space-y-3">
       <div className="flex items-center gap-2.5">
-        <TopicIcon topic={topic} size="sm" />
+        <TopicIcon topic={topic} className="size-8" />
         <h3 id={headingId} className="text-foreground font-semibold">
           {topic}
         </h3>

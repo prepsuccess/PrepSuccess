@@ -11,6 +11,57 @@ import { z } from "zod";
 export const TASK_PASS_PERCENT = 60;
 
 export const MIN_SUBMISSION_CHARS = 20;
+
+/** Editor language for a task, by skill. "text" is a plain written answer. */
+export const TASK_LANGUAGES = [
+  "html",
+  "javascript",
+  "typescript",
+  "jsx",
+  "python",
+  "java",
+  "c",
+  "cpp",
+  "sql",
+  "shell",
+  "text",
+] as const;
+export type TaskLanguage = (typeof TASK_LANGUAGES)[number];
+
+const LANGUAGE_BY_SKILL: Record<string, TaskLanguage> = {
+  html: "html",
+  css: "html", // CSS is written in a page's <style> so the preview can show it
+  javascript: "javascript",
+  dsa: "javascript",
+  nodejs: "javascript",
+  expressjs: "javascript",
+  mongodb: "javascript",
+  typescript: "typescript",
+  react: "jsx",
+  python: "python",
+  "data-analysis-python": "python",
+  "machine-learning": "python",
+  java: "java",
+  oop: "java",
+  c: "c",
+  cpp: "cpp",
+  sql: "sql",
+  dbms: "sql",
+  git: "shell",
+  linux: "shell",
+};
+
+/** How the browser can try the code: run it (plain JS, no Node APIs), preview it (a web page), or neither. */
+const RUNNER_BY_SKILL: Record<string, "run" | "preview"> = {
+  javascript: "run",
+  dsa: "run",
+  html: "preview",
+  css: "preview",
+};
+
+export const taskLanguage = (skillSlug: string): TaskLanguage =>
+  LANGUAGE_BY_SKILL[skillSlug] ?? "text";
+export const taskRunner = (skillSlug: string) => RUNNER_BY_SKILL[skillSlug] ?? null;
 export const MAX_SUBMISSION_CHARS = 10_000;
 
 export interface RubricCriterion {

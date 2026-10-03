@@ -105,6 +105,10 @@ describe("TaskView", () => {
     title: "Top earners per department",
     description: "Write the queries:\n- average per department\n- top earner per department",
     difficulty: "medium",
+    // A written answer, so the plain text box is used (CodeMirror needs a real browser; see e2e).
+    language: "text",
+    runner: null,
+    starter_code: null,
     pass_mark: 60,
     rubric: submission.feedback.criteria.map(({ id, description, points }) => ({
       id,

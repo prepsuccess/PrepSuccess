@@ -57,6 +57,7 @@ for (const task of TASK_CATALOGUE) {
     description: task.description,
     difficulty: task.difficulty,
     evaluationCriteria: { criteria: task.rubric.map((c) => ({ ...c })) },
+    starterCode: task.starter ?? null,
   };
   const existing = await prisma.practicalTask.findFirst({
     where: { skillId: data.skillId, title: data.title },

@@ -1,37 +1,23 @@
-import type { Difficulty } from "../../generated/prisma/client.js";
-import type { RubricCriterion } from "./tasks.logic.js";
+import { c, task, type CatalogueTask } from "./library/helpers.js";
+import { APTITUDE_TASKS } from "./library/aptitude.js";
+import { BACKEND_TASKS } from "./library/backend.js";
+import { CS_TASKS } from "./library/cs.js";
+import { DATA_TASKS } from "./library/data.js";
+import { LANGUAGES_TASKS } from "./library/languages.js";
+import { SOFT_TASKS } from "./library/soft.js";
+import { TOOLS_TASKS } from "./library/tools.js";
+import { WEB_TASKS } from "./library/web.js";
+
+export type { CatalogueTask };
 
 /**
  * Practical tasks, seeded into `practical_tasks` by prisma/seed.ts (matched by
- * skill + title, so re-seeding is safe). One small hands-on task per skill:
- * the student writes code or a short answer, and the AI scores it against
- * the rubric (tasks.logic.ts). Rubric points are integers and should total 10.
- * Descriptions use the same light formatting as hosted notes: blank line =
- * new paragraph, "- " = list item, ``` fences = code.
+ * skill + title, so re-seeding is safe). Five hands-on tasks per skill (two
+ * easy, two medium, one hard): the student writes code or a short answer in
+ * the editor, and the AI scores it against the rubric (tasks.logic.ts).
+ * The first task per skill lives here; the rest live in ./library by topic.
  */
-export interface CatalogueTask {
-  skill: string;
-  title: string;
-  difficulty: Difficulty;
-  description: string;
-  rubric: RubricCriterion[];
-}
-
-const task = (
-  skill: string,
-  title: string,
-  difficulty: Difficulty,
-  description: string,
-  rubric: RubricCriterion[],
-): CatalogueTask => ({ skill, title, difficulty, description: description.trim(), rubric });
-
-const c = (id: string, description: string, points: number): RubricCriterion => ({
-  id,
-  description,
-  points,
-});
-
-export const TASK_CATALOGUE: CatalogueTask[] = [
+const FIRST_TASKS: CatalogueTask[] = [
   // Web development
   task(
     "html",
@@ -54,6 +40,19 @@ Write the HTML (no CSS needed) for a signup form with: full name, email, passwor
         2,
       ),
     ],
+    `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sign up</title>
+  </head>
+  <body>
+    <h1>Create your account</h1>
+    <!-- Your form here -->
+  </body>
+</html>
+`,
   ),
   task(
     "css",
@@ -77,6 +76,24 @@ Use flexbox and/or grid. Show the HTML class names you assume.
       ),
       c("clean", "Readable CSS without unnecessary hacks", 1),
     ],
+    `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      /* Your CSS here */
+    </style>
+  </head>
+  <body>
+    <div class="card">I am centred</div>
+    <div class="grid">
+      <div>1</div><div>2</div><div>3</div>
+      <div>4</div><div>5</div><div>6</div>
+    </div>
+  </body>
+</html>
+`,
   ),
   task(
     "javascript",
@@ -93,6 +110,20 @@ Then show how you'd use it on an input's "input" event so a search runs 300ms af
       c("usage", "Correct usage with addEventListener on an input", 2),
       c("explain", "Brief explanation of why debouncing helps", 2),
     ],
+    `
+function debounce(fn, delay) {
+  // your code here
+}
+
+// Try it: only the last call should print, about 300ms later.
+const search = debounce((q) => console.log("searching for", q), 300);
+search("r");
+search("re");
+search("react"); // prints: searching for react
+
+// How you'd wire it to an input (the editor can't run DOM code):
+// input.addEventListener("input", (e) => search(e.target.value));
+`,
   ),
   task(
     "typescript",
@@ -265,7 +296,7 @@ Write a C++ program that reads n integers and prints each distinct value with ho
     `
 Given an array of integers and a target, return the indices of the two numbers that add up to the target. Assume exactly one answer exists.
 
-Write the code in any language, then explain the time and space complexity of your approach and why it beats checking every pair.
+Write the code in JavaScript (you can run it here), then explain the time and space complexity of your approach and why it beats checking every pair.
 `,
     [
       c(
@@ -277,6 +308,18 @@ Write the code in any language, then explain the time and space complexity of yo
       c("complexity", "Correct time and space complexity", 2),
       c("explain", "Explains why it beats O(n²)", 1),
     ],
+    `
+function twoSum(nums, target) {
+  // your code here
+}
+
+console.log(twoSum([2, 7, 11, 15], 9)); // [0, 1]
+console.log(twoSum([3, 2, 4], 6)); // [1, 2]
+console.log(twoSum([3, 3], 6)); // [0, 1]
+
+// Time complexity:
+// Space complexity:
+`,
   ),
   task(
     "oop",
@@ -689,4 +732,16 @@ You have an interview at 11 am tomorrow, but your college has just scheduled a c
       c("concise", "Short and free of errors", 2),
     ],
   ),
+];
+
+export const TASK_CATALOGUE: CatalogueTask[] = [
+  ...FIRST_TASKS,
+  ...WEB_TASKS,
+  ...BACKEND_TASKS,
+  ...LANGUAGES_TASKS,
+  ...CS_TASKS,
+  ...DATA_TASKS,
+  ...TOOLS_TASKS,
+  ...APTITUDE_TASKS,
+  ...SOFT_TASKS,
 ];

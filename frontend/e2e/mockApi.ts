@@ -20,7 +20,12 @@ import type {
 export const API = "http://localhost:8000";
 
 const now = "2026-10-03T10:00:00.000Z";
-const envelope = (data: unknown) => ({ success: true, data, request_id: "e2e", timestamp: now });
+export const envelope = (data: unknown) => ({
+  success: true,
+  data,
+  request_id: "e2e",
+  timestamp: now,
+});
 const errorEnvelope = (code: string, message: string) => ({
   success: false,
   error: { code, message, details: [] },
@@ -322,6 +327,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
           title: "Top earners per department",
           description: "Write a query for the average salary per department.",
           difficulty: "medium",
+          language: "sql",
+          runner: null,
+          starter_code: "-- employees(id, name, salary, department_id)\n-- departments(id, name)\n",
           pass_mark: 60,
           rubric,
           submissions: taskSubmissions,

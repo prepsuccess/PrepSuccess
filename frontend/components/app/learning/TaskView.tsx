@@ -1,26 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Check, CircleAlert } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
+import { useEffect, useRef } from "react";
+import { ArrowLeft, Check } from "lucide-react";
 import { Badge } from "@/components/shadcn/badge";
-import { Button } from "@/components/shadcn/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/shadcn/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/shadcn/card";
 import { Progress } from "@/components/shadcn/progress";
 import { Skeleton } from "@/components/shadcn/skeleton";
-import { Textarea } from "@/components/shadcn/textarea";
 import { QueryState } from "@/components/ui/QueryState";
-import { Spinner } from "@/components/ui/Spinner";
-import { errorMessage, fieldErrors } from "@/lib/api/errors";
-import { useGetTaskQuery, useSubmitTaskMutation } from "@/lib/api/endpoints/learning";
+import { useGetTaskQuery } from "@/lib/api/endpoints/learning";
 import type { TaskDetail, TaskSubmission } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
-import { track } from "@/lib/analytics";
+import { TaskWorkspace } from "./editor/TaskWorkspace";
 import { Prose } from "./Prose";
-
-const MIN_CHARS = 20;
-const MAX_CHARS = 10_000;
 
 const points = (n: number) => `${n} point${n === 1 ? "" : "s"}`;
 
@@ -110,87 +102,6 @@ export function SubmissionFeedback({
   );
 }
 
-function SubmitForm({ task, latest }: { task: TaskDetail; latest?: TaskSubmission }) {
-  const [submit, { isLoading, error, reset }] = useSubmitTaskMutation();
-  const [content, setContent] = useState(latest?.content ?? "");
-  const fieldId = useId();
-  const hintId = useId();
-  const length = content.trim().length;
-  const invalid = fieldErrors(error).content;
-
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (length < MIN_CHARS || isLoading) return;
-    try {
-      const result = await submit({ id: task.id, content }).unwrap();
-      track("task_submitted", { passed: result.passed });
-    } catch {
-      // Shown below.
-    }
-  }
-
-  return (
-    <Card>
-      <form onSubmit={onSubmit}>
-        <CardHeader>
-          <CardTitle>
-            <label htmlFor={fieldId}>{latest ? "Try again" : "Your answer"}</label>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Textarea
-            id={fieldId}
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value);
-              if (error) reset();
-            }}
-            rows={12}
-            maxLength={MAX_CHARS}
-            spellCheck={false}
-            disabled={isLoading}
-            aria-describedby={hintId}
-            aria-invalid={Boolean(invalid)}
-            placeholder="Write your code or answer here."
-            className="min-h-48 font-mono text-[13px]"
-          />
-          <p id={hintId} className="text-muted-foreground flex justify-between gap-3 text-xs">
-            <span>
-              {invalid ??
-                (length < MIN_CHARS
-                  ? `At least ${MIN_CHARS} characters.`
-                  : "The AI marks only what's written here.")}
-            </span>
-            <span className="tabular-nums">
-              {content.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
-            </span>
-          </p>
-          {error && !invalid ? (
-            <Alert variant="destructive">
-              <CircleAlert />
-              <AlertTitle>Your answer wasn&apos;t reviewed</AlertTitle>
-              <AlertDescription>
-                {errorMessage(error)} Your answer is still here — try again.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          {isLoading ? (
-            <p role="status" className="text-muted-foreground text-sm">
-              The AI is marking your answer. This can take up to a minute.
-            </p>
-          ) : null}
-        </CardContent>
-        <CardFooter className="mt-4 justify-end border-t">
-          <Button type="submit" disabled={length < MIN_CHARS || isLoading}>
-            {isLoading ? <Spinner className="size-4" /> : null}
-            {isLoading ? "Reviewing…" : "Submit for review"}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
-  );
-}
-
 function TaskBody({ task }: { task: TaskDetail }) {
   const [latest, ...earlier] = task.submissions;
   const feedbackRef = useRef<HTMLDivElement>(null);
@@ -223,60 +134,68 @@ function TaskBody({ task }: { task: TaskDetail }) {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="space-y-5">
-          <Prose text={task.description} className="text-foreground" />
-          <div className="bg-muted rounded-lg p-4 text-sm">
-            <h2 className="text-foreground mb-2 font-semibold">
-              How it&apos;s marked · pass mark {task.pass_mark}%
-            </h2>
-            <ul className="space-y-1">
-              {task.rubric.map((c) => (
-                <li key={c.id} className="flex justify-between gap-3">
-                  <span>{c.description}</span>
-                  <span className="text-muted-foreground shrink-0 tabular-nums">
-                    {points(c.points)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Phones: task, feedback, then the editor. Wide screens: task and
+          feedback on the left, the editor beside them like a coding platform. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="space-y-5">
+              <Prose text={task.description} className="text-foreground" />
+              <div className="bg-muted rounded-lg p-4 text-sm">
+                <h2 className="text-foreground mb-2 font-semibold">
+                  How it&apos;s marked · pass mark {task.pass_mark}%
+                </h2>
+                <ul className="space-y-1">
+                  {task.rubric.map((c) => (
+                    <li key={c.id} className="flex justify-between gap-3">
+                      <span>{c.description}</span>
+                      <span className="text-muted-foreground shrink-0 tabular-nums">
+                        {points(c.points)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
 
-      {latest ? (
-        <div ref={feedbackRef} tabIndex={-1} className="outline-none">
-          <SubmissionFeedback submission={latest} heading="Latest feedback" />
+          {latest ? (
+            <div ref={feedbackRef} tabIndex={-1} className="outline-none">
+              <SubmissionFeedback submission={latest} heading="Latest feedback" />
+            </div>
+          ) : null}
+
+          {earlier.length ? (
+            <details className="group">
+              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm">
+                Earlier attempts ({earlier.length})
+              </summary>
+              <ol className="mt-3 space-y-3">
+                {earlier.map((s) => (
+                  <li key={s.id}>
+                    <SubmissionFeedback
+                      submission={s}
+                      heading={new Date(s.created_at).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    />
+                  </li>
+                ))}
+              </ol>
+            </details>
+          ) : null}
         </div>
-      ) : null}
 
-      <SubmitForm key={latest?.id ?? "new"} task={task} latest={latest} />
-
-      {earlier.length ? (
-        <details className="group">
-          <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm">
-            Earlier attempts ({earlier.length})
-          </summary>
-          <ol className="mt-3 space-y-3">
-            {earlier.map((s) => (
-              <li key={s.id}>
-                <SubmissionFeedback
-                  submission={s}
-                  heading={new Date(s.created_at).toLocaleString(undefined, {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                />
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
+        <div className="xl:sticky xl:top-4">
+          <TaskWorkspace key={latest?.id ?? "new"} task={task} latest={latest} />
+        </div>
+      </div>
     </div>
   );
 }
 
-/** /tasks/[id] — the task, how it's marked, the answer box and the AI's feedback. */
+/** /tasks/[id] — the task, how it's marked, the editor and the AI's feedback. */
 export function TaskView({ id }: { id: string }) {
   const query = useGetTaskQuery(id);
   return (

@@ -11,6 +11,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
+  // The task editor (CodeMirror) is a lazy chunk; give slower machines time to load it.
+  expect: { timeout: 10_000 },
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   use: {
     baseURL: `http://localhost:${PORT}`,

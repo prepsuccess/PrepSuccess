@@ -1,13 +1,15 @@
 import { prisma } from "../src/db/prisma.js";
+import { QUESTION_CATALOGUE } from "../src/modules/questions/catalogue.js";
 import { RESOURCE_CATALOGUE } from "../src/modules/resources/catalogue.js";
 import { SKILL_CATALOGUE } from "../src/modules/skills/catalogue.js";
 import { TASK_CATALOGUE } from "../src/modules/tasks/catalogue.js";
 
 /**
- * Seeds the skill catalogue, learning resources and practical tasks:
- * `npm run db:seed`. Safe to re-run after editing the catalogues:
+ * Seeds the skill catalogue, learning resources, practical tasks and the
+ * interview question bank: `npm run db:seed`. Safe to re-run after editing
+ * the catalogues:
  *   - skills upsert by slug;
- *   - resources and tasks match on skill + title and are updated in place.
+ *   - resources, tasks and questions match on skill + title and are updated in place.
  * Nothing is deleted: skills, resources or tasks removed from a catalogue are
  * left alone (students may have used them) — deactivate them from the admin
  * panel instead. Rows an admin soft-deleted stay deleted.
@@ -68,8 +70,28 @@ for (const task of TASK_CATALOGUE) {
   tasks++;
 }
 
+// Interview questions keep an admin's soft delete / deactivation: only the content is refreshed.
+let questions = 0;
+for (const question of QUESTION_CATALOGUE) {
+  const content = {
+    body: question.body,
+    answer: question.answer,
+    topic: question.topic,
+    difficulty: question.difficulty,
+    company: question.company ?? null,
+    role: question.role ?? null,
+  };
+  const skill = skillId(question.skill);
+  await prisma.questionBank.upsert({
+    where: { skillId_title: { skillId: skill, title: question.title } },
+    create: { skillId: skill, title: question.title, ...content },
+    update: content,
+  });
+  questions++;
+}
+
 // eslint-disable-next-line no-console -- CLI output
 console.log(
-  `Seeded ${SKILL_CATALOGUE.length} skills, ${resources} learning resources and ${tasks} practical tasks.`,
+  `Seeded ${SKILL_CATALOGUE.length} skills, ${resources} learning resources, ${tasks} practical tasks and ${questions} interview questions.`,
 );
 await prisma.$disconnect();

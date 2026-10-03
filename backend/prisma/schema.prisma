@@ -115,14 +115,16 @@ model User {
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  profile         UserProfile?
-  refreshTokens   RefreshToken[]
-  conversations   AIConversation[]
-  assessments     Assessment[]
-  taskSubmissions UserTaskSubmission[]
-  aiUsage         AiUsage[]
-  notifications   Notification[]
-  activity        UserActivity?
+  profile           UserProfile?
+  refreshTokens     RefreshToken[]
+  conversations     AIConversation[]
+  assessments       Assessment[]
+  taskSubmissions   UserTaskSubmission[]
+  aiUsage           AiUsage[]
+  notifications     Notification[]
+  activity          UserActivity?
+  questionsAuthored QuestionBank[]         @relation("QuestionAuthor")
+  questionProgress  UserQuestionProgress[]
 
   @@map("users")
 }
@@ -197,6 +199,8 @@ model Skill {
 
   assessments    Assessment[]
   checkQuestions CheckQuestion[]
+  questions      QuestionBank[]
+  prepPdfs       PrepPdf[]
   practicalTasks PracticalTask[]
   resources      LearningResource[]
 
@@ -427,4 +431,84 @@ model UserActivity {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_activity")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: interview question bank (docs/PHASE_2_PLAN.md)
+// ---------------------------------------------------------------------------
+
+/// Open-ended interview questions for practice. Not the skill-check MCQs
+/// (check_questions). Tagged with a Phase 1 skill, so a weak skill on the
+/// dashboard leads straight to matching questions.
+model QuestionBank {
+  id          String     @id @default(uuid()) @db.Uuid
+  skillId     String     @map("skill_id") @db.Uuid
+  title       String     @db.VarChar(200)
+  /// Light formatting: blank line = paragraph, "- " = list, ``` = code.
+  body        String
+  /// Model answer / hints, hidden until the student asks to see it.
+  answer      String?
+  /// From the fixed lists in src/modules/questions/taxonomy.ts.
+  company     String?    @db.VarChar(100)
+  role        String?    @db.VarChar(100)
+  topic       String     @db.VarChar(100)
+  difficulty  Difficulty
+  /// The admin who added it; null for the seeded starter bank.
+  createdById String?    @map("created_by") @db.Uuid
+  isActive    Boolean    @default(true) @map("is_active")
+  isDeleted   Boolean    @default(false) @map("is_deleted")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  skill     Skill                  @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  createdBy User?                  @relation("QuestionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  progress  UserQuestionProgress[]
+
+  @@unique([skillId, title])
+  @@index([company])
+  @@index([role])
+  @@index([topic])
+  @@map("question_bank")
+}
+
+/// One row per student per question, so bookmarking or solving twice never
+/// duplicates. Bookmarked and solved are separate: a solved question can stay bookmarked.
+model UserQuestionProgress {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  questionId String    @map("question_id") @db.Uuid
+  bookmarked Boolean   @default(false)
+  /// First time it was marked solved; null when not solved.
+  solvedAt   DateTime? @map("solved_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question QuestionBank @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId, solvedAt])
+  @@map("user_question_progress")
+}
+
+/// Curated prep guides. Admins paste a public link to the PDF (no file storage yet).
+model PrepPdf {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String   @db.VarChar(200)
+  description String?  @db.VarChar(500)
+  skillId     String?  @map("skill_id") @db.Uuid
+  role        String?  @db.VarChar(100)
+  company     String?  @db.VarChar(100)
+  fileUrl     String   @map("file_url") @db.VarChar(500)
+  /// Shown to students, e.g. "12 pages"; optional.
+  sizeLabel   String?  @map("size_label") @db.VarChar(50)
+  downloads   Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  skill Skill? @relation(fields: [skillId], references: [id], onDelete: SetNull)
+
+  @@map("prep_pdfs")
 }

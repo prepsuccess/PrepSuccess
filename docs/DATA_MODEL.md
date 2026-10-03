@@ -136,10 +136,66 @@ before an account exists.
 - **Notifications are generic.** `type` is a string and the payload is JSON, so
   Phase 2/3 events (session booked, mentor note added) need no migration.
 
+## Added after the Phase 1 diagram
+
+| Table | Purpose |
+|---|---|
+| `check_questions` | Shared bank of multiple-choice questions per skill for skill checks (about 100 per skill), with `fingerprint` to avoid duplicates and `times_asked` / `times_correct` stats. |
+| `user_activity` | One row per student: current session start, last seen, last coach check-in. Drives the AI coach's once-a-day tip after 30 active minutes. |
+
+`ai_conversations.agent_type` also has `COACH` for the coach chat.
+
+## Phase 2 — Interview prep (built)
+
+```mermaid
+erDiagram
+    skills ||--o{ question_bank : "tags"
+    users ||--o{ question_bank : "authors (admin)"
+    question_bank ||--o{ user_question_progress : "tracked in"
+    users ||--o{ user_question_progress : "bookmarks / solves"
+    skills ||--o{ prep_pdfs : "may tag"
+
+    question_bank {
+        uuid skill_id FK
+        string title "unique per skill"
+        text body
+        text answer "model answer, shown on request"
+        string company "fixed list"
+        string role "fixed list"
+        string topic
+        enum difficulty
+        uuid created_by FK "null for the seeded bank"
+        bool is_active
+        bool is_deleted
+    }
+    user_question_progress {
+        uuid user_id FK
+        uuid question_id FK
+        bool bookmarked
+        timestamptz solved_at "first solve; null if not solved"
+    }
+    prep_pdfs {
+        string title
+        string file_url "public link pasted by an admin"
+        string size_label
+        int downloads
+        bool is_active
+        bool is_deleted
+    }
+```
+
+- **Separate from `check_questions`.** Those are skill-check MCQs; `question_bank`
+  is open-ended interview practice.
+- **One progress row per student and question** (`@@unique([user_id, question_id])`),
+  so bookmarking or solving twice never duplicates. Bookmarked and solved are
+  separate, so a solved question can stay bookmarked.
+- **Company and role are fixed lists** (`backend/src/modules/questions/taxonomy.ts`),
+  so filters don't split on spelling.
+- See [PHASE_2_PLAN.md](PHASE_2_PLAN.md) for the API and screens.
+
 ## Planned (not built yet)
 
 | Phase | Tables | Notes |
 |---|---|---|
-| 2 — Interview prep | `question_bank`, `user_question_progress` | Questions tagged by `skills.id`; bookmark/solved per user. |
 | 3 — Mentorship | `mentor_profiles`, `mentor_availability`, `sessions`, `chat_messages` | Reuse `users` (role `MENTOR`); session notes feed the dashboard's next steps. |
 | 4 — Advanced AI | `resumes` (or columns on profile) | Resume feedback; readiness PDF is generated, not stored. |

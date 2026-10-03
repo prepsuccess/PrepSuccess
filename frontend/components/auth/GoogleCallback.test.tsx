@@ -1,5 +1,8 @@
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { authApi } from "@/lib/api/endpoints/auth";
+import { dashboardApi } from "@/lib/api/endpoints/dashboard";
+import type { AiInsight } from "@/lib/api/types";
 import { authErrorMessage, googleSignInUrl } from "@/lib/auth/google";
 import { StoreProvider } from "@/lib/store/StoreProvider";
 import { makeStore } from "@/lib/store/store";
@@ -7,12 +10,19 @@ import { API, fail, http, ok, server } from "@/test/server";
 import { testUser } from "@/test/render";
 import { GoogleCallback } from "./GoogleCallback";
 
+const previousInsight: AiInsight = {
+  status: "ready",
+  summary: "Asha's results.",
+  gaps: [],
+  plan: [],
+  generated_at: "2026-10-02T10:00:00.000Z",
+};
+
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
-function renderCallback(url: string) {
+function renderCallback(url: string, store = makeStore()) {
   window.history.replaceState(null, "", url);
-  const store = makeStore();
   render(
     <StoreProvider store={store}>
       <GoogleCallback />
@@ -45,6 +55,27 @@ describe("GoogleCallback", () => {
     expect(window.location.hash).toBe("");
     expect(auth).toBe("Bearer acc");
     expect(store.getState().auth.status).toBe("signedIn");
+  });
+
+  it("drops anything cached for a previous user in this tab", async () => {
+    const newUser = { ...testUser, email: "ravi@college.edu" };
+    server.use(http.get(`${API}/api/v1/auth/me`, () => ok(newUser)));
+    const store = makeStore();
+    store.dispatch(
+      authApi.util.upsertQueryEntries([{ endpointName: "getMe", arg: undefined, value: testUser }]),
+    );
+    store.dispatch(
+      dashboardApi.util.upsertQueryEntries([
+        { endpointName: "getInsight", arg: undefined, value: previousInsight },
+      ]),
+    );
+
+    renderCallback("/auth/callback#access_token=a&refresh_token=r", store);
+
+    await waitFor(() => expect(store.getState().auth.status).toBe("signedIn"));
+    const queries = store.getState().api.queries;
+    expect(queries["getInsight(undefined)"]).toBeUndefined();
+    expect(queries["getMe(undefined)"]?.data).toMatchObject({ email: "ravi@college.edu" });
   });
 
   it("goes to the dashboard without a next path, ignoring off-site ones", async () => {

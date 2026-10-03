@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { saveTokens } from "@/lib/auth/session";
 import { signedIn } from "@/lib/auth/authSlice";
@@ -6,7 +7,10 @@ import { API, fail, http, HttpResponse, ok, server } from "@/test/server";
 import { testUser } from "@/test/render";
 import { aiApi } from "./endpoints/ai";
 import { authApi } from "./endpoints/auth";
+import { dashboardApi } from "./endpoints/dashboard";
+import { onboardingApi } from "./endpoints/onboarding";
 import { fieldErrors, isApiError } from "./errors";
+import type { AiInsight, OnboardingState } from "./types";
 
 const aiStatus = {
   available: true,
@@ -14,6 +18,22 @@ const aiStatus = {
   reason: null,
   trial: { active: true, ends_at: "2027-01-01T00:00:00.000Z", days_left: 90, enforced: false },
   today: { requests: 1, limit: 200 },
+};
+
+const onboardingState: OnboardingState = {
+  conversation_id: "c0ffee00-0000-4000-8000-000000000001",
+  messages: [],
+  completed: false,
+  progress: { collected: 0, total: 5, items: [] },
+  profile: {},
+};
+
+const emptyInsight: AiInsight = {
+  status: "empty",
+  summary: null,
+  gaps: [],
+  plan: [],
+  generated_at: null,
 };
 
 function signedInStore() {
@@ -118,6 +138,29 @@ describe("baseApi", () => {
     expect(localStorage.getItem("ps-refresh-token")).toBeNull();
   });
 
+  it.each([
+    ["offline", () => HttpResponse.error(), "NETWORK_ERROR"],
+    ["down", () => fail(503, "SERVICE_UNAVAILABLE", "Try again later."), "SERVICE_UNAVAILABLE"],
+    ["rate limited", () => fail(429, "RATE_LIMITED", "Slow down."), "RATE_LIMITED"],
+  ])(
+    "keeps the student signed in when the refresh endpoint is %s",
+    async (_case, refreshResponse, code) => {
+      server.use(
+        http.get(`${API}/api/v1/auth/me`, () => fail(401, "INVALID_TOKEN", "Expired.")),
+        http.post(`${API}/api/v1/auth/refresh`, refreshResponse),
+      );
+      const store = signedInStore();
+
+      const result = await store.dispatch(authApi.endpoints.getMe.initiate());
+
+      // The request reports why the refresh failed, not the 401.
+      expect(result.error).toMatchObject({ code });
+      expect(store.getState().auth.status).toBe("signedIn");
+      expect(localStorage.getItem("ps-access-token")).toBe("old-access");
+      expect(localStorage.getItem("ps-refresh-token")).toBe("old-refresh");
+    },
+  );
+
   it("never refreshes for a failed login — a 401 there means wrong password", async () => {
     server.use(
       http.post(`${API}/api/v1/auth/login`, () =>
@@ -133,6 +176,50 @@ describe("baseApi", () => {
 
     expect(result.error).toMatchObject({ code: "INVALID_CREDENTIALS" });
     expect(store.getState().auth.status).toBe("signedIn");
+  });
+});
+
+describe("AI usage stays current", () => {
+  /** A store watching AI usage, plus a count of how often it was fetched. */
+  async function watchingAiStatus() {
+    const calls = { count: 0 };
+    server.use(
+      http.get(`${API}/api/v1/ai/status`, () => {
+        calls.count += 1;
+        return ok(aiStatus);
+      }),
+    );
+    const store = signedInStore();
+    store.dispatch(aiApi.endpoints.getAiStatus.initiate());
+    await waitFor(() => expect(calls.count).toBe(1));
+    return { store, calls };
+  }
+
+  it("refetches after an onboarding message, sent or not", async () => {
+    let attempts = 0;
+    server.use(
+      http.post(`${API}/api/v1/ai/onboarding/messages`, () => {
+        attempts += 1;
+        return attempts === 1
+          ? fail(429, "AI_DAILY_LIMIT", "You've used today's AI chats.")
+          : ok({ onboarding: onboardingState, user: testUser });
+      }),
+    );
+    const { store, calls } = await watchingAiStatus();
+
+    await store.dispatch(onboardingApi.endpoints.sendOnboardingMessage.initiate("BCA"));
+    await waitFor(() => expect(calls.count).toBe(2));
+
+    await store.dispatch(onboardingApi.endpoints.sendOnboardingMessage.initiate("BCA"));
+    await waitFor(() => expect(calls.count).toBe(3));
+  });
+
+  it("refetches after the coach's take loads", async () => {
+    server.use(http.get(`${API}/api/v1/ai/insight`, () => ok(emptyInsight)));
+    const { store, calls } = await watchingAiStatus();
+
+    await store.dispatch(dashboardApi.endpoints.getInsight.initiate());
+    await waitFor(() => expect(calls.count).toBe(2));
   });
 });
 

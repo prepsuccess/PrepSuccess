@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Spinner } from "@/components/ui/Spinner";
+import { baseApi } from "@/lib/api/baseApi";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { signedIn } from "@/lib/auth/authSlice";
 import { clearTokens, homeFor, safeNext, saveTokens } from "@/lib/auth/session";
@@ -33,9 +34,11 @@ export function GoogleCallback() {
       return;
     }
 
+    // Like startSession: nothing cached for a previous user in this tab survives.
+    dispatch(baseApi.util.resetApiState());
     saveTokens(access_token, refresh_token);
-    dispatch(authApi.endpoints.getMe.initiate())
-      .unwrap()
+    const me = dispatch(authApi.endpoints.getMe.initiate());
+    me.unwrap()
       .then((user) => {
         dispatch(signedIn());
         router.replace(safeNext(params.get("next")) ?? homeFor(user));
@@ -43,7 +46,10 @@ export function GoogleCallback() {
       .catch(() => {
         clearTokens();
         router.replace("/login?error=google_failed");
-      });
+      })
+      // Only this page asked for the user; the app's own useSession subscribes
+      // once it's signed in, so let go of this one rather than hold it forever.
+      .finally(() => me.unsubscribe());
   }, [dispatch, router]);
 
   return (

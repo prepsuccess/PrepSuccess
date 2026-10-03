@@ -2,7 +2,7 @@ import { prisma } from "../../db/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { AppError } from "../../lib/http.js";
 import { logger } from "../../lib/logger.js";
-import { startOfIndianDay } from "../../services/ai-agent/access.js";
+import { startOfIndianDay } from "../../lib/time.js";
 import { generateText } from "../../services/ai-agent/ai.service.js";
 import { notify } from "../../services/notifications/notifications.service.js";
 import { getDashboard } from "../dashboard/dashboard.service.js";

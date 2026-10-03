@@ -1,4 +1,4 @@
-import { startOfIndianDay } from "../../services/ai-agent/access.js";
+import { startOfIndianDay } from "../../lib/time.js";
 import type { DashboardResponse } from "../dashboard/dashboard.schemas.js";
 
 /**

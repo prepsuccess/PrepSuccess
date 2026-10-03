@@ -1,7 +1,7 @@
 import { prisma } from "../../db/prisma.js";
 import type { Prisma, Role } from "../../generated/prisma/client.js";
 import { AppError, type PaginationMeta } from "../../lib/http.js";
-import { startOfIndianDay } from "../../services/ai-agent/access.js";
+import { startOfIndianDay } from "../../lib/time.js";
 import { percentOf } from "../assessment/assessment.logic.js";
 import type { Category } from "../dashboard/dashboard.logic.js";
 import { averageOrNull, countByDay, percentOrNull } from "./admin.logic.js";

@@ -265,7 +265,11 @@ Each step ends with lint, types, tests and docs green, and can be its own PR.
 
 ## 9. Open questions (decide before step 9)
 
-1. **Where do PDFs live?** Options:
+1. **Where do PDFs live?** *Decided:* the 5 starter guides ship with the app. Their
+   source is `frontend/guides/*.html`; `npm run guides:build` (in `frontend/`) prints
+   them to `frontend/public/guides/*.pdf`, and `prisma/seed.ts` links them via
+   `FRONTEND_URL` (`backend/src/modules/questions/guides.ts`). Admins add more by
+   pasting public links. The options were:
    - Supabase Storage. Needs `SUPABASE_URL` and a service key on Render, and signed download URLs.
    - Any public URL (e.g. Google Drive), with admins pasting links. No new infrastructure. **Recommended to start.**
    - Store files in Postgres. Not recommended for multi-MB PDFs.

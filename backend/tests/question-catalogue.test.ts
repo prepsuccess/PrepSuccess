@@ -36,3 +36,19 @@ describe("starter interview question bank", () => {
     }
   });
 });
+
+describe("prep guides shipped with the app", () => {
+  it("each has its built PDF in frontend/public/guides and valid tags", async () => {
+    const { existsSync } = await import("node:fs");
+    const { GUIDE_CATALOGUE } = await import("../src/modules/questions/guides.js");
+    const slugs = new Set(SKILL_CATALOGUE.map((s) => s.slug));
+    const roles = new Set<string>(ROLES);
+    expect(GUIDE_CATALOGUE.length).toBeGreaterThan(0);
+    for (const guide of GUIDE_CATALOGUE) {
+      const pdf = new URL(`../../frontend/public/guides/${guide.file}`, import.meta.url);
+      expect(existsSync(pdf), guide.file).toBe(true);
+      if (guide.skill) expect(slugs.has(guide.skill), guide.title).toBe(true);
+      if (guide.role) expect(roles.has(guide.role), guide.title).toBe(true);
+    }
+  });
+});

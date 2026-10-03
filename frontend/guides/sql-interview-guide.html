@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SQL interview guide</title>
+    <link rel="stylesheet" href="guide.css" />
+  </head>
+  <body>
+    <header class="cover">
+      <div class="brand">PrepSuccess</div>
+      <h1>SQL interview guide</h1>
+      <p>
+        For campus placement rounds: quick syntax reference, joins, subqueries and CTEs, window
+        functions, NULLs, indexes, normalisation, transactions and 15 classic interview problems
+        with solutions.
+      </p>
+    </header>
+
+    <h2>How to use this guide</h2>
+    <ul>
+      <li>
+        Every query in this guide uses the <strong>same four tables</strong> (below). Create them
+        once in MySQL 8+ or PostgreSQL and run each query yourself.
+      </li>
+      <li>
+        Code is standard SQL. Where MySQL and PostgreSQL behave differently, it is marked
+        <strong>MySQL</strong> / <strong>PostgreSQL</strong>.
+      </li>
+      <li>
+        In interviews, say your approach out loud before writing: "I will group by department, then
+        filter groups with HAVING." Interviewers care about reasoning as much as syntax.
+      </li>
+    </ul>
+
+    <h2>Sample schema (used everywhere)</h2>
+    <pre><code>CREATE TABLE departments (
+  dept_id   INT PRIMARY KEY,
+  dept_name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE employees (
+  emp_id     INT PRIMARY KEY,
+  name       VARCHAR(50) NOT NULL,
+  dept_id    INT REFERENCES departments(dept_id),
+  manager_id INT REFERENCES employees(emp_id),
+  salary     INT NOT NULL,
+  hire_date  DATE NOT NULL
+);
+
+CREATE TABLE orders (
+  order_id   INT PRIMARY KEY,
+  emp_id     INT REFERENCES employees(emp_id),
+  order_date DATE NOT NULL,
+  amount     INT NOT NULL
+);
+
+CREATE TABLE logins (
+  log_id     INT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  login_date DATE NOT NULL
+);
+
+INSERT INTO departments VALUES
+  (10, 'Engineering'), (20, 'Sales'), (30, 'HR'), (40, 'Marketing');
+
+INSERT INTO employees VALUES
+  (1, 'Asha',  10, NULL, 120000, '2019-04-01'),
+  (2, 'Ravi',  10, 1,     90000, '2020-07-15'),
+  (3, 'Meena', 10, 1,     90000, '2021-01-10'),
+  (4, 'Karan', 20, 1,     70000, '2020-02-20'),
+  (5, 'Divya', 20, 4,     75000, '2022-06-01'),
+  (6, 'Imran', 30, 1,     50000, '2023-03-05'),
+  (7, 'Neha',  NULL, 4,   40000, '2024-08-12');
+
+INSERT INTO orders VALUES
+  (101, 4, '2026-01-01', 500),
+  (102, 5, '2026-01-02', 300),
+  (103, 4, '2026-01-02', 200),
+  (104, 5, '2026-01-05', 700);
+
+INSERT INTO logins VALUES
+  (1, 1, '2026-03-01'), (2, 1, '2026-03-02'), (3, 1, '2026-03-02'),
+  (4, 1, '2026-03-03'), (5, 1, '2026-03-05'),
+  (6, 2, '2026-03-01'), (7, 2, '2026-03-03');</code></pre>
+    <p>
+      Things built into this data on purpose: Marketing has <strong>no employees</strong>, Neha has
+      <strong>no department</strong> (NULL), Ravi and Meena have the <strong>same salary</strong> (a
+      tie), Divya earns <strong>more than her manager</strong> Karan, and logins has one
+      <strong>duplicate</strong> row (log_id 3).
+    </p>
+
+    <h2>1. Core syntax quick reference</h2>
+
+    <h3>Written order vs execution order</h3>
+    <p>
+      You write a query in one order, but the database logically runs it in another. This explains
+      most "why doesn't my alias work" errors.
+    </p>
+    <table>
+      <tr>
+        <th>Step</th>
+        <th>Clause</th>
+        <th>What happens</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td><code>FROM</code> / <code>JOIN</code></td>
+        <td>Pick tables and combine rows</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><code>WHERE</code></td>
+        <td>Filter individual rows</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><code>GROUP BY</code></td>
+        <td>Make groups</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><code>HAVING</code></td>
+        <td>Filter whole groups</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><code>SELECT</code></td>
+        <td>Compute columns, aliases and window functions</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><code>DISTINCT</code></td>
+        <td>Remove duplicate result rows</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td><code>ORDER BY</code></td>
+        <td>Sort</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td><code>LIMIT</code> / <code>OFFSET</code></td>
+        <td>Keep only some rows</td>
+      </tr>
+    </table>
+    <ul>
+      <li>
+        A column alias from SELECT <strong>cannot</strong> be used in WHERE (WHERE runs first). It
+        <strong>can</strong> be used in ORDER BY.
+      </li>
+      <li>
+        MySQL also accepts SELECT aliases in GROUP BY and HAVING; PostgreSQL accepts them in GROUP
+        BY but not HAVING. To be safe, repeat the expression.
+      </li>
+      <li>
+        Window functions are computed in step 5, so you cannot filter on them in WHERE. Wrap the
+        query in a subquery or CTE first.
+      </li>
+    </ul>
+
+    <h3>WHERE vs HAVING</h3>
+    <table>
+      <tr>
+        <th></th>
+        <th>WHERE</th>
+        <th>HAVING</th>
+      </tr>
+      <tr>
+        <td>Filters</td>
+        <td>Rows, before grouping</td>
+        <td>Groups, after grouping</td>
+      </tr>
+      <tr>
+        <td>Aggregates allowed?</td>
+        <td>No (<code>WHERE COUNT(*) &gt; 1</code> is an error)</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Example</td>
+        <td><code>WHERE salary &gt; 60000</code></td>
+        <td><code>HAVING COUNT(*) &gt; 1</code></td>
+      </tr>
+    </table>
+    <pre><code>-- Departments with more than one employee earning over 60000
+SELECT dept_id, COUNT(*) AS cnt
+FROM employees
+WHERE salary &gt; 60000          -- row filter first
+GROUP BY dept_id
+HAVING COUNT(*) &gt; 1;          -- group filter after
+-- Result: dept 10 (3), dept 20 (2)</code></pre>
+
+    <h3>GROUP BY rules</h3>
+    <ul>
+      <li>
+        Every column in SELECT must be either inside an aggregate (<code>COUNT</code>,
+        <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code>) or listed in GROUP
+        BY.
+      </li>
+      <li>
+        PostgreSQL enforces this strictly. MySQL enforces it when <code>ONLY_FULL_GROUP_BY</code> is
+        on (the default since 5.7). Older MySQL silently picked a random value, which is a classic
+        bug.
+      </li>
+      <li>
+        All NULLs fall into one group. In our data, Neha forms her own
+        <code>dept_id = NULL</code> group.
+      </li>
+    </ul>
+
+    <h3>ORDER BY and LIMIT</h3>
+    <ul>
+      <li>
+        <code>ORDER BY salary DESC, name ASC</code> sorts by salary, then breaks ties by name.
+      </li>
+      <li>
+        Without ORDER BY, row order is <strong>not guaranteed</strong>, even if it looks stable.
+      </li>
+      <li>
+        <code>LIMIT 5 OFFSET 10</code> skips 10 rows and returns the next 5 (MySQL and PostgreSQL).
+        MySQL also allows <code>LIMIT 10, 5</code> (offset first).
+      </li>
+      <li>
+        Standard SQL form: <code>FETCH FIRST 5 ROWS ONLY</code> (PostgreSQL, Oracle 12c+). SQL
+        Server uses <code>TOP 5</code>.
+      </li>
+    </ul>
+
+    <h3>Small but commonly asked</h3>
+    <ul>
+      <li>
+        <strong>UNION vs UNION ALL</strong>: UNION removes duplicates (extra sort/hash work); UNION
+        ALL keeps all rows and is faster.
+      </li>
+      <li>
+        <strong>DELETE vs TRUNCATE vs DROP</strong>: DELETE removes chosen rows (can use WHERE,
+        fires triggers); TRUNCATE removes all rows quickly; DROP removes the table itself. In MySQL,
+        TRUNCATE commits implicitly and cannot be rolled back; in PostgreSQL it can be rolled back
+        inside a transaction.
+      </li>
+      <li>
+        <strong>Integer division</strong>: in PostgreSQL <code>5 / 2</code> is <code>2</code>; in
+        MySQL it is <code>2.5000</code> (use <code>DIV</code> for integer division). Write
+        <code>100.0 * a / b</code> to force decimals in both.
+      </li>
+      <li>
+        <strong>Primary key vs unique key</strong>: a table has one primary key (no NULLs); it can
+        have many unique keys, and unique columns may hold NULLs.
+      </li>
+    </ul>
+
+    <h2>2. Joins</h2>
+    <p>To keep results small, take only three employees and three departments:</p>
+    <table>
+      <tr>
+        <th colspan="2">employees (subset)</th>
+        <th></th>
+        <th colspan="2">departments (subset)</th>
+      </tr>
+      <tr>
+        <th>name</th>
+        <th>dept_id</th>
+        <th></th>
+        <th>dept_id</th>
+        <th>dept_name</th>
+      </tr>
+      <tr>
+        <td>Asha</td>
+        <td>10</td>
+        <td></td>
+        <td>10</td>
+        <td>Engineering</td>
+      </tr>
+      <tr>
+        <td>Karan</td>
+        <td>20</td>
+        <td></td>
+        <td>20</td>
+        <td>Sales</td>
+      </tr>
+      <tr>
+        <td>Neha</td>
+        <td>NULL</td>
+        <td></td>
+        <td>40</td>
+        <td>Marketing</td>
+      </tr>
+    </table>
+    <pre><code>SELECT e.name, d.dept_name
+FROM employees e
+LEFT JOIN departments d ON d.dept_id = e.dept_id;</code></pre>
+    <table>
+      <tr>
+        <th>Join type</th>
+        <th>Rows returned (name, dept_name)</th>
+        <th>Count</th>
+      </tr>
+      <tr>
+        <td><code>INNER JOIN</code></td>
+        <td>(Asha, Engineering), (Karan, Sales)</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td><code>LEFT JOIN</code></td>
+        <td>Inner rows + (Neha, NULL)</td>
+        <td>3</td>
+      </tr>
+      <tr>
+        <td><code>RIGHT JOIN</code></td>
+        <td>Inner rows + (NULL, Marketing)</td>
+        <td>3</td>
+      </tr>
+      <tr>
+        <td><code>FULL OUTER JOIN</code></td>
+        <td>Inner rows + (Neha, NULL) + (NULL, Marketing)</td>
+        <td>4</td>
+      </tr>
+      <tr>
+        <td><code>CROSS JOIN</code></td>
+        <td>Every employee with every department</td>
+        <td>3 x 3 = 9</td>
+      </tr>
+    </table>
+    <ul>
+      <li>
+        <strong>INNER</strong>: only matching rows. Neha's NULL never equals anything, so she is
+        dropped.
+      </li>
+      <li>
+        <strong>LEFT</strong>: all rows from the left table; NULLs where there is no match.
+        <strong>RIGHT</strong> is the mirror image (rarely used; just swap the tables and use LEFT).
+      </li>
+      <li>
+        <strong>FULL OUTER</strong>: all rows from both sides.
+        <strong>MySQL does not support it</strong>; emulate it:
+      </li>
+    </ul>
+    <pre><code>SELECT e.name, d.dept_name
+FROM employees e LEFT JOIN departments d ON d.dept_id = e.dept_id
+UNION ALL
+SELECT e.name, d.dept_name
+FROM employees e RIGHT JOIN departments d ON d.dept_id = e.dept_id
+WHERE e.emp_id IS NULL;   -- only the right-side rows with no match</code></pre>
+    <ul>
+      <li>
+        <strong>SELF JOIN</strong>: a table joined to itself with two aliases, e.g. employee and
+        manager:
+      </li>
+    </ul>
+    <pre><code>SELECT e.name AS employee, m.name AS manager
+FROM employees e
+LEFT JOIN employees m ON m.emp_id = e.manager_id;
+-- Asha gets manager NULL (she has none); use INNER JOIN to drop her.</code></pre>
+
+    <div class="tip">
+      <strong>Tip:</strong> In a LEFT JOIN, a filter on the right table belongs in <code>ON</code>,
+      not <code>WHERE</code>.
+      <code>LEFT JOIN orders o ON o.emp_id = e.emp_id WHERE o.amount &gt; 400</code> removes
+      employees with no orders (their <code>o.amount</code> is NULL), so it behaves like an INNER
+      JOIN. Writing <code>ON o.emp_id = e.emp_id AND o.amount &gt; 400</code> keeps every employee.
+    </div>
+
+    <h2>3. Subqueries vs CTEs</h2>
+    <h3>Kinds of subqueries</h3>
+    <table>
+      <tr>
+        <th>Kind</th>
+        <th>Example</th>
+      </tr>
+      <tr>
+        <td>Scalar (one value)</td>
+        <td><code>WHERE salary &gt; (SELECT AVG(salary) FROM employees)</code></td>
+      </tr>
+      <tr>
+        <td>Multi-row</td>
+        <td>
+          <code>WHERE dept_id IN (SELECT dept_id FROM departments WHERE dept_name LIKE 'S%')</code>
+        </td>
+      </tr>
+      <tr>
+        <td>Correlated (runs per outer row)</td>
+        <td>
+          <code
+            >WHERE salary &gt; (SELECT AVG(salary) FROM employees x WHERE x.dept_id =
+            e.dept_id)</code
+          >
+        </td>
+      </tr>
+      <tr>
+        <td>EXISTS</td>
+        <td><code>WHERE EXISTS (SELECT 1 FROM orders o WHERE o.emp_id = e.emp_id)</code></td>
+      </tr>
+      <tr>
+        <td>Derived table (in FROM)</td>
+        <td><code>FROM (SELECT ...) AS t</code> (always give it an alias)</td>
+      </tr>
+    </table>
+
+    <h3>CTE (Common Table Expression)</h3>
+    <p>
+      A CTE is a named subquery written at the top with <code>WITH</code>. It makes long queries
+      readable and can be referenced more than once. Supported in PostgreSQL and MySQL 8.0+.
+    </p>
+    <pre><code>WITH dept_avg AS (
+  SELECT dept_id, AVG(salary) AS avg_sal
+  FROM employees
+  GROUP BY dept_id
+)
+SELECT e.name, e.salary, a.avg_sal
+FROM employees e
+JOIN dept_avg a ON a.dept_id = e.dept_id
+WHERE e.salary &gt; a.avg_sal;
+-- Asha (120000 &gt; 100000), Divya (75000 &gt; 72500)</code></pre>
+
+    <h3>Recursive CTE (hierarchy)</h3>
+    <pre><code>WITH RECURSIVE chain AS (
+  SELECT emp_id, name, 1 AS lvl
+  FROM employees
+  WHERE manager_id IS NULL                 -- anchor: the top boss
+  UNION ALL
+  SELECT e.emp_id, e.name, c.lvl + 1
+  FROM employees e
+  JOIN chain c ON e.manager_id = c.emp_id  -- step: direct reports
+)
+SELECT name, lvl FROM chain ORDER BY lvl, name;
+-- Asha 1 | Imran, Karan, Meena, Ravi 2 | Divya, Neha 3</code></pre>
+
+    <table>
+      <tr>
+        <th>Subquery</th>
+        <th>CTE</th>
+      </tr>
+      <tr>
+        <td>Written inline, can nest deeply</td>
+        <td>Named once at the top, reads top to bottom</td>
+      </tr>
+      <tr>
+        <td>Must be repeated to reuse</td>
+        <td>Can be referenced many times in the query</td>
+      </tr>
+      <tr>
+        <td>Cannot be recursive</td>
+        <td>Can be recursive (<code>WITH RECURSIVE</code>)</td>
+      </tr>
+    </table>
+    <p>
+      Performance is usually similar; modern optimisers often inline CTEs. Choose the one that is
+      easier to read.
+    </p>
+
+    <h2>4. Window functions</h2>
+    <p>
+      A window function computes a value
+      <strong>across related rows without collapsing them</strong> (unlike GROUP BY). Syntax:
+      <code>FUNC() OVER (PARTITION BY ... ORDER BY ... [frame])</code>. Supported in PostgreSQL and
+      MySQL 8.0+.
+    </p>
+
+    <h3>ROW_NUMBER vs RANK vs DENSE_RANK</h3>
+    <pre><code>SELECT name, salary,
+       ROW_NUMBER() OVER (ORDER BY salary DESC) AS rn,
+       RANK()       OVER (ORDER BY salary DESC) AS rnk,
+       DENSE_RANK() OVER (ORDER BY salary DESC) AS drnk
+FROM employees;</code></pre>
+    <table>
+      <tr>
+        <th>name</th>
+        <th>salary</th>
+        <th>ROW_NUMBER</th>
+        <th>RANK</th>
+        <th>DENSE_RANK</th>
+      </tr>
+      <tr>
+        <td>Asha</td>
+        <td>120000</td>
+        <td>1</td>
+        <td>1</td>
+        <td>1</td>
+      </tr>
+      <tr>
+        <td>Ravi</td>
+        <td>90000</td>
+        <td>2</td>
+        <td>2</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>Meena</td>
+        <td>90000</td>
+        <td>3</td>
+        <td>2</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>Divya</td>
+        <td>75000</td>
+        <td>4</td>
+        <td>4</td>
+        <td>3</td>
+      </tr>
+      <tr>
+        <td>Karan</td>
+        <td>70000</td>
+        <td>5</td>
+        <td>5</td>
+        <td>4</td>
+      </tr>
+      <tr>
+        <td>Imran</td>
+        <td>50000</td>
+        <td>6</td>
+        <td>6</td>
+        <td>5</td>
+      </tr>
+      <tr>
+        <td>Neha</td>
+        <td>40000</td>
+        <td>7</td>
+        <td>7</td>
+        <td>6</td>
+      </tr>
+    </table>
+    <ul>
+      <li>
+        <strong>ROW_NUMBER</strong>: always unique 1, 2, 3... Ties get different numbers in an
+        arbitrary order (Ravi and Meena may swap). Add a tie-breaker like
+        <code>ORDER BY salary DESC, emp_id</code>.
+      </li>
+      <li><strong>RANK</strong>: ties share a rank, then a gap (2, 2, 4).</li>
+      <li>
+        <strong>DENSE_RANK</strong>: ties share a rank, no gap (2, 2, 3). Use it for "Nth highest
+        salary".
+      </li>
+      <li>Add <code>PARTITION BY dept_id</code> to restart numbering for each department.</li>
+    </ul>
+
+    <h3>LAG and LEAD</h3>
+    <p>
+      <code>LAG(col, n)</code> reads the value n rows before the current row;
+      <code>LEAD(col, n)</code> reads n rows after. Default n is 1; outside the partition you get
+      NULL (or a default given as the third argument).
+    </p>
+    <pre><code>SELECT emp_id, order_date, amount,
+       LAG(amount)  OVER (PARTITION BY emp_id ORDER BY order_date) AS prev_amt,
+       LEAD(amount) OVER (PARTITION BY emp_id ORDER BY order_date) AS next_amt
+FROM orders;</code></pre>
+    <table>
+      <tr>
+        <th>emp_id</th>
+        <th>order_date</th>
+        <th>amount</th>
+        <th>prev_amt</th>
+        <th>next_amt</th>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>2026-01-01</td>
+        <td>500</td>
+        <td>NULL</td>
+        <td>200</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>2026-01-02</td>
+        <td>200</td>
+        <td>500</td>
+        <td>NULL</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>2026-01-02</td>
+        <td>300</td>
+        <td>NULL</td>
+        <td>700</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>2026-01-05</td>
+        <td>700</td>
+        <td>300</td>
+        <td>NULL</td>
+      </tr>
+    </table>
+
+    <h3>Running totals</h3>
+    <pre><code>SELECT order_id, order_date, amount,
+       SUM(amount) OVER (ORDER BY order_date, order_id
+                         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM orders;
+-- 101: 500 | 102: 800 | 103: 1000 | 104: 1700</code></pre>
+    <div class="tip">
+      <strong>Tip:</strong> If you write only <code>OVER (ORDER BY order_date)</code>, the default
+      frame is <code>RANGE</code>, which treats rows with the same date as one step. Orders 102 and
+      103 (both on 2026-01-02) would <em>both</em> show 1000. Use a unique ORDER BY and an explicit
+      <code>ROWS</code> frame for a true row-by-row running total.
+    </div>
+
+    <h3>Other useful ones</h3>
+    <ul>
+      <li>
+        <code>SUM(salary) OVER (PARTITION BY dept_id)</code>: department total on every row (no
+        ORDER BY, so the whole partition).
+      </li>
+      <li>
+        <code>AVG(amount) OVER (ORDER BY order_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)</code
+        >: 3-row moving average.
+      </li>
+      <li>
+        <code>NTILE(4) OVER (ORDER BY salary)</code>: splits rows into 4 roughly equal buckets
+        (quartiles).
+      </li>
+      <li>
+        <code>FIRST_VALUE(name) OVER (PARTITION BY dept_id ORDER BY salary DESC)</code>: top
+        earner's name on every row of the department.
+      </li>
+    </ul>
+
+    <h2>5. NULL handling</h2>
+    <p>
+      NULL means "unknown", not zero or empty string. Any comparison with NULL gives
+      <strong>UNKNOWN</strong>, and WHERE keeps only TRUE rows.
+    </p>
+    <table>
+      <tr>
+        <th>Expression</th>
+        <th>Result</th>
+        <th>Correct way</th>
+      </tr>
+      <tr>
+        <td><code>NULL = NULL</code></td>
+        <td>UNKNOWN (row not returned)</td>
+        <td><code>col IS NULL</code></td>
+      </tr>
+      <tr>
+        <td><code>dept_id &lt;&gt; 10</code></td>
+        <td>Skips Neha (NULL)</td>
+        <td><code>dept_id &lt;&gt; 10 OR dept_id IS NULL</code></td>
+      </tr>
+      <tr>
+        <td><code>salary + NULL</code></td>
+        <td>NULL</td>
+        <td><code>salary + COALESCE(bonus, 0)</code></td>
+      </tr>
+      <tr>
+        <td><code>x / 0</code></td>
+        <td>Error in PostgreSQL, NULL in MySQL</td>
+        <td><code>x / NULLIF(y, 0)</code> gives NULL safely</td>
+      </tr>
+    </table>
+    <ul>
+      <li>
+        <code>COUNT(*)</code> counts all rows; <code>COUNT(dept_id)</code> skips NULLs. On our
+        table: 7 vs 6.
+      </li>
+      <li>
+        <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code> ignore NULLs. So
+        <code>AVG(bonus)</code> divides by the non-NULL count, not by all rows.
+      </li>
+      <li>
+        <code>COALESCE(a, b, c)</code> returns the first non-NULL value.
+        <code>NULLIF(a, b)</code> returns NULL if a = b, else a.
+      </li>
+      <li>
+        Sorting: NULLs come <strong>first</strong> in ascending order in MySQL and
+        <strong>last</strong> in PostgreSQL. PostgreSQL supports
+        <code>NULLS FIRST / NULLS LAST</code>; MySQL does not.
+      </li>
+      <li>
+        String joining: <code>CONCAT('a', NULL)</code> is NULL in MySQL but <code>'a'</code> in
+        PostgreSQL; <code>'a' || NULL</code> is NULL in PostgreSQL.
+      </li>
+      <li>
+        <strong>The NOT IN trap</strong>: if the subquery returns even one NULL,
+        <code>NOT IN</code> returns no rows. See problem 6. Prefer <code>NOT EXISTS</code>.
+      </li>
+    </ul>
+
+    <h2>6. Indexes and normalisation</h2>
+    <h3>Indexes</h3>
+    <p>
+      An index is a separate sorted structure (usually a B-tree) that lets the database find rows
+      without scanning the whole table, like a book index.
+    </p>
+    <ul>
+      <li>
+        <strong>Trade-off</strong>: faster reads (WHERE, JOIN, ORDER BY), but slower
+        INSERT/UPDATE/DELETE and extra storage. Do not index every column.
+      </li>
+      <li>
+        <strong>Good candidates</strong>: columns used in WHERE and JOIN often, with many distinct
+        values (e.g. <code>email</code>, foreign keys). A column like <code>gender</code> rarely
+        benefits.
+      </li>
+      <li>
+        <strong>Composite index</strong> <code>(dept_id, salary)</code> helps
+        <code>WHERE dept_id = 10</code> and <code>WHERE dept_id = 10 AND salary &gt; 50000</code>,
+        but generally not <code>WHERE salary &gt; 50000</code> alone (leftmost-prefix rule).
+      </li>
+      <li>
+        <strong>Index killers</strong>: wrapping the column in a function (<code
+          >WHERE YEAR(hire_date) = 2020</code
+        >; write <code>hire_date &gt;= '2020-01-01' AND hire_date &lt; '2021-01-01'</code> instead)
+        and leading wildcards (<code>LIKE '%sha'</code>; <code>LIKE 'As%'</code> can use the index).
+      </li>
+      <li>
+        <strong>Clustered vs non-clustered</strong>: a clustered index stores the table rows
+        themselves in key order (only one per table). MySQL InnoDB clusters by the primary key.
+        Other indexes are non-clustered and point to the rows. PostgreSQL tables are heaps, and
+        every index is a separate structure.
+      </li>
+      <li>
+        Use <code>EXPLAIN</code> (or <code>EXPLAIN ANALYZE</code>) to see whether a query uses an
+        index.
+      </li>
+    </ul>
+
+    <h3>Normal forms</h3>
+    <table>
+      <tr>
+        <th>Form</th>
+        <th>Rule</th>
+        <th>Violation example and fix</th>
+      </tr>
+      <tr>
+        <td>1NF</td>
+        <td>Atomic values; no repeating groups or lists in a cell</td>
+        <td>
+          <code>phones = '98..., 99...'</code> in one cell. Fix: one row per phone in a separate
+          table.
+        </td>
+      </tr>
+      <tr>
+        <td>2NF</td>
+        <td>1NF + no non-key column depends on <em>part</em> of a composite key</td>
+        <td>
+          <code>order_items(order_id, product_id, product_name, qty)</code>: product_name depends
+          only on product_id. Fix: move it to <code>products</code>.
+        </td>
+      </tr>
+      <tr>
+        <td>3NF</td>
+        <td>
+          2NF + no non-key column depends on another non-key column (no transitive dependency)
+        </td>
+        <td>
+          <code>employees(emp_id, dept_id, dept_name)</code>: dept_name depends on dept_id. Fix:
+          separate <code>departments</code> table (as in our schema).
+        </td>
+      </tr>
+      <tr>
+        <td>BCNF</td>
+        <td>For every dependency X &rarr; Y, X must be a candidate key</td>
+        <td>
+          <code>(student, subject, teacher)</code>, key (student, subject), each teacher teaches one
+          subject: teacher &rarr; subject, but teacher is not a key. Fix: split into (teacher,
+          subject) and (student, teacher).
+        </td>
+      </tr>
+    </table>
+    <p>
+      <strong>Denormalisation</strong> (adding some redundancy on purpose) is sometimes used for
+      read-heavy reporting to avoid expensive joins. Mention this trade-off if asked "is
+      normalisation always good?"
+    </p>
+
+    <h2>7. Transactions and ACID</h2>
+    <p>A transaction is a group of statements that succeed or fail as one unit.</p>
+    <pre><code>BEGIN;   -- MySQL also accepts START TRANSACTION
+UPDATE accounts SET balance = balance - 1000 WHERE acc_id = 1;
+UPDATE accounts SET balance = balance + 1000 WHERE acc_id = 2;
+COMMIT;  -- or ROLLBACK; to undo both</code></pre>
+    <table>
+      <tr>
+        <th>Property</th>
+        <th>Meaning</th>
+        <th>In the transfer example</th>
+      </tr>
+      <tr>
+        <td><strong>A</strong>tomicity</td>
+        <td>All or nothing</td>
+        <td>Never debit without credit</td>
+      </tr>
+      <tr>
+        <td><strong>C</strong>onsistency</td>
+        <td>Moves the database from one valid state to another; constraints hold</td>
+        <td>A <code>CHECK (balance &gt;= 0)</code> is never broken</td>
+      </tr>
+      <tr>
+        <td><strong>I</strong>solation</td>
+        <td>Concurrent transactions do not see each other's half-done work</td>
+        <td>Another user never sees money "missing" mid-transfer</td>
+      </tr>
+      <tr>
+        <td><strong>D</strong>urability</td>
+        <td>Once committed, data survives a crash</td>
+        <td>Written to the log on disk before COMMIT returns</td>
+      </tr>
+    </table>
+    <h3>Isolation levels and anomalies</h3>
+    <table>
+      <tr>
+        <th>Level</th>
+        <th>Dirty read</th>
+        <th>Non-repeatable read</th>
+        <th>Phantom read</th>
+      </tr>
+      <tr>
+        <td>Read Uncommitted</td>
+        <td>Possible</td>
+        <td>Possible</td>
+        <td>Possible</td>
+      </tr>
+      <tr>
+        <td>Read Committed</td>
+        <td>Prevented</td>
+        <td>Possible</td>
+        <td>Possible</td>
+      </tr>
+      <tr>
+        <td>Repeatable Read</td>
+        <td>Prevented</td>
+        <td>Prevented</td>
+        <td>Possible (per the standard)</td>
+      </tr>
+      <tr>
+        <td>Serializable</td>
+        <td>Prevented</td>
+        <td>Prevented</td>
+        <td>Prevented</td>
+      </tr>
+    </table>
+    <ul>
+      <li>
+        <strong>Dirty read</strong>: reading another transaction's uncommitted change.
+        <strong>Non-repeatable read</strong>: the same row gives a different value when read again.
+        <strong>Phantom</strong>: re-running a query returns new rows.
+      </li>
+      <li>
+        Defaults: PostgreSQL uses <strong>Read Committed</strong>; MySQL InnoDB uses
+        <strong>Repeatable Read</strong>. Both actually prevent most phantoms at Repeatable Read,
+        stricter than the standard requires.
+      </li>
+      <li>
+        A <strong>deadlock</strong> happens when two transactions each wait for a lock the other
+        holds. The database detects it and rolls one back; the application should retry.
+      </li>
+    </ul>
+
+    <h2>8. Classic interview problems (with solutions)</h2>
+    <p>All use the sample schema. Try each one yourself before reading the answer.</p>
+
+    <div class="qa">
+      <div class="q">Q1. Find the second highest salary. Return NULL if it does not exist.</div>
+      <div>
+        <pre><code>-- Method 1: works everywhere, returns NULL if none
+SELECT MAX(salary) AS second_highest
+FROM employees
+WHERE salary &lt; (SELECT MAX(salary) FROM employees);
+
+-- Method 2: LIMIT/OFFSET, wrapped so an empty result becomes NULL
+SELECT (SELECT DISTINCT salary FROM employees
+        ORDER BY salary DESC LIMIT 1 OFFSET 1) AS second_highest;
+-- Result: 90000</code></pre>
+        Note the <code>DISTINCT</code>: without it, a tie at the top would make the "second" value
+        equal the first.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q2. Find the Nth highest salary (say N = 3).</div>
+      <div>
+        <pre><code>SELECT DISTINCT salary
+FROM (
+  SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rnk
+  FROM employees
+) AS t
+WHERE rnk = 3;
+-- Result: 75000 (120000 is 1st, 90000 is 2nd)</code></pre>
+        Use DENSE_RANK, not ROW_NUMBER or RANK, so ties count as one salary level.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q3. Top 2 earners in each department.</div>
+      <div>
+        <pre><code>WITH ranked AS (
+  SELECT d.dept_name, e.name, e.salary,
+         DENSE_RANK() OVER (PARTITION BY e.dept_id ORDER BY e.salary DESC) AS rnk
+  FROM employees e
+  JOIN departments d ON d.dept_id = e.dept_id
+)
+SELECT dept_name, name, salary
+FROM ranked
+WHERE rnk &lt;= 2
+ORDER BY dept_name, salary DESC;
+-- Engineering: Asha 120000, Ravi 90000, Meena 90000
+-- HR: Imran 50000 | Sales: Divya 75000, Karan 70000</code></pre>
+        Ask the interviewer how ties should be handled: DENSE_RANK keeps both Ravi and Meena;
+        ROW_NUMBER returns exactly 2 rows per department.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q4. Employees who earn more than their manager.</div>
+      <div>
+        <pre><code>SELECT e.name AS employee, e.salary, m.name AS manager, m.salary AS manager_salary
+FROM employees e
+JOIN employees m ON m.emp_id = e.manager_id
+WHERE e.salary &gt; m.salary;
+-- Divya 75000, manager Karan 70000</code></pre>
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q5. Employees earning more than the average of their own department.</div>
+      <div>
+        <pre><code>SELECT e.name, e.dept_id, e.salary
+FROM employees e
+WHERE e.salary &gt; (
+  SELECT AVG(x.salary) FROM employees x WHERE x.dept_id = e.dept_id
+);
+-- Asha (dept avg 100000), Divya (dept avg 72500)</code></pre>
+        This is a correlated subquery. The CTE version in section 3 gives the same result and is
+        often faster on large tables.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q6. Departments with no employees.</div>
+      <div>
+        <pre><code>-- Correct: NOT EXISTS
+SELECT d.dept_name
+FROM departments d
+WHERE NOT EXISTS (SELECT 1 FROM employees e WHERE e.dept_id = d.dept_id);
+
+-- Also correct: LEFT JOIN + IS NULL (anti-join)
+SELECT d.dept_name
+FROM departments d
+LEFT JOIN employees e ON e.dept_id = d.dept_id
+WHERE e.emp_id IS NULL;
+-- Result: Marketing
+
+-- WRONG: returns zero rows, because Neha's dept_id is NULL
+SELECT dept_name FROM departments
+WHERE dept_id NOT IN (SELECT dept_id FROM employees);</code></pre>
+        <code>40 NOT IN (10, 20, 30, NULL)</code> means
+        <code>40 &lt;&gt; 10 AND ... AND 40 &lt;&gt; NULL</code>, and the last part is UNKNOWN, so
+        no row passes.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">
+        Q7. Department-wise headcount and average salary, only for departments with more than one
+        employee.
+      </div>
+      <div>
+        <pre><code>SELECT d.dept_name, COUNT(*) AS headcount, ROUND(AVG(e.salary), 2) AS avg_salary
+FROM employees e
+JOIN departments d ON d.dept_id = e.dept_id
+GROUP BY d.dept_name
+HAVING COUNT(*) &gt; 1;
+-- Engineering 3 100000.00 | Sales 2 72500.00</code></pre>
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q8. Managers with at least 3 direct reports.</div>
+      <div>
+        <pre><code>SELECT m.name, COUNT(*) AS reports
+FROM employees e
+JOIN employees m ON m.emp_id = e.manager_id
+GROUP BY m.emp_id, m.name
+HAVING COUNT(*) &gt;= 3;
+-- Asha 4 (Ravi, Meena, Karan, Imran). Karan has 2, so he is excluded.</code></pre>
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q9. Employees who have never placed an order.</div>
+      <div>
+        <pre><code>SELECT e.name
+FROM employees e
+LEFT JOIN orders o ON o.emp_id = e.emp_id
+WHERE o.order_id IS NULL;
+-- Asha, Ravi, Meena, Imran, Neha</code></pre>
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q10. Find duplicate rows (same user, same login date).</div>
+      <div>
+        <pre><code>SELECT user_id, login_date, COUNT(*) AS times
+FROM logins
+GROUP BY user_id, login_date
+HAVING COUNT(*) &gt; 1;
+-- user 1, 2026-03-02, 2</code></pre>
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q11. Delete duplicates, keeping the row with the smallest log_id.</div>
+      <div>
+        <pre><code>-- PostgreSQL
+DELETE FROM logins a
+USING logins b
+WHERE a.user_id = b.user_id
+  AND a.login_date = b.login_date
+  AND a.log_id &gt; b.log_id;
+
+-- MySQL
+DELETE a FROM logins a
+JOIN logins b
+  ON a.user_id = b.user_id
+ AND a.login_date = b.login_date
+ AND a.log_id &gt; b.log_id;
+-- Deletes log_id 3</code></pre>
+        The common form
+        <code>DELETE ... WHERE log_id NOT IN (SELECT MIN(log_id) FROM logins GROUP BY ...)</code>
+        works in PostgreSQL but fails in MySQL (error 1093: you cannot select from the table you are
+        deleting from) unless you wrap the subquery in another derived table.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q12. Users who logged in on 3 or more consecutive days.</div>
+      <div>
+        <p>
+          Idea ("gaps and islands"): number each user's distinct dates 1, 2, 3... Subtract that
+          number of days from the date. Consecutive dates give the <strong>same</strong> result, so
+          they form one group.
+        </p>
+        <pre><code>WITH d AS (
+  SELECT DISTINCT user_id, login_date FROM logins
+),
+g AS (
+  SELECT user_id, login_date,
+         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS rn
+  FROM d
+)
+SELECT user_id, MIN(login_date) AS start_date, MAX(login_date) AS end_date,
+       COUNT(*) AS days
+FROM g
+GROUP BY user_id, login_date - CAST(rn AS INT)      -- PostgreSQL
+-- MySQL: GROUP BY user_id, DATE_SUB(login_date, INTERVAL rn DAY)
+HAVING COUNT(*) &gt;= 3;
+-- user 1, 2026-03-01 to 2026-03-03, 3 days</code></pre>
+        <table>
+          <tr>
+            <th>user 1 date</th>
+            <th>rn</th>
+            <th>date - rn days</th>
+          </tr>
+          <tr>
+            <td>03-01</td>
+            <td>1</td>
+            <td>02-28</td>
+          </tr>
+          <tr>
+            <td>03-02</td>
+            <td>2</td>
+            <td>02-28</td>
+          </tr>
+          <tr>
+            <td>03-03</td>
+            <td>3</td>
+            <td>02-28</td>
+          </tr>
+          <tr>
+            <td>03-05</td>
+            <td>4</td>
+            <td>03-01</td>
+          </tr>
+        </table>
+        The DISTINCT step matters: without it, the duplicate 03-02 row would break the pattern.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q13. Daily sales and change from the previous sales day.</div>
+      <div>
+        <pre><code>WITH daily AS (
+  SELECT order_date, SUM(amount) AS total
+  FROM orders
+  GROUP BY order_date
+)
+SELECT order_date, total,
+       total - LAG(total) OVER (ORDER BY order_date) AS change_from_prev
+FROM daily
+ORDER BY order_date;
+-- 2026-01-01 500 NULL | 2026-01-02 500 0 | 2026-01-05 700 200</code></pre>
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">
+        Q14. Per department: total headcount and how many earn 80000 or more (pivot-style).
+      </div>
+      <div>
+        <pre><code>SELECT d.dept_name,
+       COUNT(e.emp_id) AS headcount,
+       SUM(CASE WHEN e.salary &gt;= 80000 THEN 1 ELSE 0 END) AS high_paid
+FROM departments d
+LEFT JOIN employees e ON e.dept_id = d.dept_id
+GROUP BY d.dept_name
+ORDER BY d.dept_name;
+-- Engineering 3 3 | HR 1 0 | Marketing 0 0 | Sales 2 0</code></pre>
+        <code>COUNT(e.emp_id)</code> (not <code>COUNT(*)</code>) gives 0 for Marketing, because its
+        joined row has a NULL emp_id. This "SUM of CASE" trick is how you turn rows into columns in
+        any database.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q15. Each employee's salary as a percentage of their department's total.</div>
+      <div>
+        <pre><code>SELECT name, dept_id, salary,
+       ROUND(100.0 * salary / SUM(salary) OVER (PARTITION BY dept_id), 2) AS pct_of_dept
+FROM employees
+WHERE dept_id IS NOT NULL
+ORDER BY dept_id, salary DESC;
+-- Asha 40.00, Ravi 30.00, Meena 30.00, Divya 51.72, Karan 48.28, Imran 100.00</code></pre>
+        The <code>100.0</code> avoids integer division in PostgreSQL. A window SUM keeps every row,
+        which GROUP BY cannot do.
+      </div>
+    </div>
+
+    <h2>9. Quick theory questions</h2>
+    <div class="qa">
+      <div class="q">What is the difference between a view and a table?</div>
+      <div>
+        A view is a saved SELECT query; it stores no data of its own (except a materialized view,
+        which stores the result and must be refreshed). Views simplify complex queries and can hide
+        columns for security.
+      </div>
+    </div>
+    <div class="qa">
+      <div class="q">Primary key vs foreign key?</div>
+      <div>
+        A primary key uniquely identifies each row in its own table (unique, not NULL). A foreign
+        key in one table refers to the primary (or unique) key of another table and enforces
+        referential integrity, e.g. <code>employees.dept_id</code> must exist in
+        <code>departments</code>.
+      </div>
+    </div>
+    <div class="qa">
+      <div class="q">CHAR vs VARCHAR?</div>
+      <div>
+        <code>CHAR(n)</code> is fixed length (padded with spaces); good for fixed codes like country
+        codes. <code>VARCHAR(n)</code> stores only the actual length, up to n.
+      </div>
+    </div>
+    <div class="qa">
+      <div class="q">DDL, DML, DCL, TCL?</div>
+      <div>
+        DDL defines structure (CREATE, ALTER, DROP, TRUNCATE). DML changes data (INSERT, UPDATE,
+        DELETE; SELECT is often grouped here or called DQL). DCL controls access (GRANT, REVOKE).
+        TCL controls transactions (COMMIT, ROLLBACK, SAVEPOINT).
+      </div>
+    </div>
+    <div class="qa">
+      <div class="q">IN vs EXISTS?</div>
+      <div>
+        IN compares a value against a list; EXISTS checks whether a subquery returns any row and
+        stops at the first match. Results are the same for positive checks, and modern optimisers
+        often plan them alike. For the negative form, prefer NOT EXISTS because NOT IN breaks with
+        NULLs.
+      </div>
+    </div>
+
+    <h2>Last-week checklist</h2>
+    <ul>
+      <li>
+        Can you write the execution order from memory and explain why an alias fails in WHERE?
+      </li>
+      <li>Can you draw the INNER / LEFT / FULL results for two 3-row tables in under a minute?</li>
+      <li>
+        Solve Q1-Q4 and Q6 without looking: second highest, Nth highest, top N per group, more than
+        manager, no employees.
+      </li>
+      <li>Know ROW_NUMBER vs RANK vs DENSE_RANK with a tie example, and when to use each.</li>
+      <li>Explain the NOT IN with NULL trap and the ON vs WHERE trap in LEFT JOIN.</li>
+      <li>Write one running total and one LAG query with PARTITION BY.</li>
+      <li>Say 1NF, 2NF, 3NF and BCNF in one line each, with one example.</li>
+      <li>
+        Explain ACID with the bank transfer, and name the two default isolation levels (PostgreSQL:
+        Read Committed, MySQL: Repeatable Read).
+      </li>
+      <li>
+        Know which database the company's test uses; note the MySQL vs PostgreSQL differences (FULL
+        JOIN, LIMIT forms, NULL sort order, integer division).
+      </li>
+      <li>Practise typing queries without autocomplete; many online tests use a plain editor.</li>
+    </ul>
+
+    <footer class="end">
+      PrepSuccess prep guide · Practise these on PrepSuccess: Skill checks, Learn tasks and
+      Interview prep.
+    </footer>
+  </body>
+</html>

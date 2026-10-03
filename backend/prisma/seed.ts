@@ -1,5 +1,7 @@
 import { prisma } from "../src/db/prisma.js";
+import { env } from "../src/config/env.js";
 import { QUESTION_CATALOGUE } from "../src/modules/questions/catalogue.js";
+import { GUIDE_CATALOGUE } from "../src/modules/questions/guides.js";
 import { RESOURCE_CATALOGUE } from "../src/modules/resources/catalogue.js";
 import { SKILL_CATALOGUE } from "../src/modules/skills/catalogue.js";
 import { TASK_CATALOGUE } from "../src/modules/tasks/catalogue.js";
@@ -90,8 +92,30 @@ for (const question of QUESTION_CATALOGUE) {
   questions++;
 }
 
+// Prep guides served by the frontend; links follow FRONTEND_URL. Matched by
+// title; an admin's hide/delete is kept, only the details are refreshed.
+const frontend = env.FRONTEND_URL.replace(/\/$/, "");
+let guides = 0;
+for (const guide of GUIDE_CATALOGUE) {
+  const data = {
+    title: guide.title,
+    description: guide.description,
+    fileUrl: `${frontend}/guides/${guide.file}`,
+    skillId: guide.skill ? skillId(guide.skill) : null,
+    role: guide.role ?? null,
+    sizeLabel: guide.sizeLabel,
+  };
+  const existing = await prisma.prepPdf.findFirst({
+    where: { title: guide.title },
+    select: { id: true },
+  });
+  if (existing) await prisma.prepPdf.update({ where: { id: existing.id }, data });
+  else await prisma.prepPdf.create({ data });
+  guides++;
+}
+
 // eslint-disable-next-line no-console -- CLI output
 console.log(
-  `Seeded ${SKILL_CATALOGUE.length} skills, ${resources} learning resources, ${tasks} practical tasks and ${questions} interview questions.`,
+  `Seeded ${SKILL_CATALOGUE.length} skills, ${resources} learning resources, ${tasks} practical tasks, ${questions} interview questions and ${guides} prep guides.`,
 );
 await prisma.$disconnect();

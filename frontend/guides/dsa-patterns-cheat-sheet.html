@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DSA patterns cheat sheet</title>
+    <link rel="stylesheet" href="guide.css" />
+  </head>
+  <body>
+    <header class="cover">
+      <div class="brand">PrepSuccess</div>
+      <h1>DSA patterns cheat sheet</h1>
+      <p>
+        For students preparing for coding rounds: a Big-O reference, then 14 common patterns, each
+        with its signals, a JavaScript template, complexity and classic problems.
+      </p>
+    </header>
+
+    <p>
+      Most coding-round questions are versions of a few patterns. Spot the pattern from the
+      <strong>signals</strong> in the problem, write the <strong>template</strong> from memory, then
+      adapt it. All templates are plain JavaScript and run in Node.js as written. Problem names are
+      the common names used on practice sites.
+    </p>
+
+    <h2>Big-O reference</h2>
+
+    <h3>Common operations</h3>
+    <table>
+      <tr>
+        <th>Structure</th>
+        <th>Operation</th>
+        <th>Time</th>
+      </tr>
+      <tr>
+        <td rowspan="4">Array</td>
+        <td>Read / write by index</td>
+        <td>O(1)</td>
+      </tr>
+      <tr>
+        <td>Search for a value</td>
+        <td>O(n); O(log n) with binary search if sorted</td>
+      </tr>
+      <tr>
+        <td>Add / remove at end (<code>push</code>, <code>pop</code>)</td>
+        <td>O(1) amortised</td>
+      </tr>
+      <tr>
+        <td>
+          Add / remove at start or middle (<code>unshift</code>, <code>shift</code>,
+          <code>splice</code>)
+        </td>
+        <td>O(n)</td>
+      </tr>
+      <tr>
+        <td>Hash map / set (<code>Map</code>, <code>Set</code>)</td>
+        <td>Insert, lookup, delete</td>
+        <td>O(1) average; O(n) worst case (many collisions)</td>
+      </tr>
+      <tr>
+        <td rowspan="2">Binary heap</td>
+        <td>Peek min / max</td>
+        <td>O(1)</td>
+      </tr>
+      <tr>
+        <td>Push, pop; build from n items</td>
+        <td>O(log n); O(n)</td>
+      </tr>
+      <tr>
+        <td>Binary search tree</td>
+        <td>Search, insert, delete</td>
+        <td>O(log n) if balanced (AVL, red-black); O(n) worst if unbalanced</td>
+      </tr>
+      <tr>
+        <td>Linked list</td>
+        <td>Insert / delete at a known node; access k-th or search</td>
+        <td>O(1); O(n)</td>
+      </tr>
+    </table>
+
+    <h3>Sorting</h3>
+    <table>
+      <tr>
+        <th>Algorithm</th>
+        <th>Best</th>
+        <th>Average</th>
+        <th>Worst</th>
+        <th>Extra space</th>
+        <th>Stable?</th>
+      </tr>
+      <tr>
+        <td>Bubble / insertion</td>
+        <td>O(n)</td>
+        <td>O(n²)</td>
+        <td>O(n²)</td>
+        <td>O(1)</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Selection</td>
+        <td>O(n²)</td>
+        <td>O(n²)</td>
+        <td>O(n²)</td>
+        <td>O(1)</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>Merge</td>
+        <td>O(n log n)</td>
+        <td>O(n log n)</td>
+        <td>O(n log n)</td>
+        <td>O(n)</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Quick</td>
+        <td>O(n log n)</td>
+        <td>O(n log n)</td>
+        <td>O(n²)</td>
+        <td>O(log n) stack</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>Heap</td>
+        <td>O(n log n)</td>
+        <td>O(n log n)</td>
+        <td>O(n log n)</td>
+        <td>O(1)</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>Counting (values 0..k)</td>
+        <td>O(n + k)</td>
+        <td>O(n + k)</td>
+        <td>O(n + k)</td>
+        <td>O(k)</td>
+        <td>Yes</td>
+      </tr>
+    </table>
+    <div class="tip">
+      <strong>Tip:</strong> In JavaScript, <code>[10, 9, 1].sort()</code> gives
+      <code>[1, 10, 9]</code> because the default sort compares values as strings. For numbers
+      always write <code>arr.sort((a, b) =&gt; a - b)</code>. The built-in sort is stable (required
+      since ES2019) and O(n log n) in modern engines.
+    </div>
+
+    <h3>What the input size allows (rough guide)</h3>
+    <p>
+      A common rule of thumb is about 10<sup>8</sup> simple operations per second, so the limit on n
+      hints at the expected complexity:
+    </p>
+    <table>
+      <tr>
+        <th>n up to about</th>
+        <td>10</td>
+        <td>20</td>
+        <td>500</td>
+        <td>5,000</td>
+        <td>10<sup>5</sup> to 10<sup>6</sup></td>
+        <td>10<sup>9</sup> or more</td>
+      </tr>
+      <tr>
+        <th>Target</th>
+        <td>O(n!)</td>
+        <td>O(2<sup>n</sup>)</td>
+        <td>O(n³)</td>
+        <td>O(n²)</td>
+        <td>O(n log n) or O(n)</td>
+        <td>O(log n) or O(1)</td>
+      </tr>
+    </table>
+
+    <h2>1. Two pointers</h2>
+    <p>
+      <strong>Signals:</strong> sorted array; find a pair or triplet with a target sum; palindrome
+      check; reverse or remove duplicates in place. <strong>Idea:</strong> one pointer at each end
+      (or a slow and a fast one); each move rules out many candidates at once.
+    </p>
+    <pre><code>// Sorted array: indices of two numbers that add up to target
+function pairWithSum(arr, target) {
+  let lo = 0, hi = arr.length - 1;
+  while (lo &lt; hi) {
+    const sum = arr[lo] + arr[hi];
+    if (sum === target) return [lo, hi];
+    if (sum &lt; target) lo++;   // need a bigger sum
+    else hi--;                // need a smaller sum
+  }
+  return [-1, -1];
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(n) time, O(1) space (plus O(n log n) if you sort first).
+      <strong>Practise:</strong> Two Sum II, 3Sum, Container With Most Water, Valid Palindrome.
+    </p>
+
+    <h2>2. Sliding window</h2>
+    <p>
+      <strong>Signals:</strong> "contiguous subarray" or "substring"; longest, shortest or maximum;
+      "at most k distinct"; window of size k. <strong>Idea:</strong> grow the window on the right;
+      when it breaks a rule, shrink it from the left. Each element enters and leaves once. For a
+      <em>fixed</em> window of size k, add <code>arr[i]</code> and subtract
+      <code>arr[i - k]</code> at each step.
+    </p>
+    <pre><code>// Variable window: longest substring without repeating characters
+function longestUniqueSubstring(s) {
+  const lastSeen = new Map();
+  let left = 0, best = 0;
+  for (let right = 0; right &lt; s.length; right++) {
+    const ch = s[right];
+    if (lastSeen.has(ch) &amp;&amp; lastSeen.get(ch) &gt;= left) {
+      left = lastSeen.get(ch) + 1;   // jump past the repeat
+    }
+    lastSeen.set(ch, right);
+    best = Math.max(best, right - left + 1);
+  }
+  return best;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(n) time; O(size of character set) space.
+      <strong>Practise:</strong> Longest Substring Without Repeating Characters, Minimum Window
+      Substring, Longest Repeating Character Replacement.
+    </p>
+    <div class="tip">
+      <strong>Tip:</strong> Sliding window needs "shrinking can only make it more valid". Sum
+      problems with negative numbers break this; use prefix sums instead.
+    </div>
+
+    <h2>3. Prefix sums</h2>
+    <p>
+      <strong>Signals:</strong> many range-sum queries; "number of subarrays with sum k"; negatives
+      present. <strong>Idea:</strong> <code>prefix[i]</code> is the sum of the first i elements, so
+      the sum of <code>arr[l..r]</code> is <code>prefix[r + 1] - prefix[l]</code>. A subarray ending
+      here sums to k when an earlier prefix equals <code>sum - k</code>.
+    </p>
+    <pre><code>function buildPrefix(arr) {
+  const prefix = new Array(arr.length + 1).fill(0);
+  for (let i = 0; i &lt; arr.length; i++) prefix[i + 1] = prefix[i] + arr[i];
+  return prefix;
+}
+const rangeSum = (prefix, l, r) =&gt; prefix[r + 1] - prefix[l]; // inclusive l..r</code></pre>
+    <pre><code>// Count subarrays whose sum is exactly k (works with negatives)
+function subarraySumEqualsK(nums, k) {
+  const count = new Map([[0, 1]]); // the empty prefix has sum 0
+  let sum = 0, result = 0;
+  for (const x of nums) {
+    sum += x;
+    result += count.get(sum - k) || 0;
+    count.set(sum, (count.get(sum) || 0) + 1);
+  }
+  return result;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> build O(n), each query O(1); counting O(n) time and space.
+      <strong>Practise:</strong> Range Sum Query (Immutable), Subarray Sum Equals K, Product of
+      Array Except Self.
+    </p>
+
+    <h2>4. Hashing</h2>
+    <p>
+      <strong>Signals:</strong> unsorted data needing fast lookup; "seen before?"; frequencies;
+      duplicates; grouping by a key. <strong>Idea:</strong> trade memory for time: a
+      <code>Map</code> or <code>Set</code> turns an O(n) search into an O(1) average lookup.
+    </p>
+    <pre><code>// Two Sum (unsorted): indices of two numbers that add to target
+function twoSum(nums, target) {
+  const indexOf = new Map(); // value -&gt; index
+  for (let i = 0; i &lt; nums.length; i++) {
+    const need = target - nums[i];
+    if (indexOf.has(need)) return [indexOf.get(need), i];
+    indexOf.set(nums[i], i);
+  }
+  return [];
+}</code></pre>
+    <p>
+      For grouping (Group Anagrams), use a key such as <code>w.split('').sort().join('')</code> and
+      a <code>Map</code> from key to a list. Prefer <code>Map</code> over <code>{}</code>: object
+      keys are always strings, so <code>1</code> and <code>"1"</code> collide.
+    </p>
+    <p>
+      <strong>Complexity:</strong> Two Sum O(n) time and space. <strong>Practise:</strong> Two Sum,
+      Group Anagrams, Contains Duplicate, Longest Consecutive Sequence.
+    </p>
+
+    <h2>5. Binary search (and binary search on the answer)</h2>
+    <p>
+      <strong>Signals:</strong> sorted data; "first / last position"; O(log n) required; or "minimum
+      speed / capacity / days such that..." where once an answer works, every bigger one works too.
+      <strong>Idea:</strong> keep a range that surely holds the answer and halve it. "On the answer"
+      means searching over answer values with a yes/no check.
+    </p>
+    <pre><code>// First index i with arr[i] &gt;= target (arr.length if none)
+function lowerBound(arr, target) {
+  let lo = 0, hi = arr.length;
+  while (lo &lt; hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (arr[mid] &lt; target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}</code></pre>
+    <pre><code>// Koko Eating Bananas: smallest speed that finishes all piles within h hours
+function minEatingSpeed(piles, h) {
+  const canFinish = (speed) =&gt; {
+    let hours = 0;
+    for (const p of piles) hours += Math.ceil(p / speed);
+    return hours &lt;= h;
+  };
+  let lo = 1, hi = Math.max(...piles);
+  while (lo &lt; hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (canFinish(mid)) hi = mid;   // mid works, try smaller
+    else lo = mid + 1;              // too slow
+  }
+  return lo;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(log n) time, O(1) space; on the answer O(n log M), where M is
+      the answer range (largest pile). <strong>Practise:</strong> Search in Rotated Sorted Array,
+      Find First and Last Position of Element, Koko Eating Bananas, Capacity To Ship Packages Within
+      D Days, Allocate Books.
+    </p>
+    <div class="tip">
+      <strong>Tip:</strong> Stick to one style. The <code>lo &lt; hi</code> loop with
+      <code>hi = mid</code> / <code>lo = mid + 1</code> always ends with <code>lo === hi</code>.
+      Test on arrays of size 0, 1 and 2.
+    </div>
+
+    <h2>6. Stack and monotonic stack</h2>
+    <p>
+      <strong>Signals:</strong> matching brackets; expression evaluation; "next greater / smaller
+      element"; "days until a warmer temperature"; histogram areas. <strong>Idea:</strong> the stack
+      holds items still waiting for an answer. A monotonic stack keeps them sorted; a new item that
+      breaks the order answers the items it pops. For brackets: push openers, pop and compare on
+      closers, and the stack must end empty.
+    </p>
+    <pre><code>// Next greater element to the right (-1 if none)
+function nextGreater(nums) {
+  const result = new Array(nums.length).fill(-1);
+  const stack = []; // indices; their values are decreasing
+  for (let i = 0; i &lt; nums.length; i++) {
+    while (stack.length &amp;&amp; nums[stack[stack.length - 1]] &lt; nums[i]) {
+      result[stack.pop()] = nums[i];
+    }
+    stack.push(i);
+  }
+  return result;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(n) time (each index is pushed and popped at most once), O(n)
+      space. <strong>Practise:</strong> Valid Parentheses, Daily Temperatures, Largest Rectangle in
+      Histogram, Min Stack.
+    </p>
+
+    <h2>7. Linked list: fast and slow pointers</h2>
+    <p>
+      <strong>Signals:</strong> cycle; middle node; k-th from the end; palindrome list; "O(1) extra
+      space". <strong>Idea:</strong> fast moves two steps per slow step. With a cycle they meet;
+      without one, fast reaches the end when slow is at the middle (the second middle for even
+      length).
+    </p>
+    <pre><code>class ListNode {
+  constructor(val, next = null) { this.val = val; this.next = next; }
+}</code></pre>
+    <pre><code>function hasCycle(head) {
+  let slow = head, fast = head;
+  while (fast &amp;&amp; fast.next) {
+    slow = slow.next;
+    fast = fast.next.next;
+    if (slow === fast) return true;
+  }
+  return false;
+}</code></pre>
+    <pre><code>function reverseList(head) {
+  let prev = null, curr = head;
+  while (curr) {
+    const next = curr.next;
+    curr.next = prev;
+    prev = curr;
+    curr = next;
+  }
+  return prev;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(n) time, O(1) space. <strong>Practise:</strong> Linked List
+      Cycle II, Middle of the Linked List, Reverse Linked List, Palindrome Linked List, Remove Nth
+      Node From End.
+    </p>
+
+    <h2>8. Recursion and backtracking</h2>
+    <p>
+      <strong>Signals:</strong> "generate all" subsets, permutations or combinations; N-Queens,
+      Sudoku; small n (about 20 or less). <strong>Idea:</strong> build the answer one choice at a
+      time: <em>choose</em>, <em>explore</em>, <em>un-choose</em>. Prune branches that cannot
+      succeed.
+    </p>
+    <pre><code>function subsets(nums) {
+  const result = [], path = [];
+  function backtrack(start) {
+    result.push([...path]);          // save a COPY of the path
+    for (let i = start; i &lt; nums.length; i++) {
+      path.push(nums[i]);            // choose
+      backtrack(i + 1);              // explore
+      path.pop();                    // un-choose
+    }
+  }
+  backtrack(0);
+  return result;
+}</code></pre>
+    <p>
+      For permutations, loop from 0 each time, skip elements already used (a
+      <code>used</code> array), and save only when the path has n elements.
+    </p>
+    <p>
+      <strong>Complexity:</strong> subsets O(n &middot; 2<sup>n</sup>), permutations O(n &middot;
+      n!); O(n) recursion depth. <strong>Practise:</strong> Subsets, Permutations, Combination Sum,
+      N-Queens, Word Search.
+    </p>
+
+    <h2>9. BFS and DFS on grids and graphs</h2>
+    <p>
+      <strong>Signals:</strong> grid of cells; islands or regions; connected components; "minimum
+      number of steps"; flood fill. <strong>Idea:</strong> DFS goes deep and is simplest for "visit
+      everything connected". BFS goes level by level, so it finds the fewest steps in an
+      <em>unweighted</em> grid or graph.
+    </p>
+    <pre><code>// DFS: count islands of '1' in a grid of '0'/'1' strings
+function numIslands(grid) {
+  const rows = grid.length, cols = grid[0].length;
+  let count = 0;
+  function dfs(r, c) {
+    if (r &lt; 0 || c &lt; 0 || r &gt;= rows || c &gt;= cols || grid[r][c] !== '1') return;
+    grid[r][c] = '0';                // mark visited
+    dfs(r + 1, c); dfs(r - 1, c); dfs(r, c + 1); dfs(r, c - 1);
+  }
+  for (let r = 0; r &lt; rows; r++)
+    for (let c = 0; c &lt; cols; c++)
+      if (grid[r][c] === '1') { count++; dfs(r, c); }
+  return count;
+}</code></pre>
+    <pre><code>// BFS: fewest steps from start to end; grid 0 = open, 1 = wall
+function shortestPath(grid, start, end) {
+  const rows = grid.length, cols = grid[0].length;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const dist = Array.from({ length: rows }, () =&gt; new Array(cols).fill(-1));
+  const queue = [start];
+  dist[start[0]][start[1]] = 0;
+  let head = 0;                      // index pointer: shift() is O(n)
+  while (head &lt; queue.length) {
+    const [r, c] = queue[head++];
+    if (r === end[0] &amp;&amp; c === end[1]) return dist[r][c];
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (nr &gt;= 0 &amp;&amp; nc &gt;= 0 &amp;&amp; nr &lt; rows &amp;&amp; nc &lt; cols &amp;&amp;
+          grid[nr][nc] === 0 &amp;&amp; dist[nr][nc] === -1) {
+        dist[nr][nc] = dist[r][c] + 1;   // mark when you ADD to the queue
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  return -1; // unreachable
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> grid O(R &times; C) time and space; graph (adjacency list) O(V +
+      E). <strong>Practise:</strong> Number of Islands, Rotting Oranges (multi-source BFS), Shortest
+      Path in Binary Matrix, Clone Graph, Number of Provinces. On very large grids, recursive DFS
+      can overflow the call stack; use BFS or an explicit stack.
+    </p>
+
+    <h2>10. Topological sort</h2>
+    <p>
+      <strong>Signals:</strong> prerequisites; "course schedule"; build order; cycle in a
+      <em>directed</em> graph. <strong>Idea (Kahn's algorithm):</strong> start with nodes that have
+      no incoming edges; remove them one by one, lowering their neighbours' in-degree. Nodes never
+      reached mean a cycle.
+    </p>
+    <pre><code>// n nodes 0..n-1; edge [u, v] means u must come before v
+function topoSort(n, edges) {
+  const adj = Array.from({ length: n }, () =&gt; []);
+  const indegree = new Array(n).fill(0);
+  for (const [u, v] of edges) { adj[u].push(v); indegree[v]++; }
+  const queue = [];
+  for (let i = 0; i &lt; n; i++) if (indegree[i] === 0) queue.push(i);
+  const order = [];
+  let head = 0;
+  while (head &lt; queue.length) {
+    const u = queue[head++];
+    order.push(u);
+    for (const v of adj[u]) if (--indegree[v] === 0) queue.push(v);
+  }
+  return order.length === n ? order : []; // [] means there is a cycle
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(V + E) time and space. <strong>Practise:</strong> Course
+      Schedule I and II, Alien Dictionary, Parallel Courses.
+    </p>
+
+    <h2>11. Heaps and top-K</h2>
+    <p>
+      <strong>Signals:</strong> "k-th largest / smallest"; "top k frequent"; merge k sorted lists;
+      running median. <strong>Idea:</strong> for the k largest, keep a <em>min</em>-heap of size k;
+      its top is the smallest of your top k, cheap to drop.
+    </p>
+    <pre><code>function kthLargest(nums, k) {
+  const heap = new MinHeap();          // holds the k largest so far
+  for (const x of nums) {
+    heap.push(x);
+    if (heap.size() &gt; k) heap.pop();   // drop the smallest
+  }
+  return heap.peek();
+}</code></pre>
+    <p>
+      JavaScript has no built-in heap, so be ready to write one. This min-heap compares numbers; for
+      objects, change the comparisons.
+    </p>
+    <pre><code>class MinHeap {
+  constructor() { this.a = []; }
+  size() { return this.a.length; }
+  peek() { return this.a[0]; }
+  push(x) {
+    const a = this.a;
+    a.push(x);
+    let i = a.length - 1;
+    while (i &gt; 0 &amp;&amp; a[(i - 1) &gt;&gt; 1] &gt; a[i]) {   // bubble up
+      const p = (i - 1) &gt;&gt; 1;
+      [a[p], a[i]] = [a[i], a[p]];
+      i = p;
+    }
+  }
+  pop() {
+    const a = this.a, top = a[0], last = a.pop();
+    if (a.length === 0) return top;
+    a[0] = last;
+    let i = 0;
+    while (true) {                                  // sink down
+      const l = 2 * i + 1, r = l + 1;
+      let small = i;
+      if (l &lt; a.length &amp;&amp; a[l] &lt; a[small]) small = l;
+      if (r &lt; a.length &amp;&amp; a[r] &lt; a[small]) small = r;
+      if (small === i) return top;
+      [a[small], a[i]] = [a[i], a[small]];
+      i = small;
+    }
+  }
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> push / pop O(log n); top-K O(n log k) time, O(k) space. (Sorting
+      everything, O(n log n), is often fine too; say so.) <strong>Practise:</strong> Kth Largest
+      Element in an Array, Top K Frequent Elements, Merge k Sorted Lists, Find Median from Data
+      Stream.
+    </p>
+
+    <h2>12. Intervals</h2>
+    <p>
+      <strong>Signals:</strong> [start, end] pairs; meetings, bookings; "merge", "insert",
+      "overlap", "minimum rooms". <strong>Idea:</strong> sort first. Sort by start to merge. To keep
+      the most non-overlapping intervals, sort by end and greedily keep each one that starts at or
+      after the last kept end.
+    </p>
+    <pre><code>function mergeIntervals(intervals) {
+  if (intervals.length === 0) return [];
+  const sorted = [...intervals].sort((a, b) =&gt; a[0] - b[0]);
+  const merged = [sorted[0].slice()];
+  for (let i = 1; i &lt; sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const [start, end] = sorted[i];
+    if (start &lt;= last[1]) last[1] = Math.max(last[1], end); // overlap
+    else merged.push([start, end]);
+  }
+  return merged;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(n log n) time (the sort), O(n) space.
+      <strong>Practise:</strong> Merge Intervals, Insert Interval, Non-overlapping Intervals,
+      Meeting Rooms II (min-heap of end times). Always ask whether touching intervals like [1, 4]
+      and [4, 5] overlap; the code above says yes.
+    </p>
+
+    <h2>13. Dynamic programming</h2>
+    <p>
+      <strong>Signals:</strong> "number of ways"; "minimum cost" or "maximum profit"; choices at
+      each step; plain recursion repeats the same sub-problems. <strong>Recipe:</strong> (1) define
+      the <em>state</em> (what <code>dp[i]</code> means, in one sentence); (2) the
+      <em>transition</em> from smaller states; (3) the <em>base case</em>; (4) a fill
+      <em>order</em> so needed states are ready. Recursion plus a cache is top-down (memoization);
+      loops filling a table are bottom-up (tabulation), which avoids stack overflow.
+    </p>
+    <pre><code>// 1D: House Robber, no two adjacent houses
+// dp[i] = max(dp[i-1], dp[i-2] + nums[i]); keep only the last two values
+function rob(nums) {
+  let prev2 = 0, prev1 = 0;
+  for (const x of nums) {
+    const curr = Math.max(prev1, prev2 + x);
+    prev2 = prev1;
+    prev1 = curr;
+  }
+  return prev1;
+}</code></pre>
+    <pre><code>// 2D: Longest Common Subsequence
+// dp[i][j] = LCS of a's first i chars and b's first j chars
+function lcs(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () =&gt; new Array(n + 1).fill(0));
+  for (let i = 1; i &lt;= m; i++) {
+    for (let j = 1; j &lt;= n; j++) {
+      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[m][n];
+}</code></pre>
+    <pre><code>// 0/1 knapsack: each item at most once; dp[w] = best value within weight w
+function knapsack(weights, values, capacity) {
+  const dp = new Array(capacity + 1).fill(0);
+  for (let i = 0; i &lt; weights.length; i++) {
+    for (let w = capacity; w &gt;= weights[i]; w--) { // DOWN: item i used once
+      dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+    }
+  }
+  return dp[capacity];
+}
+// knapsack([1, 3, 4, 5], [1, 4, 5, 7], 7) returns 9 (weights 3 + 4)</code></pre>
+    <p>
+      <strong>Complexity:</strong> House Robber O(n) time, O(1) space; LCS O(m &times; n) time and
+      space; knapsack O(items &times; capacity) time, O(capacity) space. Coin Change (fewest coins)
+      is <code>dp[a] = min(dp[a - c] + 1)</code> over coins <code>c &lt;= a</code>, with
+      <code>dp[0] = 0</code>: O(amount &times; coins).
+    </p>
+    <div class="tip">
+      <strong>Tip:</strong> Looping <code>w</code> <em>upwards</em> in the 1D knapsack lets an item
+      be reused: that is the unbounded knapsack (like Coin Change). Know which one the problem
+      wants.
+    </div>
+    <p>
+      <strong>Practise:</strong> Climbing Stairs, House Robber, Coin Change, Longest Increasing
+      Subsequence, Edit Distance, Unique Paths, Partition Equal Subset Sum.
+    </p>
+
+    <h2>14. Greedy</h2>
+    <p>
+      <strong>Signals:</strong> "minimum number of jumps / platforms"; scheduling; taking the
+      best-looking option now never hurts later. <strong>Idea:</strong> make the locally best choice
+      and never go back. It is correct only if you can justify it. Check for a counter-example
+      first: with coins [1, 3, 4] and amount 6, greedy takes 4 + 1 + 1 (3 coins) but 3 + 3 (2 coins)
+      is better, so that problem needs DP.
+    </p>
+    <pre><code>// Jump Game: can you reach the last index?
+function canJump(nums) {
+  let farthest = 0;
+  for (let i = 0; i &lt; nums.length; i++) {
+    if (i &gt; farthest) return false;   // stuck before reaching i
+    farthest = Math.max(farthest, i + nums[i]);
+  }
+  return true;
+}</code></pre>
+    <pre><code>// Kadane's algorithm: maximum subarray sum (non-empty array)
+function maxSubarray(nums) {
+  let best = nums[0], curr = 0;
+  for (const x of nums) {
+    curr = Math.max(x, curr + x);     // extend, or start fresh at x
+    best = Math.max(best, curr);
+  }
+  return best;
+}</code></pre>
+    <p>
+      <strong>Complexity:</strong> O(n) time, O(1) space; greedy that sorts first is O(n log n).
+      <strong>Practise:</strong> Jump Game, Best Time to Buy and Sell Stock, Maximum Subarray, Gas
+      Station, Minimum Platforms, Activity Selection.
+    </p>
+
+    <h2>Last-week checklist</h2>
+    <ul>
+      <li>Write all 14 templates from memory once. Rewrite any you got wrong the next day.</li>
+      <li>
+        Write <code>lowerBound</code>, grid BFS and <code>MinHeap</code> twice: they are the easiest
+        to get subtly wrong.
+      </li>
+      <li>Solve one classic problem per pattern, timed (about 25 minutes each).</li>
+      <li>
+        Revise the Big-O tables and the input-size guide; state complexity for every solution.
+      </li>
+      <li>
+        JavaScript traps: numeric <code>sort</code> needs <code>(a, b) =&gt; a - b</code>;
+        <code>shift()</code> is O(n); save copies (<code>[...path]</code>) in backtracking; use
+        <code>Map</code> for counting.
+      </li>
+      <li>
+        Keep an edge-case list: empty input, one element, duplicates, negatives, very large values,
+        no valid answer.
+      </li>
+      <li>
+        In the interview: clarify the input, give the brute force, name the pattern and why it fits,
+        code while talking, dry run one edge case, then state complexity unprompted.
+      </li>
+    </ul>
+
+    <footer class="end">
+      PrepSuccess prep guide · Practise these on PrepSuccess: Skill checks, Learn tasks and
+      Interview prep.
+    </footer>
+  </body>
+</html>

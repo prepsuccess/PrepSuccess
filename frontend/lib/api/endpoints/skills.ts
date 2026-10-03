@@ -32,7 +32,7 @@ export const skillsApi = baseApi.injectEndpoints({
         }
       },
       // A new check changes "Resume" buttons and uses one AI call.
-      invalidatesTags: (result) => (result ? ["MySkills", "AiStatus"] : []),
+      invalidatesTags: (result) => (result ? ["MySkills", "AiStatus", "Dashboard"] : []),
     }),
     answerQuestion: build.mutation<AssessmentState, AnswerRequest & { id: string }>({
       query: ({ id, ...body }) => ({
@@ -52,8 +52,9 @@ export const skillsApi = baseApi.injectEndpoints({
           // The caller shows the error.
         }
       },
-      // A finished check changes the skill list's results.
-      invalidatesTags: (result) => (result?.status === "completed" ? ["MySkills"] : []),
+      // A finished check changes the skill list, the dashboard and the coach's take.
+      invalidatesTags: (result) =>
+        result?.status === "completed" ? ["MySkills", "Dashboard", "Insight"] : [],
     }),
   }),
 });

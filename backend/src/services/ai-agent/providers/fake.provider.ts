@@ -20,8 +20,8 @@ export const fakeAi = {
   reply(text: string | object) {
     queue.push({ text: typeof text === "string" ? text : JSON.stringify(text) });
   },
-  fail(code = "AI_OVERLOADED", retryable = true) {
-    queue.push({ error: new AiProviderError(`fake ${code}`, code, retryable) });
+  fail(code = "AI_OVERLOADED", retryable = true, retryAfterMs?: number) {
+    queue.push({ error: new AiProviderError(`fake ${code}`, code, retryable, retryAfterMs) });
   },
   reset() {
     queue.length = 0;

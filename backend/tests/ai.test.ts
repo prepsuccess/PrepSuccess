@@ -22,7 +22,8 @@ vi.mock("../src/db/prisma.js", () => ({
   },
 }));
 
-const { generateJson, generateText } = await import("../src/services/ai-agent/ai.service.js");
+const { generateJson, generateText, resetModelCooldowns } =
+  await import("../src/services/ai-agent/ai.service.js");
 const { fakeAi } = await import("../src/services/ai-agent/providers/fake.provider.js");
 const { getAiAccess, startOfIndianDay } = await import("../src/services/ai-agent/access.js");
 const { createApp } = await import("../src/app.js");
@@ -45,6 +46,7 @@ const codeOf = (promise: Promise<unknown>) =>
 
 beforeEach(() => {
   fakeAi.reset();
+  resetModelCooldowns();
   db.usage.length = 0;
   db.successfulToday = 0;
   db.signedUpAt = new Date();
@@ -79,6 +81,24 @@ describe("generateText", () => {
     const result = await generateText(base);
     expect(result).toMatchObject({ data: "from fallback", model: "fake-fallback" });
     expect(db.usage.map((u) => u.errorCode)).toEqual(["AI_OVERLOADED", "AI_RATE_LIMITED", null]);
+  });
+
+  it("goes straight to the fallback on a rate limit, and rests that model", async () => {
+    fakeAi.fail("AI_RATE_LIMITED", true, 6 * 60 * 60_000); // daily quota used up
+    fakeAi.reply("from fallback");
+    const first = await generateText(base);
+    expect(first.model).toBe("fake-fallback");
+    expect(db.usage.map((u) => u.errorCode)).toEqual(["AI_RATE_LIMITED", null]);
+
+    // The next call doesn't even try the rested model.
+    fakeAi.reply("again");
+    const second = await generateText(base);
+    expect(second.model).toBe("fake-fallback");
+    expect(fakeAi.calls.map((c) => c.model)).toEqual([
+      "fake-main",
+      "fake-fallback",
+      "fake-fallback",
+    ]);
   });
 
   it("gives up with AI_UNAVAILABLE when every attempt fails, metering each one", async () => {

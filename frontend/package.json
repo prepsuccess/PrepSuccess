@@ -29,6 +29,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-redux": "^9.3.0",
+    "recharts": "^3.8.0",
     "shadcn": "^4.21.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",

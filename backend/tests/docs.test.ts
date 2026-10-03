@@ -7,6 +7,7 @@ import { buildOpenApiDocument } from "../src/docs/openapi.js";
 import { authUserSchema } from "../src/modules/auth/auth.schemas.js";
 import { aiRouter } from "../src/modules/ai/ai.routes.js";
 import { authRouter } from "../src/modules/auth/auth.routes.js";
+import { dashboardRouter } from "../src/modules/dashboard/dashboard.routes.js";
 import { skillsRouter } from "../src/modules/skills/skills.routes.js";
 import { usersRouter } from "../src/modules/users/users.routes.js";
 import { toAuthUser } from "../src/modules/auth/auth.dto.js";
@@ -20,6 +21,7 @@ const MOUNTED: [prefix: string, router: Router][] = [
   ["/api/v1/users", usersRouter],
   ["/api/v1/ai", aiRouter],
   ["/api/v1/skills", skillsRouter],
+  ["/api/v1/dashboard", dashboardRouter],
 ];
 
 function routesOf(prefix: string, router: Router) {

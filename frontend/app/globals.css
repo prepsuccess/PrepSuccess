@@ -76,6 +76,14 @@
   --chart-3: #7cc0f5;
   --chart-4: #0b0c0f;
   --chart-5: #8b919c;
+  /* Dashboard: lavender canvas, indigo + coral accents, each with a soft tint. */
+  --dash-canvas: #eef0fb;
+  --dash-indigo: #5b5bd6;
+  --dash-indigo-soft: #b4b5f5;
+  --dash-coral: #ee7d52;
+  --dash-coral-soft: #f8c2aa;
+  /* Coral fills are too light for text on white; use the ink for words and numbers. */
+  --dash-coral-ink: #b8481f;
   --sidebar: #f9fafb;
   --sidebar-foreground: #374151;
   --sidebar-primary: #0b0c0f;
@@ -126,6 +134,12 @@
   --chart-3: #a7d4f7;
   --chart-4: oklch(0.985 0 0);
   --chart-5: oklch(0.708 0 0);
+  --dash-canvas: #121320;
+  --dash-indigo: #8e8ff7;
+  --dash-indigo-soft: #4a4b9c;
+  --dash-coral: #f49a74;
+  --dash-coral-soft: #8a4c34;
+  --dash-coral-ink: #f49a74;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: #5aa9eb;
@@ -177,6 +191,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-dash-canvas: var(--dash-canvas);
+  --color-dash-indigo: var(--dash-indigo);
+  --color-dash-indigo-soft: var(--dash-indigo-soft);
+  --color-dash-coral: var(--dash-coral);
+  --color-dash-coral-soft: var(--dash-coral-soft);
+  --color-dash-coral-ink: var(--dash-coral-ink);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

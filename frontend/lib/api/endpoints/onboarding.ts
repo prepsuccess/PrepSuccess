@@ -41,6 +41,8 @@ export const onboardingApi = baseApi.injectEndpoints({
           optimistic.undo();
         }
       },
+      // Finishing onboarding changes the dashboard's next steps and the claimed skills.
+      invalidatesTags: (result) => (result?.onboarding.completed ? ["Dashboard", "MySkills"] : []),
     }),
   }),
 });

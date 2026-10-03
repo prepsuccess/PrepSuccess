@@ -9,6 +9,6 @@ export async function get(req: Request, res: Response) {
 }
 
 export async function send(req: Request, res: Response) {
-  const { content } = sendMessageSchema.parse(req.body);
-  sendSuccess(req, res, await onboarding.sendMessage(req.user!.id, content));
+  const { content, skills } = sendMessageSchema.parse(req.body);
+  sendSuccess(req, res, await onboarding.sendMessage(req.user!.id, content, skills));
 }

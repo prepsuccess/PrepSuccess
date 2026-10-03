@@ -10,7 +10,9 @@ import {
   verdict,
   type StoredQuestion,
 } from "../src/modules/assessment/assessment.logic.js";
+import { SKILL_CATALOGUE } from "../src/modules/skills/catalogue.js";
 import { matchClaims, normalizeSkillName } from "../src/modules/skills/skills.logic.js";
+import { STACKS } from "../src/modules/skills/stacks.js";
 
 const USER_ID = "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d";
 const SKILL_ID = "5c8b4d2f-3a1e-4b7c-8d9f-2e3a4b5c6d7e";
@@ -356,5 +358,42 @@ describe("POST /api/v1/ai/assessment/:id/answer", () => {
     const res = await request(app).get(`/api/v1/ai/assessment/${ASSESSMENT_ID}`).set(auth());
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+  });
+});
+
+describe("stacks", () => {
+  it("expands a stack into its catalogue skills, however it's written", () => {
+    const mern = ["mongodb", "expressjs", "react", "nodejs", "javascript"];
+    expect(matchClaims(["MERN stack"]).slugs).toEqual(mern);
+    expect(matchClaims(["mern"]).slugs).toEqual(mern);
+    expect(matchClaims(["MERN developer"]).slugs).toEqual(mern);
+    expect(matchClaims(["Full Stack", "frontend"]).slugs).toEqual([
+      "html",
+      "css",
+      "javascript",
+      "react",
+      "nodejs",
+      "expressjs",
+      "sql",
+    ]);
+  });
+
+  it("lets an exact stack name win over a single-skill alias, and keeps single skills single", () => {
+    expect(matchClaims(["Data analytics"]).slugs).toEqual([
+      "excel",
+      "sql",
+      "python",
+      "data-analysis-python",
+    ]);
+    expect(matchClaims(["data analysis"]).slugs).toEqual(["data-analysis-python"]);
+    expect(matchClaims(["React"]).slugs).toEqual(["react"]);
+    expect(matchClaims(["MERN stack", "Kotlin"]).unmatched).toEqual(["Kotlin"]);
+  });
+
+  it("only points at real catalogue skills", () => {
+    const slugs = new Set(SKILL_CATALOGUE.map((s) => s.slug));
+    for (const stack of STACKS) {
+      for (const slug of stack.skills) expect(slugs.has(slug), `${stack.name}: ${slug}`).toBe(true);
+    }
   });
 });

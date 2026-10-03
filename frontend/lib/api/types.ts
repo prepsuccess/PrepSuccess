@@ -30,6 +30,7 @@ export type OnboardingState = Omit<Schemas["OnboardingState"], "profile"> & {
   profile: StudentProfile;
 };
 export type OnboardingMessage = OnboardingState["messages"][number];
+export type SkillOptions = OnboardingState["skill_options"];
 export type OnboardingReply = { onboarding: OnboardingState; user: AuthUser };
 
 export type Skill = Schemas["Skill"];

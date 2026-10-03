@@ -9,16 +9,17 @@ export const onboardingApi = baseApi.injectEndpoints({
       query: () => "/api/v1/ai/onboarding",
       providesTags: ["Onboarding"],
     }),
-    sendOnboardingMessage: build.mutation<OnboardingReply, string>({
-      query: (content) => ({
+    /** A typed answer, or picked skills (`skills`) with a short summary as `content`. */
+    sendOnboardingMessage: build.mutation<OnboardingReply, { content: string; skills?: string[] }>({
+      query: (body) => ({
         url: "/api/v1/ai/onboarding/messages",
         method: "POST",
-        body: { content },
+        body,
       }),
       // The student's message shows at once; the AI reply replaces the whole
       // state when it lands. On failure the message is taken back out — the
       // server saved nothing — and the chat puts it back in the box to resend.
-      async onQueryStarted(content, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ content }, { dispatch, queryFulfilled }) {
         const optimistic = dispatch(
           onboardingApi.util.updateQueryData("getOnboarding", undefined, (draft) => {
             draft.messages.push({ role: "user", content, created_at: new Date().toISOString() });

@@ -27,6 +27,12 @@ function state(profile: Record<string, unknown>, messages: OnboardingState["mess
     completed: collected === items.length,
     progress: { collected, total: items.length, items },
     profile,
+    skill_options: {
+      stacks: [
+        { name: "MERN stack", skills: ["MongoDB", "Express.js", "React", "Node.js", "JavaScript"] },
+      ],
+      topics: [{ topic: "Databases", skills: ["SQL", "DBMS"] }],
+    },
   };
 }
 
@@ -96,6 +102,43 @@ describe("OnboardingChat", () => {
     // The returned user went into the getMe cache.
     const me = store.getState().api.queries["getMe(undefined)"]?.data as typeof testUser;
     expect(me.profile.degree).toBe("BCA");
+  });
+
+  it("offers skill chips on the skills question and sends exactly what was picked", async () => {
+    const asked = state({ degree: "BCA", student_year: 3 }, [
+      greeting,
+      { role: "assistant", content: "Which skills do you know?", created_at: at },
+    ]);
+    let sent: unknown;
+    server.use(
+      http.get(`${API}/api/v1/ai/onboarding`, () => ok(asked)),
+      http.post(`${API}/api/v1/ai/onboarding/messages`, async ({ request }) => {
+        sent = await request.json();
+        const next = state({ degree: "BCA", student_year: 3, skills: ["MERN stack", "SQL"] }, [
+          ...asked.messages,
+          { role: "user", content: "I know: MERN stack, SQL", created_at: at },
+          { role: "assistant", content: "Great! What role are you aiming for?", created_at: at },
+        ]);
+        return ok({ onboarding: next, user: { ...testUser, profile: next.profile } });
+      }),
+      http.get(`${API}/api/v1/ai/status`, () => ok({})),
+    );
+    renderChat();
+
+    const picker = await screen.findByRole("region", { name: "Pick what you know" });
+    await userEvent.click(within(picker).getByRole("button", { name: "MERN stack" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Choose single skills" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "SQL" }));
+    expect(within(picker).getByRole("button", { name: "MERN stack" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(within(picker).getByRole("button", { name: "Add 2 skills" }));
+
+    expect(await screen.findByText("Great! What role are you aiming for?")).toBeInTheDocument();
+    expect(sent).toEqual({ content: "I know: MERN stack, SQL", skills: ["MERN stack", "SQL"] });
+    // The skills question is answered, so the chips go away.
+    expect(screen.queryByRole("region", { name: "Pick what you know" })).not.toBeInTheDocument();
   });
 
   it("Shift+Enter adds a new line instead of sending", async () => {

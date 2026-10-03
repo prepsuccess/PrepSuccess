@@ -3779,6 +3779,14 @@ export interface components {
         OnboardingMessageRequest: {
             /** @example Final year BCA. I know HTML, CSS and a bit of SQL. */
             content: string;
+            /**
+             * @description Skills or stacks picked from `skill_options`. Saved exactly as picked (no AI), so the student controls the list. Names not in the options are ignored.
+             * @example [
+             *       "MERN stack",
+             *       "Git & GitHub"
+             *     ]
+             */
+            skills?: string[];
         };
         StartAssessmentRequest: {
             /** Format: uuid */
@@ -3983,6 +3991,35 @@ export interface components {
             /** @description Everything collected so far (user_profiles.profile_data). */
             profile: {
                 [key: string]: unknown;
+            };
+            /** @description What the student can pick for `skills`: common stacks and every catalogue skill. */
+            skill_options: {
+                stacks: {
+                    /** @example MERN stack */
+                    name: string;
+                    /**
+                     * @example [
+                     *       "MongoDB",
+                     *       "Express.js",
+                     *       "React",
+                     *       "Node.js",
+                     *       "JavaScript"
+                     *     ]
+                     */
+                    skills: string[];
+                }[];
+                topics: {
+                    /** @example Web development */
+                    topic: string;
+                    /**
+                     * @example [
+                     *       "HTML",
+                     *       "CSS",
+                     *       "JavaScript"
+                     *     ]
+                     */
+                    skills: string[];
+                }[];
             };
         };
         OnboardingReply: {

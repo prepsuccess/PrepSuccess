@@ -200,6 +200,12 @@ const onboarding = (user: AuthUser): OnboardingState => ({
   completed: false,
   progress: { collected: 0, total: 5, items: [] },
   profile: {},
+  skill_options: {
+    stacks: [
+      { name: "MERN stack", skills: ["MongoDB", "Express.js", "React", "Node.js", "JavaScript"] },
+    ],
+    topics: [{ topic: "Databases", skills: ["SQL", "DBMS"] }],
+  },
 });
 
 export interface MockOptions {

@@ -4779,6 +4779,20 @@
             "minLength": 1,
             "maxLength": 1000,
             "example": "Final year BCA. I know HTML, CSS and a bit of SQL."
+          },
+          "skills": {
+            "description": "Skills or stacks picked from `skill_options`. Saved exactly as picked (no AI), so the student controls the list. Names not in the options are ignored.",
+            "example": [
+              "MERN stack",
+              "Git & GitHub"
+            ],
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            }
           }
         },
         "required": [
@@ -5577,6 +5591,75 @@
             },
             "additionalProperties": {},
             "description": "Everything collected so far (user_profiles.profile_data)."
+          },
+          "skill_options": {
+            "type": "object",
+            "properties": {
+              "stacks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "example": "MERN stack"
+                    },
+                    "skills": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "MongoDB",
+                        "Express.js",
+                        "React",
+                        "Node.js",
+                        "JavaScript"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "skills"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "topics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "topic": {
+                      "type": "string",
+                      "example": "Web development"
+                    },
+                    "skills": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "HTML",
+                        "CSS",
+                        "JavaScript"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "topic",
+                    "skills"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "stacks",
+              "topics"
+            ],
+            "additionalProperties": false,
+            "description": "What the student can pick for `skills`: common stacks and every catalogue skill."
           }
         },
         "required": [
@@ -5584,7 +5667,8 @@
           "messages",
           "completed",
           "progress",
-          "profile"
+          "profile",
+          "skill_options"
         ],
         "additionalProperties": false
       },

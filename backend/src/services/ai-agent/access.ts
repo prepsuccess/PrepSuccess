@@ -1,5 +1,6 @@
 import { env } from "../../config/env.js";
 import { prisma } from "../../db/prisma.js";
+import { startOfIndianDay } from "../../lib/time.js";
 
 /**
  * AI free trial + daily quota (SCRUM-129). The trial runs AI_TRIAL_DAYS from
@@ -17,13 +18,8 @@ export interface AiAccess {
   today: { requests: number; limit: number };
 }
 
-/** Start of the current day in India (UTC+5:30), when the daily limit resets. */
-export function startOfIndianDay(now = new Date()): Date {
-  const IST_OFFSET_MS = 330 * 60_000;
-  const local = new Date(now.getTime() + IST_OFFSET_MS);
-  local.setUTCHours(0, 0, 0, 0);
-  return new Date(local.getTime() - IST_OFFSET_MS);
-}
+// Lives in lib/time (no env import) so pure modules can use it; re-exported for callers here.
+export { startOfIndianDay };
 
 export async function getAiAccess(
   userId: string,

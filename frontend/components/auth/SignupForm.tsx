@@ -6,7 +6,8 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
-import { Checkbox, Input, PasswordInput, Select } from "@/components/ui/form";
+import { SelectField } from "@/components/app/form-fields";
+import { Checkbox, Input, PasswordInput } from "@/components/ui/form";
 import { useRegisterMutation, useSendOtpMutation } from "@/lib/api/endpoints/auth";
 import { errorMessage } from "@/lib/api/errors";
 import { homeFor } from "@/lib/auth/session";
@@ -212,14 +213,14 @@ export function SignupForm() {
         hint="At least 8 characters."
         required
       />
-      <Select
+      <SelectField
         label="Year of study"
         name="year"
         placeholder="Choose your year"
         options={yearOptions}
         value={details.year}
         onChange={(e) => update("year", e.target.value)}
-        hint="Optional — helps the AI pitch your first checks."
+        description="Optional — helps the AI pitch your first checks."
       />
       <Checkbox
         name="terms"

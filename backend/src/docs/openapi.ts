@@ -2,6 +2,7 @@ import { createDocument, type ZodOpenApiPathsObject } from "zod-openapi";
 
 import { adminPaths } from "../modules/admin/admin.docs.js";
 import { aiPaths } from "../modules/ai/ai.docs.js";
+import { coachPaths } from "../modules/coach/coach.docs.js";
 import { assessmentPaths } from "../modules/assessment/assessment.docs.js";
 import { authPaths } from "../modules/auth/auth.docs.js";
 import { dashboardPaths } from "../modules/dashboard/dashboard.docs.js";
@@ -24,6 +25,7 @@ const paths: ZodOpenApiPathsObject = {
   ...authPaths,
   ...usersPaths,
   ...aiPaths,
+  ...coachPaths,
   ...onboardingPaths,
   ...assessmentPaths,
   ...skillsPaths,

@@ -13,7 +13,7 @@ describe("ProfileForm", () => {
     renderForm();
     expect(screen.getByLabelText(/First name/)).toHaveValue("Asha");
     expect(screen.getByLabelText(/Mobile/)).toHaveValue("9876543210");
-    expect(screen.getByLabelText(/Year of study/)).toHaveValue("3");
+    expect(screen.getByLabelText(/Year of study/)).toHaveTextContent("Year 3");
   });
 
   it("sends edits, clears emptied fields with null, and updates the cached user", async () => {

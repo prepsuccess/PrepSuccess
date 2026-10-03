@@ -58,6 +58,7 @@ enum AgentType {
   ONBOARDING
   ASSESSMENT
   DASHBOARD
+  COACH
 }
 
 enum AssessmentMode {
@@ -121,6 +122,7 @@ model User {
   taskSubmissions UserTaskSubmission[]
   aiUsage         AiUsage[]
   notifications   Notification[]
+  activity        UserActivity?
 
   @@map("users")
 }
@@ -411,4 +413,18 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+/// When a student is on the site, for the AI coach's once-a-day check-in.
+/// The app pings while the tab is visible; a gap of over 10 minutes starts a
+/// new session. After 30 minutes in one session the coach sends one tip.
+model UserActivity {
+  userId           String    @id @map("user_id") @db.Uuid
+  sessionStartedAt DateTime  @map("session_started_at") @db.Timestamptz(6)
+  lastSeenAt       DateTime  @map("last_seen_at") @db.Timestamptz(6)
+  lastNudgeAt      DateTime? @map("last_nudge_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_activity")
 }

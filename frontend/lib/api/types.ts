@@ -70,3 +70,7 @@ export type AdminResource = Schemas["AdminResource"];
 export type AdminCreateResourceRequest = Schemas["AdminCreateResourceRequest"];
 export type AdminTask = Schemas["AdminTask"];
 export type PageMeta = { page: number; limit: number; total: number };
+
+export type CoachState = Schemas["CoachState"];
+export type CoachMessage = CoachState["messages"][number];
+export type CoachPing = Schemas["CoachPing"];

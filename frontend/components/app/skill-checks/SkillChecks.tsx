@@ -176,7 +176,7 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
           onChange={(e) => onChange(e.target.value)}
           placeholder="e.g. SQL, arrays, aptitude"
           autoComplete="off"
-          className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-11 w-full rounded-xl border pr-10 pl-9 text-base outline-none focus-visible:ring-3 md:text-sm [&::-webkit-search-cancel-button]:hidden"
+          className="border-input bg-card focus-visible:border-ring h-11 w-full rounded-xl border pr-10 pl-9 text-base outline-none md:text-sm [&::-webkit-search-cancel-button]:hidden"
         />
         {value ? (
           <button

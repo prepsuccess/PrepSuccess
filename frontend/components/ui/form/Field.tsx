@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils/cn";
 
 /** Shared look for every text-like control, so inputs, selects and textareas line up. */
 export const controlClasses =
-  "w-full rounded-[10px] border bg-surface px-3.5 text-[15px] text-heading transition-[border-color,box-shadow] duration-300 placeholder:text-text-dim focus:border-heading focus:shadow-[0_0_0_3px_var(--color-marker)] focus:outline-none disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-text-dim";
+  "w-full rounded-[10px] border bg-surface px-3.5 text-[15px] text-heading transition-colors duration-300 placeholder:text-text-dim focus:border-heading focus:outline-none disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-text-dim";
 
 export function controlStateClasses(invalid: boolean) {
   return invalid ? "border-danger" : "border-border-strong hover:border-text-dim";

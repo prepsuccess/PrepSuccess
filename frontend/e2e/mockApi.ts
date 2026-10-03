@@ -6,6 +6,9 @@ import type {
   Dashboard,
   MySkills,
   OnboardingState,
+  Progress,
+  QuestionDetail,
+  QuestionSummary,
   SkillResources,
   SkillTasks,
   TaskDetail,
@@ -67,6 +70,22 @@ export const skill = {
 
 export const ASSESSMENT_ID = "6d9c5e3a-4b2f-4c8d-9eaf-3f4b5c6d7e8f";
 export const TASK_ID = "7e0d6f4b-5c3a-4d9e-8fb0-4a5b6c7d8e9f";
+export const QUESTION_ID = "8f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f";
+
+const question: QuestionDetail = {
+  id: QUESTION_ID,
+  title: "What is the difference between WHERE and HAVING?",
+  topic: "Aggregation",
+  difficulty: "easy",
+  company: "TCS",
+  role: "Data Analyst",
+  skill: { id: "5c8b4d2f-3a1e-4b7c-8d9f-2e3a4b5c6d7e", slug: "sql", name: "SQL" },
+  bookmarked: false,
+  solved: false,
+  body: "Explain the difference, with an example query for each.",
+  answer: "- WHERE filters rows before grouping\n- HAVING filters groups after GROUP BY",
+  solved_at: null,
+};
 
 const aiStatus: AiStatus = {
   available: true,
@@ -232,6 +251,44 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
   const state: MockApi = { unhandled: [], sent: {} };
   let me = options.user;
   let taskSubmissions: TaskSubmission[] = [];
+  // The interview question's progress, so bookmark/solve show up across pages.
+  const progress = { bookmarked: false, solvedAt: null as string | null };
+  const current = (): QuestionDetail => ({
+    ...question,
+    bookmarked: progress.bookmarked,
+    solved: Boolean(progress.solvedAt),
+    solved_at: progress.solvedAt,
+  });
+  const summary = (): QuestionSummary => {
+    const q = current();
+    return {
+      id: q.id,
+      title: q.title,
+      topic: q.topic,
+      difficulty: q.difficulty,
+      company: q.company,
+      role: q.role,
+      skill: q.skill,
+      bookmarked: q.bookmarked,
+      solved: q.solved,
+    };
+  };
+  const paged = (route: Route, rows: QuestionSummary[]) =>
+    route.fulfill({
+      contentType: "application/json",
+      json: { ...envelope(rows), meta: { page: 1, limit: 20, total: rows.length } },
+    });
+  const progressReply = (): Progress => ({
+    readiness: [],
+    solved_by_week: progress.solvedAt
+      ? [{ week_start: "2026-09-28", solved: 1, total_solved: 1 }]
+      : [],
+    totals: {
+      solved: progress.solvedAt ? 1 : 0,
+      bookmarked: progress.bookmarked ? 1 : 0,
+      by_skill: [],
+    },
+  });
 
   const reply = (route: Route, data: unknown, status = 200) =>
     route.fulfill({ status, contentType: "application/json", json: envelope(data) });
@@ -298,6 +355,40 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
         return reply(route, onboarding(me ?? student));
       case "GET /api/v1/notifications":
         return reply(route, { notifications: [], unread_count: 0 });
+      // Phase 2: the interview question bank.
+      case "GET /api/v1/questions":
+        return paged(route, [summary()]);
+      case "GET /api/v1/questions/filters":
+        return reply(route, {
+          skills: [{ slug: "sql", name: "SQL", count: 1 }],
+          companies: [{ name: "TCS", count: 1 }],
+          roles: [{ name: "Data Analyst", count: 1 }],
+          topics: [{ name: "Aggregation", count: 1 }],
+        });
+      case "GET /api/v1/questions/bookmarks":
+        return paged(route, progress.bookmarked ? [summary()] : []);
+      case `GET /api/v1/questions/${QUESTION_ID}`:
+        return reply(route, current());
+      case `POST /api/v1/questions/${QUESTION_ID}/bookmark`:
+      case `DELETE /api/v1/questions/${QUESTION_ID}/bookmark`:
+        progress.bookmarked = request.method() === "POST";
+        return reply(route, {
+          bookmarked: progress.bookmarked,
+          solved: Boolean(progress.solvedAt),
+          solved_at: progress.solvedAt,
+        });
+      case `POST /api/v1/questions/${QUESTION_ID}/solve`:
+      case `DELETE /api/v1/questions/${QUESTION_ID}/solve`:
+        progress.solvedAt = request.method() === "POST" ? (progress.solvedAt ?? now) : null;
+        return reply(route, {
+          bookmarked: progress.bookmarked,
+          solved: Boolean(progress.solvedAt),
+          solved_at: progress.solvedAt,
+        });
+      case "GET /api/v1/progress":
+        return reply(route, progressReply());
+      case "GET /api/v1/prep-pdfs":
+        return reply(route, []);
       // The coach: activity pings while the tab is visible, and the chat.
       case "POST /api/v1/ai/coach/ping":
         return reply(route, { nudged: false });

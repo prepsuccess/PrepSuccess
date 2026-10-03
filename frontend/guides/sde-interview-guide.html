@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SDE interview guide</title>
+    <link rel="stylesheet" href="guide.css" />
+  </head>
+  <body>
+    <header class="cover">
+      <div class="brand">PrepSuccess</div>
+      <h1>SDE interview guide</h1>
+      <p>
+        For final-year students targeting Software Developer roles: how campus hiring works, a
+        4-week plan, DSA and CS fundamentals, solving problems live, resume talking points and
+        common questions.
+      </p>
+    </header>
+
+    <h2>1. How campus hiring works</h2>
+    <p>
+      Most campus drives for developer roles follow the same three stages: an online test, one or
+      more technical interviews, and an HR interview. What changes between companies is how hard
+      each stage is and what it focuses on.
+    </p>
+
+    <h3>Service companies (for example TCS, Infosys, Wipro, Cognizant, Accenture)</h3>
+    <ul>
+      <li>
+        <strong>Online test:</strong> aptitude (quantitative), logical reasoning, verbal English,
+        and usually one or two coding questions of easy to medium level. Some companies also have an
+        essay or email-writing section.
+      </li>
+      <li>
+        <strong>Technical interview:</strong> questions on your resume and projects, one programming
+        language in depth, OOP, DBMS/SQL, basic OS and networks. You may be asked to write a short
+        program on paper or in a shared editor (reverse a string, check a palindrome, find the
+        second largest number).
+      </li>
+      <li>
+        <strong>HR interview:</strong> communication, attitude, willingness to relocate or work in
+        shifts, and sometimes questions about a service agreement or bond. Sometimes the technical
+        and HR rounds are merged into one.
+      </li>
+      <li>
+        <strong>Higher-pay tracks:</strong> many service companies also run a separate, tougher
+        track for "digital" or "specialist" roles with harder coding questions. If you clear the
+        basic test well, you may be offered this track.
+      </li>
+    </ul>
+
+    <h3>Product companies and startups</h3>
+    <ul>
+      <li>
+        <strong>Online assessment (OA):</strong> usually 2 to 4 coding problems in 60 to 120 minutes
+        on an online judge. Some add MCQs on CS fundamentals or debugging. Only hidden test cases
+        matter, so edge cases and time limits are important.
+      </li>
+      <li>
+        <strong>Technical rounds (often 2 to 4):</strong> data structures and algorithms on a shared
+        editor or whiteboard, explained out loud. Later rounds may include basic low-level design
+        (classes for a parking lot, a library system) or project deep-dives.
+      </li>
+      <li>
+        <strong>Hiring manager / HR round:</strong> behavioural questions, motivation, teamwork, and
+        how you handle failure or disagreement.
+      </li>
+    </ul>
+
+    <table>
+      <tr>
+        <th>Stage</th>
+        <th>Service companies</th>
+        <th>Product companies</th>
+      </tr>
+      <tr>
+        <td>Online test</td>
+        <td>Aptitude + reasoning + verbal + easy/medium coding</td>
+        <td>Mainly DSA coding, medium to hard</td>
+      </tr>
+      <tr>
+        <td>Technical</td>
+        <td>Resume, language basics, OOP, SQL, simple programs</td>
+        <td>DSA in depth, complexity analysis, sometimes design</td>
+      </tr>
+      <tr>
+        <td>HR</td>
+        <td>Communication, relocation, shifts, fit</td>
+        <td>Behavioural, motivation, culture fit</td>
+      </tr>
+      <tr>
+        <td>What wins</td>
+        <td>Accuracy, speed, clear basics, confidence</td>
+        <td>Problem-solving process, clean code, edge cases</td>
+      </tr>
+    </table>
+
+    <div class="tip">
+      <strong>Tip:</strong> Prepare for both. Aptitude and CS basics are needed even for product
+      companies (many OAs include MCQs), and DSA practice makes service-company coding sections
+      easy.
+    </div>
+
+    <h2>2. A 4-week prep plan</h2>
+    <p>
+      This plan assumes 3 to 4 hours a day alongside college. If you have more time, add more
+      practice problems, not more topics. Pick <strong>one</strong> language (C++, Java or Python)
+      and use it for everything.
+    </p>
+
+    <table>
+      <tr>
+        <th>Week</th>
+        <th>DSA (about 2 hours/day)</th>
+        <th>CS fundamentals and aptitude (about 1 hour/day)</th>
+        <th>Other</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>
+          Arrays, strings, hashing (maps and sets), two pointers, prefix sums. 4 to 5 easy problems
+          a day.
+        </td>
+        <td>
+          OOP: four pillars, overloading vs overriding, abstract class vs interface. Aptitude:
+          percentages, ratios, time and work.
+        </td>
+        <td>Rewrite your resume. List 2 projects you can explain fully.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>
+          Sliding window, binary search, sorting, recursion, stacks and queues. Mix easy and medium.
+        </td>
+        <td>DBMS: keys, normalization, joins, ACID, indexing. Practise 15 to 20 SQL queries.</td>
+        <td>Prepare "Tell me about yourself" and project explanations. Say them out loud.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>
+          Linked lists, trees (traversals, BST), heaps, basic graphs (BFS, DFS). Mostly medium.
+        </td>
+        <td>
+          OS: processes vs threads, scheduling, deadlock, memory, paging. Networks: OSI/TCP-IP, TCP
+          vs UDP, HTTP, DNS.
+        </td>
+        <td>One timed mock online test (aptitude + coding).</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>
+          Basic dynamic programming (1D, simple 2D), greedy. Revise every problem you got wrong
+          earlier.
+        </td>
+        <td>
+          Revise all fundamentals using short notes. Aptitude: probability, permutations, number
+          system.
+        </td>
+        <td>2 to 3 mock interviews with friends. Prepare behavioural stories (STAR).</td>
+      </tr>
+    </table>
+
+    <div class="tip">
+      <strong>Tip:</strong> Keep an "error notebook". For every problem you could not solve, write
+      one line: the key idea you missed. Read this notebook before every interview.
+    </div>
+
+    <h2>3. DSA topics by priority</h2>
+    <p>
+      Do not try to cover everything. Topics at the top appear far more often in campus tests and
+      interviews than those at the bottom.
+    </p>
+
+    <table>
+      <tr>
+        <th>Priority</th>
+        <th>Topics</th>
+        <th>Must-know patterns</th>
+      </tr>
+      <tr>
+        <td>Must do</td>
+        <td>Arrays, strings, hashing</td>
+        <td>
+          Frequency counting, two pointers, sliding window, prefix sum, Kadane's algorithm (maximum
+          subarray sum)
+        </td>
+      </tr>
+      <tr>
+        <td>Must do</td>
+        <td>Sorting and searching</td>
+        <td>
+          Binary search on a sorted array, binary search on the answer, merge sort, custom
+          comparators
+        </td>
+      </tr>
+      <tr>
+        <td>Must do</td>
+        <td>Stacks and queues</td>
+        <td>Balanced brackets, next greater element (monotonic stack), queue using two stacks</td>
+      </tr>
+      <tr>
+        <td>Must do</td>
+        <td>Linked lists</td>
+        <td>
+          Reverse a list, find the middle (slow/fast pointers), detect a cycle, merge two sorted
+          lists
+        </td>
+      </tr>
+      <tr>
+        <td>High</td>
+        <td>Trees and BST</td>
+        <td>
+          Inorder/preorder/postorder, level-order (BFS), height, lowest common ancestor, validate a
+          BST
+        </td>
+      </tr>
+      <tr>
+        <td>High</td>
+        <td>Recursion and backtracking</td>
+        <td>Subsets, permutations, N-Queens idea</td>
+      </tr>
+      <tr>
+        <td>Medium</td>
+        <td>Heaps</td>
+        <td>Top-k elements, k-th largest, merge k sorted lists</td>
+      </tr>
+      <tr>
+        <td>Medium</td>
+        <td>Graphs</td>
+        <td>
+          BFS, DFS, number of islands, cycle detection, topological sort, shortest path in an
+          unweighted graph
+        </td>
+      </tr>
+      <tr>
+        <td>Medium</td>
+        <td>Dynamic programming</td>
+        <td>
+          Climbing stairs, house robber, 0/1 knapsack, longest common subsequence, coin change
+        </td>
+      </tr>
+      <tr>
+        <td>Lower</td>
+        <td>Advanced</td>
+        <td>
+          Tries, union-find (disjoint set), Dijkstra, segment trees (mainly for top product
+          companies)
+        </td>
+      </tr>
+    </table>
+
+    <h3>Complexities you must know without thinking</h3>
+    <table>
+      <tr>
+        <th>Operation</th>
+        <th>Time</th>
+      </tr>
+      <tr>
+        <td>Array access by index</td>
+        <td>O(1)</td>
+      </tr>
+      <tr>
+        <td>Search in an unsorted array</td>
+        <td>O(n)</td>
+      </tr>
+      <tr>
+        <td>Binary search (sorted array)</td>
+        <td>O(log n)</td>
+      </tr>
+      <tr>
+        <td>Hash map insert / lookup</td>
+        <td>O(1) average, O(n) worst case</td>
+      </tr>
+      <tr>
+        <td>Merge sort</td>
+        <td>O(n log n) in all cases, O(n) extra space</td>
+      </tr>
+      <tr>
+        <td>Quick sort</td>
+        <td>O(n log n) average, O(n<sup>2</sup>) worst case</td>
+      </tr>
+      <tr>
+        <td>Heap insert / remove top</td>
+        <td>O(log n); build a heap from n items: O(n)</td>
+      </tr>
+      <tr>
+        <td>Balanced BST search / insert</td>
+        <td>O(log n); unbalanced BST worst case O(n)</td>
+      </tr>
+      <tr>
+        <td>BFS / DFS on a graph</td>
+        <td>O(V + E) with an adjacency list</td>
+      </tr>
+    </table>
+
+    <div class="tip">
+      <strong>Tip:</strong> A rough rule for online judges: about 10<sup>8</sup> simple operations
+      run in around one second. If n is up to 10<sup>5</sup>, an O(n<sup>2</sup>) solution (10<sup
+        >10</sup
+      >
+      operations) will usually time out; aim for O(n log n) or O(n).
+    </div>
+
+    <h2>4. CS fundamentals checklist</h2>
+    <p>
+      Interviewers rarely go very deep here for freshers, but they expect clear, correct definitions
+      with one example each. Tick these off.
+    </p>
+
+    <h3>OOP</h3>
+    <ul>
+      <li>
+        <strong>Four pillars:</strong> encapsulation (bundle data with methods, hide internal
+        state), abstraction (show only what is needed), inheritance (reuse a parent class),
+        polymorphism (one interface, many forms).
+      </li>
+      <li>
+        <strong>Overloading vs overriding:</strong> overloading = same method name, different
+        parameters, decided at compile time. Overriding = child class redefines a parent method with
+        the same signature, decided at run time.
+      </li>
+      <li>
+        <strong>Abstract class vs interface</strong> (Java view): an abstract class can have state
+        (fields) and constructors; a class can extend only one class but implement many interfaces.
+      </li>
+      <li>
+        Constructors, <code>this</code>/<code>super</code>, access modifiers, static vs instance
+        members.
+      </li>
+      <li>
+        Composition vs inheritance ("has-a" vs "is-a"). Prefer composition when the relationship is
+        not truly "is-a".
+      </li>
+      <li>
+        Basic awareness of SOLID principles and one design pattern you can explain (Singleton or
+        Factory).
+      </li>
+    </ul>
+
+    <h3>DBMS and SQL</h3>
+    <ul>
+      <li>Primary key, foreign key, candidate key, unique key, composite key.</li>
+      <li>
+        <strong>Normalization:</strong> 1NF (atomic values, no repeating groups), 2NF (1NF + no
+        partial dependency on part of a composite key), 3NF (2NF + no transitive dependency), BCNF
+        (every determinant is a candidate key).
+      </li>
+      <li>
+        <strong>ACID:</strong> Atomicity (all or nothing), Consistency (valid state to valid state),
+        Isolation (concurrent transactions do not interfere), Durability (committed data survives
+        crashes).
+      </li>
+      <li>
+        Joins: INNER, LEFT, RIGHT, FULL OUTER, self join. <code>WHERE</code> vs <code>HAVING</code>;
+        <code>GROUP BY</code>; <code>DELETE</code> vs <code>TRUNCATE</code> vs <code>DROP</code>.
+      </li>
+      <li>
+        Indexes: speed up reads, slow down writes, take extra space. Usually implemented with
+        B-trees / B+ trees.
+      </li>
+      <li>SQL vs NoSQL: fixed schema and joins vs flexible schema and easy horizontal scaling.</li>
+    </ul>
+    <p>A query that is commonly asked: the second highest salary.</p>
+    <pre><code>SELECT MAX(salary) AS second_highest
+FROM employee
+WHERE salary &lt; (SELECT MAX(salary) FROM employee);</code></pre>
+
+    <h3>Operating systems</h3>
+    <ul>
+      <li>
+        <strong>Process vs thread:</strong> a process has its own memory space; threads inside a
+        process share memory, so they are cheaper to create and switch but need synchronisation.
+      </li>
+      <li>CPU scheduling: FCFS, SJF, Round Robin, Priority. Know what preemptive means.</li>
+      <li>
+        <strong>Deadlock</strong> needs all four conditions: mutual exclusion, hold and wait, no
+        preemption, circular wait. Breaking any one prevents it.
+      </li>
+      <li>Mutex vs semaphore; race condition; critical section.</li>
+      <li>Virtual memory, paging, page fault, thrashing; stack vs heap memory.</li>
+    </ul>
+
+    <h3>Computer networks</h3>
+    <ul>
+      <li>
+        OSI model (7 layers: Physical, Data Link, Network, Transport, Session, Presentation,
+        Application) and the TCP/IP model.
+      </li>
+      <li>
+        <strong>TCP vs UDP:</strong> TCP is connection-oriented, reliable and ordered (three-way
+        handshake: SYN, SYN-ACK, ACK). UDP is connectionless and faster, with no delivery guarantee
+        (used for video calls, DNS queries, games).
+      </li>
+      <li>
+        HTTP vs HTTPS (HTTPS = HTTP over TLS; default ports 80 and 443). Common status codes: 200,
+        201, 301, 400, 401, 403, 404, 500.
+      </li>
+      <li>DNS, IP address vs MAC address, what a router and switch do.</li>
+      <li>"What happens when you type a URL in the browser?" (answer in section 7).</li>
+    </ul>
+
+    <h2>5. How to approach a coding problem in an interview</h2>
+    <p>
+      Interviewers judge your <strong>process</strong> as much as your final code. Talk through
+      these six steps every time.
+    </p>
+    <ol>
+      <li>
+        <strong>Clarify.</strong> Repeat the problem in your own words. Ask about input size, value
+        ranges, empty input, duplicates, negative numbers, and the expected output format.
+      </li>
+      <li>
+        <strong>Examples.</strong> Work through one normal example and one edge case by hand. This
+        often reveals the pattern.
+      </li>
+      <li>
+        <strong>Brute force.</strong> State the simplest correct solution and its complexity, even
+        if it is slow. This shows you can solve it at all.
+      </li>
+      <li>
+        <strong>Optimise.</strong> Ask: what work is repeated? Can a hash map, sorting, two pointers
+        or a sliding window remove it? Explain the idea before coding.
+      </li>
+      <li>
+        <strong>Code and test.</strong> Write clean code with clear names. Then dry-run it on your
+        examples line by line, including edge cases.
+      </li>
+      <li>
+        <strong>Complexity.</strong> State the final time and space complexity and explain why.
+      </li>
+    </ol>
+
+    <h3>Worked example: longest substring without repeating characters</h3>
+    <p>
+      <strong>Problem:</strong> given a string <code>s</code>, return the length of the longest
+      substring (contiguous part) that has no repeated characters.
+    </p>
+
+    <p>
+      <strong>1. Clarify.</strong> "Substring means contiguous, right? Can the string be empty?
+      Which characters can appear?" Assume: contiguous, may be empty (answer 0), any characters.
+    </p>
+
+    <p>
+      <strong>2. Examples.</strong> <code>"abcabcbb"</code> gives 3 (<code>"abc"</code>).
+      <code>"bbbbb"</code> gives 1. <code>"pwwkew"</code> gives 3 (<code>"wke"</code>; note
+      <code>"pwke"</code> is not contiguous). <code>""</code> gives 0.
+    </p>
+
+    <p>
+      <strong>3. Brute force.</strong> Start at every index and extend to the right until a
+      character repeats.
+    </p>
+    <pre><code>def longest_brute(s):
+    best = 0
+    for i in range(len(s)):
+        seen = set()
+        for j in range(i, len(s)):
+            if s[j] in seen:
+                break
+            seen.add(s[j])
+            best = max(best, j - i + 1)
+    return best</code></pre>
+    <p>
+      Time O(n<sup>2</sup>) in the worst case, space O(k) where k is the number of distinct
+      characters. Fine for small inputs, too slow for n = 10<sup>5</sup>.
+    </p>
+
+    <p>
+      <strong>4. Optimise.</strong> When we find a repeat, we do not need to restart from scratch.
+      Keep a window <code>[start, i]</code> with no repeats and remember the last index of each
+      character. If the current character was last seen inside the window, move
+      <code>start</code> just past that position. Each index is visited once: a sliding window.
+    </p>
+
+    <pre><code>def length_of_longest_substring(s):
+    last_seen = {}   # character -&gt; last index where it appeared
+    start = 0        # left edge of the current window
+    best = 0
+    for i, ch in enumerate(s):
+        if ch in last_seen and last_seen[ch] &gt;= start:
+            start = last_seen[ch] + 1
+        last_seen[ch] = i
+        best = max(best, i - start + 1)
+    return best
+
+
+tests = {"abcabcbb": 3, "bbbbb": 1, "pwwkew": 3, "": 0, "abba": 2, " ": 1}
+for text, expected in tests.items():
+    assert length_of_longest_substring(text) == expected
+    assert longest_brute(text) == expected
+print("all tests passed")</code></pre>
+
+    <p><strong>5. Test.</strong> Dry-run <code>"abba"</code>, which catches a common bug:</p>
+    <table>
+      <tr>
+        <th>i</th>
+        <th>ch</th>
+        <th>Action</th>
+        <th>start</th>
+        <th>best</th>
+      </tr>
+      <tr>
+        <td>0</td>
+        <td>a</td>
+        <td>new character</td>
+        <td>0</td>
+        <td>1</td>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>b</td>
+        <td>new character</td>
+        <td>0</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>b</td>
+        <td>seen at 1, inside window, start = 2</td>
+        <td>2</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>a</td>
+        <td>seen at 0, but 0 &lt; start, so ignore</td>
+        <td>2</td>
+        <td>2</td>
+      </tr>
+    </table>
+    <p>
+      Without the check <code>last_seen[ch] &gt;= start</code>, step 3 would move
+      <code>start</code> back to 1 and wrongly return 3.
+    </p>
+
+    <p>
+      <strong>6. Complexity.</strong> Time O(n) because each character is processed once with O(1)
+      average dictionary operations. Space O(k) for the dictionary, where k is the number of
+      distinct characters.
+    </p>
+
+    <div class="tip">
+      <strong>Tip:</strong> If you get stuck, say what you are thinking: "I am looking for repeated
+      work in the brute force." Interviewers often give hints, but only if they can hear your
+      reasoning.
+    </div>
+
+    <h2>6. Resume and project talking points</h2>
+    <h3>Resume rules</h3>
+    <ul>
+      <li>
+        One page. Order: contact details, education, skills, projects, internships/experience,
+        achievements.
+      </li>
+      <li>
+        Only list skills you can answer questions on. If you write "Java, SQL, React", expect
+        questions on all three.
+      </li>
+      <li>
+        Write project points as <strong>action + what + result</strong>: "Built a REST API in
+        Node.js for event registration with JWT login and input validation" is better than "Worked
+        on backend".
+      </li>
+      <li>
+        Use numbers only if they are true and you can explain them (users, response time, dataset
+        size).
+      </li>
+      <li>Add links to GitHub or a live demo, and make sure they work and the code is readable.</li>
+      <li>Check spelling, consistent dates and formatting. Save as PDF.</li>
+    </ul>
+
+    <h3>Be ready to explain every project</h3>
+    <p>For each project on your resume, prepare short answers to these questions:</p>
+    <ol>
+      <li>What problem does it solve and who uses it?</li>
+      <li>
+        What is the architecture? (Frontend, backend, database, how they talk to each other.) Be
+        able to draw it.
+      </li>
+      <li>Why did you choose this tech stack over the alternatives?</li>
+      <li>What was the hardest bug or challenge, and how did you fix it?</li>
+      <li>What exactly was <strong>your</strong> part, if it was a team project?</li>
+      <li>How is the database designed? (Main tables and relationships.)</li>
+      <li>
+        What would you improve or add with more time? How would it handle 10 times more users?
+      </li>
+    </ol>
+
+    <div class="tip">
+      <strong>Tip:</strong> Interviewers often pick one line from your resume and go deep. If you
+      cannot explain a project for five minutes, remove it or study it again.
+    </div>
+
+    <h2>7. Common technical questions with short answers</h2>
+
+    <div class="qa">
+      <div class="q">Q. What is the difference between an array and a linked list?</div>
+      <div>
+        An array stores elements in contiguous memory, so access by index is O(1), but inserting or
+        deleting in the middle is O(n) because elements shift. A linked list stores nodes connected
+        by pointers, so insertion or deletion at a known node is O(1), but access by position is
+        O(n). Arrays are also more cache-friendly.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. How does a hash map work?</div>
+      <div>
+        A hash function converts the key into an index of an internal array (bucket). Different keys
+        can map to the same bucket (a collision), handled by chaining (a list per bucket) or open
+        addressing (probing for another slot). When the table gets too full, it is resized and
+        entries are rehashed. Average lookup is O(1); worst case is O(n) if many keys collide.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Stack vs queue?</div>
+      <div>
+        A stack is LIFO (last in, first out), used for function calls, undo and bracket matching. A
+        queue is FIFO (first in, first out), used for BFS, task scheduling and buffers.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What is polymorphism? Give an example.</div>
+      <div>
+        The same interface behaving differently for different types. Compile-time polymorphism is
+        method overloading; run-time polymorphism is method overriding. Example: a
+        <code>Shape</code> class with an <code>area()</code> method that <code>Circle</code> and
+        <code>Rectangle</code> override; calling <code>shape.area()</code> runs the correct version
+        for the actual object.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Process vs thread?</div>
+      <div>
+        A process is a running program with its own memory space. Threads are units of execution
+        inside a process that share its memory. Threads are lighter to create and switch, but shared
+        memory means you need locks to avoid race conditions. One process crashing usually does not
+        affect another; one thread crashing can bring down the whole process.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What is a deadlock and how can it be prevented?</div>
+      <div>
+        Two or more processes each wait for a resource the other holds, so none can continue. It
+        needs mutual exclusion, hold and wait, no preemption and circular wait at the same time.
+        Prevent it by breaking one condition, for example always acquiring locks in a fixed global
+        order (removes circular wait).
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What is normalization and why is it used?</div>
+      <div>
+        Organising tables to reduce duplicate data and avoid insert, update and delete anomalies, by
+        splitting data into related tables (1NF, 2NF, 3NF, BCNF). Sometimes tables are deliberately
+        denormalized to make reads faster.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What is an index? Should we index every column?</div>
+      <div>
+        An index is a separate data structure (usually a B+ tree) that lets the database find rows
+        without scanning the whole table. No: each index uses extra storage and slows down inserts,
+        updates and deletes. Index columns used often in WHERE, JOIN and ORDER BY.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. TCP vs UDP?</div>
+      <div>
+        TCP sets up a connection, guarantees delivery and order, and controls flow and congestion;
+        used for web pages, email and file transfer. UDP sends packets without a connection or
+        guarantees, so it has lower overhead and delay; used for live video, voice, online games and
+        DNS queries.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What happens when you type a URL in the browser and press Enter?</div>
+      <div>
+        The browser finds the server's IP address using DNS (checking caches first). It opens a TCP
+        connection (and a TLS handshake for HTTPS), then sends an HTTP request. The server processes
+        it and sends back a response with HTML. The browser parses the HTML, requests CSS,
+        JavaScript and images, builds the page and renders it.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">
+        Q. What is the difference between <code>==</code> and <code>equals()</code> in Java?
+      </div>
+      <div>
+        For objects, <code>==</code> checks whether two references point to the same object.
+        <code>equals()</code> checks logical equality as defined by the class (for
+        <code>String</code>, same characters). For primitives, <code>==</code> compares values.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What is REST?</div>
+      <div>
+        A style for designing web APIs around resources identified by URLs, using HTTP methods: GET
+        (read), POST (create), PUT/PATCH (update), DELETE (remove). It is stateless: each request
+        carries all the information the server needs, such as an auth token.
+      </div>
+    </div>
+
+    <h2>8. Common behavioural questions</h2>
+    <p>
+      Use the <strong>STAR</strong> method for "tell me about a time" questions:
+      <strong>S</strong>ituation (one or two lines of context), <strong>T</strong>ask (what you had
+      to do), <strong>A</strong>ction (what <em>you</em> did, in detail), <strong>R</strong>esult
+      (outcome and what you learned). Prepare 4 to 5 stories from projects, internships, college
+      events or team work, and reuse them.
+    </p>
+
+    <div class="qa">
+      <div class="q">Q. Tell me about yourself.</div>
+      <div>
+        Keep it to about one minute: name and degree, your main technical interest, one or two
+        projects or an internship with what you built, one achievement, and why you are interested
+        in this role. Example: "I am a final-year Computer Science student. I mainly work in Java
+        and SQL. In my last project I built an attendance system with a Spring Boot backend and
+        MySQL, used by our department. I enjoy solving DSA problems and have practised regularly for
+        the last year. I am looking for a developer role where I can work on real products and keep
+        learning."
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. What are your strengths and weaknesses?</div>
+      <div>
+        Strength: pick one relevant to the job and prove it with an example ("I keep at a problem:
+        in my project I spent two days tracking a login bug down to a timezone issue"). Weakness:
+        pick a real but fixable one and show what you are doing about it ("I used to hesitate to ask
+        for help early; now I set myself a time limit before asking").
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Why do you want to join our company?</div>
+      <div>
+        Research before the interview: what the company builds, its main clients or products, and
+        the role. Connect it to your interests: "Your company works on large client projects across
+        banking and retail. I want exposure to large production systems early in my career, and the
+        training programme for freshers would help me build strong foundations."
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Tell me about a conflict in your team.</div>
+      <div>
+        Choose a real, mild disagreement. Show that you listened, focused on the goal rather than
+        the person, and reached a decision. "Two of us wanted different databases for our project.
+        We listed our requirements, built a small test of both in an hour, and picked the one that
+        fit better. We finished on time and I learned to settle such debates with data."
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Tell me about a failure.</div>
+      <div>
+        Own it, do not blame others, and spend most of the answer on what you learned and changed.
+        For example, missing a hackathon submission because you did not test the deployment early,
+        and now always deploying a basic version on day one.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Are you willing to relocate or work in shifts?</div>
+      <div>
+        Answer honestly. If you are flexible, say so clearly. If you have a real constraint, state
+        it politely. Do not say yes if you do not mean it.
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Where do you see yourself in five years?</div>
+      <div>
+        Show growth within the field, not leaving: "I want to become a strong engineer who can own a
+        module end to end, mentor juniors, and take on design responsibilities."
+      </div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Q. Do you have any questions for us?</div>
+      <div>
+        Always ask one or two: "What does a new developer's first few months look like?" or "Which
+        technologies does this team use most?" Avoid asking about salary in a technical round.
+      </div>
+    </div>
+
+    <h2>9. Mistakes to avoid</h2>
+    <ul>
+      <li>
+        <strong>Coding immediately.</strong> Jumping into code without clarifying or explaining your
+        approach. Spend the first few minutes on understanding and planning.
+      </li>
+      <li>
+        <strong>Silence.</strong> Thinking quietly for minutes. Speak your thoughts so the
+        interviewer can follow and help.
+      </li>
+      <li>
+        <strong>Ignoring edge cases.</strong> Empty input, a single element, duplicates, negative
+        numbers, very large values (integer overflow in C++/Java).
+      </li>
+      <li>
+        <strong>Memorising solutions.</strong> Interviewers change the question slightly. Learn
+        patterns and why they work.
+      </li>
+      <li>
+        <strong>Resume padding.</strong> Listing technologies or projects you cannot explain. One
+        deep project beats five shallow ones.
+      </li>
+      <li>
+        <strong>Guessing confidently.</strong> If you do not know, say "I am not sure, but I
+        think..." and reason it out. Bluffing is easy to detect.
+      </li>
+      <li>
+        <strong>Skipping aptitude.</strong> Many candidates with good coding skills fail the first
+        round on aptitude or time management.
+      </li>
+      <li>
+        <strong>Too many languages.</strong> Switching languages during preparation. Master one for
+        DSA.
+      </li>
+      <li>
+        <strong>Neglecting communication.</strong> Mumbling, very long answers, or speaking badly of
+        a previous team or college.
+      </li>
+      <li>
+        <strong>Not testing in online tests.</strong> Submit only after checking sample cases and a
+        couple of your own edge cases. Read the input and output format carefully.
+      </li>
+    </ul>
+
+    <h2>10. Last-week checklist</h2>
+    <ul>
+      <li>Re-read your error notebook and re-solve 10 to 15 problems you previously got wrong.</li>
+      <li>Revise complexities of common operations and sorting algorithms.</li>
+      <li>Revise one-page notes for OOP, DBMS/SQL, OS and networks. Practise 10 SQL queries.</li>
+      <li>Take at least one full timed mock test (aptitude + coding) under exam conditions.</li>
+      <li>
+        Say "Tell me about yourself" and each project explanation out loud at least three times.
+      </li>
+      <li>Prepare 4 to 5 STAR stories and 2 questions to ask the interviewer.</li>
+      <li>Research each company you are interviewing with: what it does and the role offered.</li>
+      <li>Print copies of your resume; keep ID proof, college ID and documents ready.</li>
+      <li>
+        For online rounds: test your laptop, webcam, microphone, internet and charger the day
+        before.
+      </li>
+      <li>Sleep well the night before. Do not start new topics in the last two days.</li>
+    </ul>
+
+    <footer class="end">
+      PrepSuccess prep guide · Practise these on PrepSuccess: Skill checks, Learn tasks and
+      Interview prep.
+    </footer>
+  </body>
+</html>

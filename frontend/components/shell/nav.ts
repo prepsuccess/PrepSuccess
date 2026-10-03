@@ -1,6 +1,8 @@
 import {
   BarChart3,
   BookOpen,
+  FileText,
+  MessagesSquare,
   GraduationCap,
   LayoutDashboard,
   ListChecks,
@@ -16,6 +18,8 @@ export const studentNav: ShellNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/assessment", label: "Skill checks", icon: ListChecks },
   { href: "/learn", label: "Learn", icon: GraduationCap },
+  { href: "/questions", label: "Interview prep", icon: MessagesSquare },
+  { href: "/prep-guides", label: "Prep guides", icon: FileText },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
 

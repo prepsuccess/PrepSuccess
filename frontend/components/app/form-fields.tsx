@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
+import { Textarea } from "@/components/shadcn/textarea";
 
 /**
  * shadcn Field wiring for the app's forms: a visible label tied to the control,
@@ -68,6 +69,49 @@ export function TextField({ id, label, description, error, required, ...props }:
   );
 }
 
+type TextareaFieldProps = Omit<ComponentProps<typeof Textarea>, "id"> & {
+  id?: string;
+  label: string;
+  description?: string;
+  error?: string;
+};
+
+/** Multiline version of TextField: same label, help and error wiring. */
+export function TextareaField({
+  id,
+  label,
+  description,
+  error,
+  required,
+  ...props
+}: TextareaFieldProps) {
+  const ids = useFieldIds(id, error, description);
+  return (
+    <Field data-invalid={error ? true : undefined}>
+      <FieldLabel htmlFor={ids.inputId}>
+        {label}
+        {required ? (
+          <span className="text-destructive" aria-hidden>
+            *
+          </span>
+        ) : null}
+      </FieldLabel>
+      <Textarea
+        id={ids.inputId}
+        required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={ids.describedBy}
+        {...props}
+      />
+      {error ? (
+        <FieldError id={ids.errorId}>{error}</FieldError>
+      ) : description ? (
+        <FieldDescription id={ids.descriptionId}>{description}</FieldDescription>
+      ) : null}
+    </Field>
+  );
+}
+
 type SelectFieldProps = {
   id?: string;
   name?: string;
@@ -104,8 +148,8 @@ export function SelectField({
       <FieldLabel htmlFor={ids.inputId}>{label}</FieldLabel>
       <Select
         name={name}
-        // Radix treats "" as no choice, which shows the placeholder.
-        value={value || undefined}
+        // An empty value shows the placeholder (kept a string, so the Select stays controlled).
+        value={value}
         onValueChange={(next) => onChange({ target: { value: next } })}
         disabled={disabled}
         required={required}

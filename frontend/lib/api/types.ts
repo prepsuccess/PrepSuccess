@@ -74,3 +74,17 @@ export type PageMeta = { page: number; limit: number; total: number };
 export type CoachState = Schemas["CoachState"];
 export type CoachMessage = CoachState["messages"][number];
 export type CoachPing = Schemas["CoachPing"];
+
+// Phase 2: interview question bank.
+export type QuestionSummary = Schemas["QuestionSummary"];
+export type QuestionDetail = Schemas["QuestionDetail"];
+export type QuestionFilters = Schemas["QuestionFilters"];
+export type QuestionProgress = Schemas["QuestionProgress"];
+export type QuestionDifficulty = QuestionSummary["difficulty"];
+export type Progress = Schemas["Progress"];
+export type PrepPdf = Schemas["PrepPdf"];
+export type AdminQuestion = Schemas["AdminQuestion"];
+export type AdminQuestionInput = Schemas["AdminQuestionInput"];
+export type AdminPrepPdf = Schemas["AdminPrepPdf"];
+export type AdminPrepPdfInput = Schemas["AdminPrepPdfInput"];
+export type QuestionTaxonomy = Schemas["QuestionTaxonomy"];

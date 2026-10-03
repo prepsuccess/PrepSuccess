@@ -5,6 +5,11 @@ import { aiRouter } from "../modules/ai/ai.routes.js";
 import { authRouter } from "../modules/auth/auth.routes.js";
 import { dashboardRouter } from "../modules/dashboard/dashboard.routes.js";
 import { notificationsRouter } from "../modules/notifications/notifications.routes.js";
+import {
+  prepPdfsRouter,
+  progressRouter,
+  questionsRouter,
+} from "../modules/questions/questions.routes.js";
 import { resourcesRouter } from "../modules/resources/resources.routes.js";
 import { skillsRouter } from "../modules/skills/skills.routes.js";
 import { tasksRouter } from "../modules/tasks/tasks.routes.js";
@@ -24,5 +29,8 @@ apiV1.use("/ai", aiRouter);
 apiV1.use("/dashboard", dashboardRouter);
 apiV1.use("/resources", resourcesRouter);
 apiV1.use("/tasks", tasksRouter);
+apiV1.use("/questions", questionsRouter);
+apiV1.use("/progress", progressRouter);
+apiV1.use("/prep-pdfs", prepPdfsRouter);
 apiV1.use("/notifications", notificationsRouter);
 apiV1.use("/admin", adminRouter);

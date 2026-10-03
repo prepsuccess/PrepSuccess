@@ -1,6 +1,11 @@
 import { baseApi, type ResponseMeta } from "../baseApi";
 import type {
   AdminAnalytics,
+  AdminPrepPdf,
+  AdminPrepPdfInput,
+  AdminQuestion,
+  AdminQuestionInput,
+  QuestionTaxonomy,
   AdminCreateResourceRequest,
   AdminResource,
   AdminSkill,
@@ -15,6 +20,13 @@ export interface AdminUsersQuery {
   q?: string;
   role?: AdminUser["role"];
   status?: "active" | "inactive";
+  page: number;
+  limit: number;
+}
+
+export interface AdminQuestionsQuery {
+  skill?: string;
+  q?: string;
   page: number;
   limit: number;
 }
@@ -73,10 +85,69 @@ export const adminApi = baseApi.injectEndpoints({
       invalidatesTags: (result) =>
         result ? [{ type: "AdminTasks", id: result.skill_id }, "AdminSkills", "Tasks"] : [],
     }),
+
+    // ---- Phase 2: interview questions and prep PDFs ----
+    getAdminQuestions: build.query<
+      { questions: AdminQuestion[]; meta: PageMeta },
+      AdminQuestionsQuery
+    >({
+      query: (params) => ({
+        url: "/api/v1/admin/questions",
+        params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v != null)),
+      }),
+      transformResponse: (questions: AdminQuestion[], meta: ResponseMeta | undefined, arg) => ({
+        questions,
+        meta: meta?.pagination ?? { page: arg.page, limit: arg.limit, total: questions.length },
+      }),
+      providesTags: ["AdminQuestions"],
+    }),
+    createAdminQuestion: build.mutation<AdminQuestion, AdminQuestionInput>({
+      query: (body) => ({ url: "/api/v1/admin/questions", method: "POST", body }),
+      invalidatesTags: (result) => (result ? ["AdminQuestions", "Questions"] : []),
+    }),
+    updateAdminQuestion: build.mutation<
+      AdminQuestion,
+      Partial<AdminQuestionInput> & { id: string }
+    >({
+      query: ({ id, ...body }) => ({ url: `/api/v1/admin/questions/${id}`, method: "PATCH", body }),
+      invalidatesTags: (result) => (result ? ["AdminQuestions", "Questions"] : []),
+    }),
+    deleteAdminQuestion: build.mutation<{ id: string; deleted: true }, string>({
+      query: (id) => ({ url: `/api/v1/admin/questions/${id}`, method: "DELETE" }),
+      invalidatesTags: (result) => (result ? ["AdminQuestions", "Questions"] : []),
+    }),
+    getQuestionTaxonomy: build.query<QuestionTaxonomy, void>({
+      query: () => "/api/v1/admin/question-taxonomy",
+    }),
+    getAdminPrepPdfs: build.query<AdminPrepPdf[], void>({
+      query: () => "/api/v1/admin/prep-pdfs",
+      providesTags: ["AdminPrepPdfs"],
+    }),
+    createAdminPrepPdf: build.mutation<AdminPrepPdf, AdminPrepPdfInput>({
+      query: (body) => ({ url: "/api/v1/admin/prep-pdfs", method: "POST", body }),
+      invalidatesTags: (result) => (result ? ["AdminPrepPdfs", "PrepPdfs"] : []),
+    }),
+    updateAdminPrepPdf: build.mutation<AdminPrepPdf, Partial<AdminPrepPdfInput> & { id: string }>({
+      query: ({ id, ...body }) => ({ url: `/api/v1/admin/prep-pdfs/${id}`, method: "PATCH", body }),
+      invalidatesTags: (result) => (result ? ["AdminPrepPdfs", "PrepPdfs"] : []),
+    }),
+    deleteAdminPrepPdf: build.mutation<{ id: string; deleted: true }, string>({
+      query: (id) => ({ url: `/api/v1/admin/prep-pdfs/${id}`, method: "DELETE" }),
+      invalidatesTags: (result) => (result ? ["AdminPrepPdfs", "PrepPdfs"] : []),
+    }),
   }),
 });
 
 export const {
+  useGetAdminQuestionsQuery,
+  useCreateAdminQuestionMutation,
+  useUpdateAdminQuestionMutation,
+  useDeleteAdminQuestionMutation,
+  useGetQuestionTaxonomyQuery,
+  useGetAdminPrepPdfsQuery,
+  useCreateAdminPrepPdfMutation,
+  useUpdateAdminPrepPdfMutation,
+  useDeleteAdminPrepPdfMutation,
   useGetAdminUsersQuery,
   useUpdateAdminUserMutation,
   useGetAdminAnalyticsQuery,

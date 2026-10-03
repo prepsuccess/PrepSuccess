@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "api:types": "openapi-typescript ../backend/openapi.json -o lib/api/schema.d.ts",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "guides:build": "node scripts/build-guides.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",

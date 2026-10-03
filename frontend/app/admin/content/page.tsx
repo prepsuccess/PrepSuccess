@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ContentManager } from "@/components/admin/ContentManager";
+import { ContentTabs } from "@/components/admin/ContentTabs";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 export const metadata: Metadata = { title: "Skills & content" };
@@ -9,9 +9,9 @@ export default function AdminContentPage() {
     <>
       <PageHeader
         title="Skills & content"
-        description="Every skill students can check, its pass mark, and the learning resources and practical tasks behind it. Only admins can change these."
+        description="Skills and their pass marks, the learning resources and practical tasks behind them, the interview question bank and prep guides. Only admins can change these."
       />
-      <ContentManager />
+      <ContentTabs />
     </>
   );
 }

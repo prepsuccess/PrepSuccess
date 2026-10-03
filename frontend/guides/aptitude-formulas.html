@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Aptitude formulas and shortcuts</title>
+    <link rel="stylesheet" href="guide.css" />
+  </head>
+  <body>
+    <header class="cover">
+      <div class="brand">PrepSuccess</div>
+      <h1>Aptitude formulas and shortcuts</h1>
+      <p>
+        For students preparing for campus online tests (TCS NQT, Infosys, AMCAT-style). Quantitative
+        formulas with a worked example for each topic, logical reasoning and data interpretation
+        tips, and a time plan for test day.
+      </p>
+    </header>
+
+    <h2>How to use this guide</h2>
+    <ul>
+      <li>
+        <strong>Learn the formula, then do the example yourself</strong> before you read the answer.
+        Then cover the answer and do it again the next day.
+      </li>
+      <li>
+        <strong>Speed matters more than difficulty.</strong> Most campus aptitude questions are easy
+        to medium, but you get only about 1 to 1.5 minutes each. Shortcuts save that time.
+      </li>
+      <li>
+        <strong>Write units and what "x" means</strong> on your rough sheet. Most wrong answers come
+        from mixing up km/h and m/s, or CP and SP, not from hard maths.
+      </li>
+      <li>
+        Notation: <code>r%</code> means rate in percent, <code>CP</code> = cost price,
+        <code>SP</code> = selling price, <code>MP</code> = marked price.
+      </li>
+    </ul>
+
+    <h3>Numbers worth memorising</h3>
+    <table>
+      <tr>
+        <th>Fraction</th>
+        <th>%</th>
+        <th>Fraction</th>
+        <th>%</th>
+        <th>Fraction</th>
+        <th>%</th>
+      </tr>
+      <tr>
+        <td>1/2</td>
+        <td>50</td>
+        <td>1/7</td>
+        <td>14.29</td>
+        <td>1/12</td>
+        <td>8.33</td>
+      </tr>
+      <tr>
+        <td>1/3</td>
+        <td>33.33</td>
+        <td>1/8</td>
+        <td>12.5</td>
+        <td>1/15</td>
+        <td>6.67</td>
+      </tr>
+      <tr>
+        <td>1/4</td>
+        <td>25</td>
+        <td>1/9</td>
+        <td>11.11</td>
+        <td>1/16</td>
+        <td>6.25</td>
+      </tr>
+      <tr>
+        <td>1/5</td>
+        <td>20</td>
+        <td>1/10</td>
+        <td>10</td>
+        <td>1/20</td>
+        <td>5</td>
+      </tr>
+      <tr>
+        <td>1/6</td>
+        <td>16.67</td>
+        <td>1/11</td>
+        <td>9.09</td>
+        <td>1/25</td>
+        <td>4</td>
+      </tr>
+    </table>
+    <p>
+      <strong>Squares 11 to 25:</strong> 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484,
+      529, 576, 625.<br />
+      <strong>Cubes 1 to 12:</strong> 1, 8, 27, 64, 125, 216, 343, 512, 729, 1000, 1331, 1728.
+    </p>
+
+    <h2>1. Percentages</h2>
+    <table>
+      <tr>
+        <th>Situation</th>
+        <th>Formula</th>
+      </tr>
+      <tr>
+        <td>x% of y</td>
+        <td>x &times; y / 100</td>
+      </tr>
+      <tr>
+        <td>Percentage change</td>
+        <td>(new &minus; old) / old &times; 100</td>
+      </tr>
+      <tr>
+        <td>Two successive changes a% and b%</td>
+        <td>Net % = a + b + ab/100 (use a minus sign for a decrease)</td>
+      </tr>
+      <tr>
+        <td>A is r% more than B; how much less is B than A?</td>
+        <td>r / (100 + r) &times; 100 %</td>
+      </tr>
+      <tr>
+        <td>A is r% less than B; how much more is B than A?</td>
+        <td>r / (100 &minus; r) &times; 100 %</td>
+      </tr>
+      <tr>
+        <td>Price rises r%; cut consumption by how much to keep spending the same?</td>
+        <td>r / (100 + r) &times; 100 %</td>
+      </tr>
+      <tr>
+        <td>Population growing r% a year for n years</td>
+        <td>P &times; (1 + r/100)<sup>n</sup></td>
+      </tr>
+    </table>
+    <div class="qa">
+      <div class="q">
+        Example: A price rises by 20% and then falls by 10%. What is the net change?
+      </div>
+      <div>
+        Net = 20 + (&minus;10) + (20 &times; &minus;10)/100 = 20 &minus; 10 &minus; 2 =
+        <strong>8% increase</strong>. Check: 100 &rarr; 120 &rarr; 108.
+      </div>
+    </div>
+    <div class="tip">
+      <strong>Tip:</strong> Take 100 as the starting value whenever the question gives no actual
+      number. It turns every percentage into a simple amount.
+    </div>
+
+    <h2>2. Profit, loss and discount</h2>
+    <table>
+      <tr>
+        <th>Quantity</th>
+        <th>Formula</th>
+      </tr>
+      <tr>
+        <td>Profit / Loss</td>
+        <td>Profit = SP &minus; CP; Loss = CP &minus; SP</td>
+      </tr>
+      <tr>
+        <td>Profit % / Loss %</td>
+        <td>Always on CP: Profit / CP &times; 100</td>
+      </tr>
+      <tr>
+        <td>SP from CP</td>
+        <td>SP = CP &times; (100 + gain%) / 100, or CP &times; (100 &minus; loss%) / 100</td>
+      </tr>
+      <tr>
+        <td>CP from SP</td>
+        <td>CP = SP &times; 100 / (100 + gain%)</td>
+      </tr>
+      <tr>
+        <td>Discount %</td>
+        <td>Always on MP: Discount / MP &times; 100; SP = MP &times; (100 &minus; d%) / 100</td>
+      </tr>
+      <tr>
+        <td>Successive discounts a% and b%</td>
+        <td>Single discount = a + b &minus; ab/100</td>
+      </tr>
+      <tr>
+        <td>Dishonest dealer (sells at CP, false weight)</td>
+        <td>Gain % = error / (true value &minus; error) &times; 100</td>
+      </tr>
+      <tr>
+        <td>Two items sold at the same SP, one at x% gain, one at x% loss</td>
+        <td>Always a loss of x<sup>2</sup>/100 %</td>
+      </tr>
+    </table>
+    <div class="qa">
+      <div class="q">
+        Example: A shopkeeper marks goods 40% above cost and gives a 10% discount. Find the profit
+        %.
+      </div>
+      <div>Take CP = 100. MP = 140. SP = 140 &times; 0.9 = 126. Profit = <strong>26%</strong>.</div>
+    </div>
+    <div class="tip">
+      <strong>Tip:</strong> Profit % uses CP, discount % uses MP. Mixing the two bases is the most
+      common mistake in this topic.
+    </div>
+
+    <h2>3. Simple and compound interest</h2>
+    <table>
+      <tr>
+        <th>Quantity</th>
+        <th>Formula</th>
+      </tr>
+      <tr>
+        <td>Simple interest</td>
+        <td>SI = P &times; R &times; T / 100; Amount = P + SI</td>
+      </tr>
+      <tr>
+        <td>Compound amount (yearly)</td>
+        <td>A = P(1 + R/100)<sup>n</sup>; CI = A &minus; P</td>
+      </tr>
+      <tr>
+        <td>Half-yearly / quarterly</td>
+        <td>Use R/2 and 2n, or R/4 and 4n</td>
+      </tr>
+      <tr>
+        <td>CI &minus; SI for 2 years</td>
+        <td>P(R/100)<sup>2</sup></td>
+      </tr>
+      <tr>
+        <td>CI &minus; SI for 3 years</td>
+        <td>P(R/100)<sup>2</sup> &times; (3 + R/100)</td>
+      </tr>
+      <tr>
+        <td>Sum doubles under SI</td>
+        <td>T = 100 / R years</td>
+      </tr>
+      <tr>
+        <td>Rule of 72 (CI, approximate)</td>
+        <td>Doubling time &asymp; 72 / R years</td>
+      </tr>
+    </table>
+    <div class="qa">
+      <div class="q">
+        Example: Find the difference between CI and SI on Rs 10,000 at 10% per year for 2 years.
+      </div>
+      <div>
+        Shortcut: 10,000 &times; (10/100)<sup>2</sup> = <strong>Rs 100</strong>. Check: CI = 12,100
+        &minus; 10,000 = 2,100; SI = 2,000; difference = 100.
+      </div>
+    </div>
+
+    <h2>4. Ratio, proportion and partnership</h2>
+    <ul>
+      <li>If a : b = c : d, then <strong>ad = bc</strong>.</li>
+      <li>
+        Fourth proportional to a, b, c = <strong>bc / a</strong>. Third proportional to a, b =
+        <strong>b<sup>2</sup> / a</strong>. Mean proportional of a, b =
+        <strong>&radic;(ab)</strong>.
+      </li>
+      <li>Divide an amount S in ratio a : b &rarr; S &times; a/(a + b) and S &times; b/(a + b).</li>
+      <li>
+        Combine a : b and b : c by making the common term equal (multiply so that both "B" values
+        match).
+      </li>
+      <li>
+        <strong>Partnership:</strong> profit is shared in the ratio of (capital &times; time).
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: A : B = 2 : 3 and B : C = 4 : 5. Divide Rs 7,000 among A, B and C.
+      </div>
+      <div>
+        Make B equal: 2 : 3 = 8 : 12 and 4 : 5 = 12 : 15. So A : B : C = 8 : 12 : 15 (total 35). One
+        part = 7,000 / 35 = 200. Shares = <strong>Rs 1,600, Rs 2,400, Rs 3,000</strong>.
+      </div>
+    </div>
+
+    <h2>5. Averages</h2>
+    <ul>
+      <li>
+        Average = sum of values / number of values. So <strong>sum = average &times; count</strong>;
+        most questions are solved with sums, not averages.
+      </li>
+      <li>
+        Average of first n natural numbers = (n + 1)/2. For consecutive numbers (or any equally
+        spaced list), average = middle term = (first + last)/2.
+      </li>
+      <li>
+        <strong>Replacement:</strong> if the average of n people rises by d when a person of value w
+        is replaced, the new person = w + n &times; d (falls by d: w &minus; n &times; d).
+      </li>
+      <li>
+        <strong>Weighted average:</strong> (n<sub>1</sub>a<sub>1</sub> + n<sub>2</sub>a<sub>2</sub>)
+        / (n<sub>1</sub> + n<sub>2</sub>).
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: The average weight of 8 people rises by 2.5 kg when a person weighing 65 kg is
+        replaced by a new person. Find the new person's weight.
+      </div>
+      <div>Total rise = 8 &times; 2.5 = 20 kg. New person = 65 + 20 = <strong>85 kg</strong>.</div>
+    </div>
+
+    <h2>6. Mixtures and alligation</h2>
+    <ul>
+      <li>
+        <strong>Alligation rule:</strong> Quantity of cheaper : Quantity of dearer = (dearer price
+        &minus; mean price) : (mean price &minus; cheaper price). Works for prices, percentages,
+        concentrations and speeds.
+      </li>
+      <li>
+        <strong>Repeated replacement:</strong> a container holds C litres of pure liquid. x litres
+        are taken out and replaced with water, n times. Pure liquid left = C &times; (1 &minus;
+        x/C)<sup>n</sup>.
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: In what ratio must rice at Rs 40/kg be mixed with rice at Rs 55/kg to get a mixture
+        worth Rs 50/kg?
+      </div>
+      <div>
+        Cheaper : dearer = (55 &minus; 50) : (50 &minus; 40) = 5 : 10 = <strong>1 : 2</strong>.
+      </div>
+    </div>
+    <div class="tip">
+      <strong>Tip:</strong> Draw the alligation cross (two prices on top, mean in the middle,
+      differences below). It takes five seconds and avoids sign errors.
+    </div>
+
+    <h2>7. Time and work</h2>
+    <table>
+      <tr>
+        <th>Idea</th>
+        <th>Formula</th>
+      </tr>
+      <tr>
+        <td>A finishes the work in a days</td>
+        <td>A's one-day work = 1/a</td>
+      </tr>
+      <tr>
+        <td>A and B together</td>
+        <td>1/a + 1/b, so time = ab / (a + b)</td>
+      </tr>
+      <tr>
+        <td>LCM method</td>
+        <td>Total work = LCM of the days; each person's per-day work = total / their days</td>
+      </tr>
+      <tr>
+        <td>Men, days, hours</td>
+        <td>
+          M<sub>1</sub>D<sub>1</sub>H<sub>1</sub> / W<sub>1</sub> = M<sub>2</sub>D<sub>2</sub>H<sub
+            >2</sub
+          >
+          / W<sub>2</sub>
+        </td>
+      </tr>
+      <tr>
+        <td>Efficiency</td>
+        <td>If A is k times as efficient as B, A takes 1/k of B's time</td>
+      </tr>
+    </table>
+    <div class="qa">
+      <div class="q">
+        Example: A can do a job in 12 days and B in 18 days. How long will they take together?
+      </div>
+      <div>
+        Total work = LCM(12, 18) = 36 units. A does 3 units/day, B does 2 units/day, together 5
+        units/day. Time = 36 / 5 = <strong>7.2 days</strong>.
+      </div>
+    </div>
+    <div class="tip">
+      <strong>Tip:</strong> The LCM method keeps everything in whole numbers. Use it for any
+      question with three or more people, or people leaving midway.
+    </div>
+
+    <h2>8. Pipes and cisterns</h2>
+    <ul>
+      <li>
+        Same as time and work. An inlet pipe adds work (+), an outlet or leak removes it (&minus;).
+      </li>
+      <li>
+        Pipe fills in a hours, another empties in b hours (b &gt; a): both open, tank fills in
+        <strong>ab / (b &minus; a)</strong> hours.
+      </li>
+      <li>
+        A pipe fills in a hours, but with a leak it takes b hours: the leak alone empties a full
+        tank in <strong>ab / (b &minus; a)</strong> hours.
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: Pipes A and B fill a tank in 10 h and 15 h. Pipe C empties it in 30 h. If all three
+        are opened together, when is the tank full?
+      </div>
+      <div>
+        Take tank = 30 units (LCM). A = +3, B = +2, C = &minus;1 per hour. Net = 4 units/hour. Time
+        = 30 / 4 = <strong>7.5 hours</strong>.
+      </div>
+    </div>
+
+    <h2>9. Time, speed and distance</h2>
+    <table>
+      <tr>
+        <th>Idea</th>
+        <th>Formula</th>
+      </tr>
+      <tr>
+        <td>Basic</td>
+        <td>Distance = Speed &times; Time</td>
+      </tr>
+      <tr>
+        <td>Unit change</td>
+        <td>km/h &rarr; m/s: &times; 5/18. m/s &rarr; km/h: &times; 18/5</td>
+      </tr>
+      <tr>
+        <td>Average speed over two equal distances at x and y</td>
+        <td>2xy / (x + y) (not (x + y)/2)</td>
+      </tr>
+      <tr>
+        <td>Same distance, speed ratio a : b</td>
+        <td>Time ratio b : a</td>
+      </tr>
+      <tr>
+        <td>Relative speed</td>
+        <td>Opposite directions: add speeds. Same direction: subtract.</td>
+      </tr>
+    </table>
+
+    <h3>Trains</h3>
+    <ul>
+      <li>Train of length L passes a pole or a person: time = L / speed.</li>
+      <li>Passes a platform or bridge of length P: time = (L + P) / speed.</li>
+      <li>
+        Two trains, lengths L<sub>1</sub>, L<sub>2</sub>: time to cross = (L<sub>1</sub> +
+        L<sub>2</sub>) / (s<sub>1</sub> + s<sub>2</sub>) if moving towards each other, or / (s<sub
+          >1</sub
+        >
+        &minus; s<sub>2</sub>) if moving the same way.
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: A 150 m train running at 72 km/h crosses a 250 m platform. How long does it take?
+      </div>
+      <div>
+        Speed = 72 &times; 5/18 = 20 m/s. Distance = 150 + 250 = 400 m. Time = 400 / 20 =
+        <strong>20 seconds</strong>.
+      </div>
+    </div>
+
+    <h3>Boats and streams</h3>
+    <ul>
+      <li>
+        Boat speed in still water u, stream speed v. Downstream = u + v. Upstream = u &minus; v.
+      </li>
+      <li>u = (downstream + upstream) / 2. v = (downstream &minus; upstream) / 2.</li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: A man rows at 15 km/h in still water. The stream flows at 3 km/h. How long does he
+        take to go 36 km downstream and come back?
+      </div>
+      <div>
+        Downstream speed 18 km/h: 36/18 = 2 h. Upstream speed 12 km/h: 36/12 = 3 h. Total =
+        <strong>5 hours</strong>.
+      </div>
+    </div>
+    <div class="tip">
+      <strong>Tip:</strong> Convert all units first. If the answer options are in seconds and the
+      speed is in km/h, change the speed to m/s before anything else.
+    </div>
+
+    <h2>10. Number system</h2>
+
+    <h3>Divisibility rules</h3>
+    <table>
+      <tr>
+        <th>By</th>
+        <th>Rule</th>
+        <th>By</th>
+        <th>Rule</th>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Last digit even</td>
+        <td>8</td>
+        <td>Last three digits divisible by 8</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Digit sum divisible by 3</td>
+        <td>9</td>
+        <td>Digit sum divisible by 9</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Last two digits divisible by 4</td>
+        <td>10</td>
+        <td>Last digit 0</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Last digit 0 or 5</td>
+        <td>11</td>
+        <td>
+          (Sum of odd-place digits) &minus; (sum of even-place digits) is 0 or a multiple of 11
+        </td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Divisible by both 2 and 3</td>
+        <td>12</td>
+        <td>Divisible by both 3 and 4</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td colspan="3">
+          Double the last digit and subtract it from the rest of the number; repeat. The number is
+          divisible by 7 if the result is (e.g. 343: 34 &minus; 6 = 28, divisible by 7).
+        </td>
+      </tr>
+    </table>
+
+    <h3>LCM, HCF and other facts</h3>
+    <ul>
+      <li>For two numbers: <strong>LCM &times; HCF = product of the numbers</strong>.</li>
+      <li>
+        HCF of fractions = HCF of numerators / LCM of denominators. LCM of fractions = LCM of
+        numerators / HCF of denominators.
+      </li>
+      <li>
+        Smallest number that leaves the <strong>same remainder r</strong> when divided by a, b, c =
+        LCM(a, b, c) + r.
+      </li>
+      <li>
+        If each (divisor &minus; remainder) is the same value k, the smallest such number = LCM
+        &minus; k. Example: divided by 4, 5, 6 leaves 3, 4, 5. Here k = 1, so the answer is 60
+        &minus; 1 = 59.
+      </li>
+      <li>
+        <strong>Number of factors:</strong> if N = p<sup>a</sup> &times; q<sup>b</sup> &times; r<sup
+          >c</sup
+        >
+        (primes), factors = (a+1)(b+1)(c+1). Example: 72 = 2<sup>3</sup> &times; 3<sup>2</sup>, so 4
+        &times; 3 = 12 factors.
+      </li>
+      <li>
+        <strong>Trailing zeros in n!</strong> = n/5 + n/25 + n/125 + ... (take only the whole-number
+        part of each). 100! has 20 + 4 = 24 zeros.
+      </li>
+      <li>
+        Sums: 1 + 2 + ... + n = n(n+1)/2. Squares: n(n+1)(2n+1)/6. Cubes: [n(n+1)/2]<sup>2</sup>.
+      </li>
+    </ul>
+
+    <h3>Remainders and unit digits</h3>
+    <ul>
+      <li>
+        Remainder of a product (or sum) = product (or sum) of the individual remainders, then take
+        the remainder again.
+      </li>
+      <li>
+        Find a power that leaves remainder 1 (or &minus;1), then break the big power around it.
+      </li>
+      <li>
+        <strong>Unit-digit cycles:</strong> 2 &rarr; 2, 4, 8, 6; 3 &rarr; 3, 9, 7, 1; 7 &rarr; 7, 9,
+        3, 1; 8 &rarr; 8, 4, 2, 6 (cycle of 4). 4 &rarr; 4, 6 and 9 &rarr; 9, 1 (cycle of 2). 0, 1,
+        5, 6 never change. Divide the power by 4: remainder 1, 2, 3 gives the 1st, 2nd, 3rd term;
+        remainder 0 gives the 4th.
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">Example: Find the remainder when 2<sup>100</sup> is divided by 7.</div>
+      <div>
+        2<sup>3</sup> = 8 leaves remainder 1 on division by 7. 100 = 3 &times; 33 + 1, so 2<sup
+          >100</sup
+        >
+        = (2<sup>3</sup>)<sup>33</sup> &times; 2 leaves 1<sup>33</sup> &times; 2 =
+        <strong>2</strong>.
+      </div>
+    </div>
+
+    <h2>11. Permutations and combinations</h2>
+    <table>
+      <tr>
+        <th>Idea</th>
+        <th>Formula</th>
+      </tr>
+      <tr>
+        <td>Arrange r out of n (order matters)</td>
+        <td><sup>n</sup>P<sub>r</sub> = n! / (n &minus; r)!</td>
+      </tr>
+      <tr>
+        <td>Choose r out of n (order does not matter)</td>
+        <td>
+          <sup>n</sup>C<sub>r</sub> = n! / (r! (n &minus; r)!); also <sup>n</sup>C<sub>r</sub> =
+          <sup>n</sup>C<sub>n&minus;r</sub>
+        </td>
+      </tr>
+      <tr>
+        <td>Arrange n items with p alike, q alike</td>
+        <td>n! / (p! q!)</td>
+      </tr>
+      <tr>
+        <td>n people around a round table</td>
+        <td>(n &minus; 1)!; necklace or garland (flip allowed): (n &minus; 1)! / 2</td>
+      </tr>
+      <tr>
+        <td>Choose at least one from n items</td>
+        <td>2<sup>n</sup> &minus; 1</td>
+      </tr>
+      <tr>
+        <td>Handshakes among n people / lines from n points (no three in a line)</td>
+        <td><sup>n</sup>C<sub>2</sub> = n(n &minus; 1)/2</td>
+      </tr>
+      <tr>
+        <td>Diagonals of an n-sided polygon</td>
+        <td>n(n &minus; 3)/2</td>
+      </tr>
+    </table>
+    <ul>
+      <li>
+        <strong>AND &rarr; multiply, OR &rarr; add.</strong> "Choose 2 men and 1 woman" multiplies;
+        "2 men or 2 women" adds.
+      </li>
+      <li>
+        "Items always together": tie them as one unit, then multiply by their internal arrangements.
+      </li>
+      <li>"At least" questions: often total minus the unwanted cases is faster.</li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: A committee of 3 men and 2 women is to be formed from 6 men and 5 women. In how
+        many ways?
+      </div>
+      <div>
+        <sup>6</sup>C<sub>3</sub> &times; <sup>5</sup>C<sub>2</sub> = 20 &times; 10 =
+        <strong>200 ways</strong>.
+      </div>
+    </div>
+
+    <h2>12. Probability</h2>
+    <ul>
+      <li>P(E) = favourable outcomes / total outcomes, between 0 and 1.</li>
+      <li>P(not E) = 1 &minus; P(E). Best for "at least one" questions.</li>
+      <li>
+        P(A or B) = P(A) + P(B) &minus; P(A and B). Independent events: P(A and B) = P(A) &times;
+        P(B).
+      </li>
+      <li>
+        <strong>Coins:</strong> n tosses give 2<sup>n</sup> outcomes. <strong>Dice:</strong> n dice
+        give 6<sup>n</sup> outcomes.
+      </li>
+      <li>
+        <strong>Cards:</strong> 52 cards, 4 suits of 13 (spades and clubs black; hearts and diamonds
+        red), 26 red, 26 black, 12 face cards (J, Q, K), 4 aces.
+      </li>
+    </ul>
+    <table>
+      <tr>
+        <th>Sum of two dice</th>
+        <td>2</td>
+        <td>3</td>
+        <td>4</td>
+        <td>5</td>
+        <td>6</td>
+        <td>7</td>
+        <td>8</td>
+        <td>9</td>
+        <td>10</td>
+        <td>11</td>
+        <td>12</td>
+      </tr>
+      <tr>
+        <th>Ways (out of 36)</th>
+        <td>1</td>
+        <td>2</td>
+        <td>3</td>
+        <td>4</td>
+        <td>5</td>
+        <td>6</td>
+        <td>5</td>
+        <td>4</td>
+        <td>3</td>
+        <td>2</td>
+        <td>1</td>
+      </tr>
+    </table>
+    <div class="qa">
+      <div class="q">Example: Two dice are thrown. What is the probability that the sum is 8?</div>
+      <div>
+        Favourable: (2,6), (3,5), (4,4), (5,3), (6,2) = 5. Total = 36. P = <strong>5/36</strong>.
+      </div>
+    </div>
+    <div class="tip">
+      <strong>Tip:</strong> "At least one head in 3 tosses" = 1 &minus; P(no head) = 1 &minus; 1/8 =
+      7/8. Use the complement whenever you see "at least".
+    </div>
+
+    <h2>13. Problems on ages</h2>
+    <ul>
+      <li>Let the present age be x. "n years ago" = x &minus; n; "after n years" = x + n.</li>
+      <li>The <strong>difference</strong> between two people's ages never changes.</li>
+      <li>For ratio questions, write present ages as ak and bk, form one equation, solve for k.</li>
+      <li>
+        Quick check: put each option into the question. With 4 options this is often faster than
+        algebra.
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">
+        Example: The ages of A and B are in the ratio 4 : 5. After 6 years the ratio will be 5 : 6.
+        Find their present ages.
+      </div>
+      <div>
+        (4k + 6) / (5k + 6) = 5/6 &rarr; 24k + 36 = 25k + 30 &rarr; k = 6. A = <strong>24</strong>,
+        B = <strong>30</strong>. Check: after 6 years, 30 : 36 = 5 : 6.
+      </div>
+    </div>
+
+    <h2>14. Clocks and calendars</h2>
+
+    <h3>Clocks</h3>
+    <ul>
+      <li>
+        Minute hand moves 6&deg; per minute; hour hand moves 0.5&deg; per minute. Minute hand gains
+        5.5&deg; per minute (55 minute-spaces per hour).
+      </li>
+      <li>
+        <strong>Angle between hands at H:M</strong> = |30H &minus; 5.5M|. If the result is more than
+        180&deg;, subtract it from 360&deg;.
+      </li>
+      <li>
+        Hands coincide between H and H+1 o'clock at <strong>60H/11 minutes</strong> past H (e.g.
+        between 3 and 4: 180/11 = 16 4/11 min past 3).
+      </li>
+      <li>
+        In 12 hours, the hands coincide 11 times, are opposite (180&deg;) 11 times and are at right
+        angles 22 times. Double these for a full day (22, 22, 44).
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">Example: What is the angle between the hands at 3:40?</div>
+      <div>
+        |30 &times; 3 &minus; 5.5 &times; 40| = |90 &minus; 220| = <strong>130&deg;</strong>.
+      </div>
+    </div>
+
+    <h3>Calendars</h3>
+    <ul>
+      <li>
+        <strong>Odd days</strong> = days left over after complete weeks. Ordinary year = 1 odd day,
+        leap year = 2.
+      </li>
+      <li>
+        <strong>Leap year:</strong> divisible by 4; a century year (1900, 2000) must be divisible by
+        400. So 2000 was a leap year, 1900 was not.
+      </li>
+      <li>Odd days in centuries: 100 years = 5, 200 years = 3, 300 years = 1, 400 years = 0.</li>
+      <li>Months: 31 days = 3 odd days, 30 days = 2, February = 0 (or 1 in a leap year).</li>
+      <li>Day codes: 0 = Sunday, 1 = Monday, ... 6 = Saturday.</li>
+      <li>
+        Same calendar repeats (no skipped century leap year in between): leap year &rarr; after 28
+        years; year after a leap year &rarr; after 6 years; second or third year after a leap year
+        &rarr; after 11 years.
+      </li>
+    </ul>
+    <div class="qa">
+      <div class="q">Example: What day of the week was 15 August 1947?</div>
+      <div>
+        Complete years up to 1946: 1600 years = 0 odd days; next 300 years = 1; 46 years = 11 leap +
+        35 ordinary = 22 + 35 = 57 = 1 odd day. Total so far = 2.<br />
+        1947, 1 Jan to 15 Aug: Jan 3, Feb 0, Mar 3, Apr 2, May 3, Jun 2, Jul 3, Aug 15 days = 1. Sum
+        = 17 = 3 odd days.<br />
+        Total = 2 + 3 = 5 &rarr; <strong>Friday</strong>.
+      </div>
+    </div>
+
+    <h2>Logical reasoning tips</h2>
+
+    <h3>Number and letter series</h3>
+    <ul>
+      <li>
+        Check in this order: differences, second differences, ratios, squares/cubes &plusmn;
+        something, primes, two series mixed together (odd and even positions).
+      </li>
+      <li>
+        Example: 2, 6, 12, 20, 30, ? &rarr; differences 4, 6, 8, 10, next 12 &rarr;
+        <strong>42</strong> (also n(n+1)).
+      </li>
+      <li>
+        Letter positions: A = 1 ... Z = 26. Remember <strong>EJOTY</strong> = 5, 10, 15, 20, 25.
+        Reverse position of a letter = 27 &minus; its position (A &harr; Z, B &harr; Y).
+      </li>
+    </ul>
+
+    <h3>Coding-decoding</h3>
+    <ul>
+      <li>
+        Write the letter positions under both the word and its code; the pattern (+1, &minus;2,
+        reverse, alternate) usually shows at once.
+      </li>
+      <li>
+        Example: if CAT is written DBU (each letter +1), then DOG is written <strong>EPH</strong>.
+      </li>
+      <li>
+        For "word codes" (sentences coded as words), find the word common to two sentences; its code
+        is the code common to both.
+      </li>
+    </ul>
+
+    <h3>Blood relations</h3>
+    <ul>
+      <li>
+        Always draw a family tree: + for male, &minus; for female, horizontal line for couple,
+        vertical line for parent-child.
+      </li>
+      <li>Do not assume gender from a name. "A is the child of B" does not tell you A's gender.</li>
+      <li>
+        Start decoding from the far end of a sentence like "A is the son of the brother of B's
+        father".
+      </li>
+    </ul>
+
+    <h3>Seating arrangement</h3>
+    <ul>
+      <li>
+        Place the person with the most definite clue first, then fill neighbours. Draw several
+        possible cases if needed and remove the ones a later clue breaks.
+      </li>
+      <li>Linear row facing north: their left is your left. Facing south: reversed.</li>
+      <li>
+        Circle facing the centre: left = clockwise, right = anticlockwise. Facing outward: reversed.
+      </li>
+    </ul>
+
+    <h3>Syllogisms</h3>
+    <ul>
+      <li>
+        Draw the smallest Venn diagram that fits each statement. A conclusion is true only if it
+        holds in <strong>every</strong> possible diagram.
+      </li>
+      <li>
+        "All A are B" does <strong>not</strong> mean "All B are A", but it does give "Some B are A".
+      </li>
+      <li>"Some A are B" = "Some B are A". "No A is B" = "No B is A".</li>
+      <li>Two "some" statements give no definite conclusion between the end terms.</li>
+      <li>
+        Example: All cats are dogs. All dogs are birds. Then "All cats are birds" and "Some birds
+        are cats" both follow. "All birds are cats" does not.
+      </li>
+      <li>
+        "Either-or" option: pick it when two conclusions about the same pair cannot both be true but
+        one must be (e.g. "Some A are B" and "No A is B", when neither follows alone).
+      </li>
+    </ul>
+
+    <h3>Direction sense</h3>
+    <ul>
+      <li>
+        Draw N at the top every time. A right turn when facing north means facing east. Final
+        distance from start uses Pythagoras: &radic;(x<sup>2</sup> + y<sup>2</sup>).
+      </li>
+    </ul>
+
+    <h2>Data interpretation tips</h2>
+    <ul>
+      <li>
+        <strong>Read the question first</strong>, then the chart. Note units (thousands, lakhs,
+        crores, %) and what the totals mean.
+      </li>
+      <li>
+        <strong>Approximate.</strong> If options are far apart, round numbers (e.g. 4,987 &asymp;
+        5,000). Only calculate exactly when options are close.
+      </li>
+      <li>Use fraction-percent values: 37.5% = 3/8, 62.5% = 5/8, 87.5% = 7/8, 16.67% = 1/6.</li>
+      <li>
+        <strong>Pie charts:</strong> value = (sector angle / 360) &times; total, or (sector % / 100)
+        &times; total.
+      </li>
+      <li>
+        <strong>Growth:</strong> % change = (this year &minus; last year) / last year &times; 100.
+        The base is always the earlier value.
+      </li>
+      <li>
+        For "which year had the highest growth" questions, compare ratios (new/old) rather than
+        computing every percentage.
+      </li>
+      <li>
+        Ratio questions often do not need the total. Cancel common factors before you multiply.
+      </li>
+      <li>
+        One DI set usually has 4 to 5 questions on the same data, so spending a minute to understand
+        the chart pays back.
+      </li>
+    </ul>
+    <div class="tip">
+      <strong>Tip:</strong> Write down intermediate totals you compute (a column sum, a yearly
+      total). The next question in the set often needs the same number.
+    </div>
+
+    <h2>Time-management strategy for the test</h2>
+    <ol>
+      <li>
+        <strong>Read the instructions screen carefully.</strong> Check whether sections have
+        separate timers, whether there is negative marking, whether you can go back to a question,
+        and whether an on-screen calculator is allowed. These differ between tests and between
+        years.
+      </li>
+      <li>
+        <strong>Two-pass method.</strong> First pass: answer every question you can solve in under a
+        minute. Skip or mark the rest. Second pass: return to marked questions with the time left.
+      </li>
+      <li>
+        <strong>The 90-second rule.</strong> If you have no clear method after about 90 seconds,
+        move on. One stuck question can cost you three easy ones.
+      </li>
+      <li>
+        <strong>Use the options.</strong> Eliminate options with the wrong unit digit, wrong parity,
+        or a value that is obviously too large or small. Put options back into the question for
+        ages, equations and number questions.
+      </li>
+      <li>
+        <strong>No negative marking?</strong> Then never leave a question blank. Guess after
+        eliminating what you can. With negative marking, guess only if you can remove at least two
+        options.
+      </li>
+      <li>
+        <strong>Keep your rough sheet tidy.</strong> Number every rough calculation with its
+        question number so you can recheck quickly.
+      </li>
+      <li>
+        <strong>Watch the clock at fixed points</strong> (for example, at the halfway mark of each
+        section) instead of after every question.
+      </li>
+    </ol>
+
+    <h3>Suggested order inside a quant section</h3>
+    <table>
+      <tr>
+        <th>Do first (fast, high accuracy)</th>
+        <th>Do next</th>
+        <th>Leave for the end</th>
+      </tr>
+      <tr>
+        <td>Percentages, profit and loss, SI/CI, averages, ratio, ages, simple number system</td>
+        <td>Time and work, pipes, TSD, trains, boats, mixtures, clocks, calendars</td>
+        <td>Long P&amp;C, tricky probability, multi-step remainders, lengthy DI sets</td>
+      </tr>
+    </table>
+
+    <h2>Last-week checklist</h2>
+    <ul>
+      <li>Revise this formula sheet once a day; say each formula aloud without looking.</li>
+      <li>
+        Take at least 3 full-length timed mock tests in the same pattern as your target test, and
+        review every wrong answer.
+      </li>
+      <li>
+        Keep an error log: topic, what went wrong (concept, calculation, misreading), and the
+        correct method.
+      </li>
+      <li>
+        Practise mental maths daily for 10 minutes: squares, percentages of numbers, quick division.
+      </li>
+      <li>
+        Revisit your two weakest topics only; do not start completely new topics in the last two
+        days.
+      </li>
+      <li>
+        Check test-day details: exam slot, ID proof, admit card, and a stable internet connection
+        and working webcam if the test is remote.
+      </li>
+      <li>Sleep well the night before. A fresh mind is faster than one extra hour of revision.</li>
+    </ul>
+
+    <footer class="end">
+      PrepSuccess prep guide · Practise these on PrepSuccess: Skill checks, Learn tasks and
+      Interview prep.
+    </footer>
+  </body>
+</html>

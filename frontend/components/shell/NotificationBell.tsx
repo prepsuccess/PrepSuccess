@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Bell, CheckCheck } from "lucide-react";
-import { toast } from "sonner";
+import { showNotice } from "@/components/ui/AppToaster";
 import { Button } from "@/components/shadcn/button";
 import {
   DropdownMenu,
@@ -58,8 +58,9 @@ export function NotificationBell() {
         if (seen.current.has(n.id) || n.read) continue;
         if (n.type === "COACH_NUDGE" && coach) {
           // The coach's check-in: one tap opens the chat, where the tip is waiting.
-          toast(n.title, {
-            description: n.body ?? undefined,
+          showNotice({
+            title: n.title,
+            body: n.body,
             duration: 15_000,
             action: {
               label: "Open chat",
@@ -70,7 +71,7 @@ export function NotificationBell() {
             },
           });
         } else {
-          toast(n.title, { description: n.body ?? undefined });
+          showNotice({ title: n.title, body: n.body });
         }
       }
     }

@@ -46,7 +46,7 @@ test("the coach checks in with a toast that opens the chat", async ({ page }) =>
   );
 
   await page.goto("/dashboard");
-  const toast = page.getByRole("listitem").filter({ hasText: "Your coach has a tip" });
+  const toast = page.getByRole("status").filter({ hasText: "Your coach has a tip" });
   await expect(toast).toContainText(TIP);
   await toast.getByRole("button", { name: "Open chat" }).click();
 

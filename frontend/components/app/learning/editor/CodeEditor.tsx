@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTheme } from "next-themes";
+import { useAppTheme } from "@/lib/theme/appTheme";
 import CodeMirror, { EditorView, type Extension } from "@uiw/react-codemirror";
 import { StreamLanguage } from "@codemirror/language";
 import { cpp } from "@codemirror/lang-cpp";
@@ -78,7 +78,8 @@ export default function CodeEditor({
   disabled,
   onRun,
 }: CodeEditorProps) {
-  const { resolvedTheme } = useTheme();
+  // The app's own light/dark setting (not next-themes), so the editor matches the page.
+  const { resolved } = useAppTheme();
   const extensions = useMemo(
     () => [
       ...languageExtension(language),
@@ -107,7 +108,7 @@ export default function CodeEditor({
       value={value}
       onChange={onChange}
       extensions={extensions}
-      theme={resolvedTheme === "dark" ? "dark" : "light"}
+      theme={resolved === "dark" ? "dark" : "light"}
       editable={!disabled}
       readOnly={disabled}
       indentWithTab

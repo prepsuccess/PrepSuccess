@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { ExternalLink, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { Badge } from "@/components/shadcn/badge";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";

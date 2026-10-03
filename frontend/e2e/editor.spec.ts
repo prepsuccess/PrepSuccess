@@ -58,17 +58,26 @@ test("JavaScript runs in the browser and prints console output", async ({ page }
   await expect(page.getByRole("button", { name: "Submit for review" })).toBeEnabled();
 });
 
-test("HTML shows a live preview", async ({ page }) => {
+test("HTML shows the page with the Preview button", async ({ page }) => {
   await openTask(page, {
     language: "html",
     runner: "preview",
     starter_code: "<!doctype html>\n<html><body><h1>Hello</h1></body></html>\n",
   });
 
+  const editor = page.getByRole("textbox", { name: "Your HTML answer" });
+  const frame = page.locator('iframe[title="Preview of your page"]');
   const preview = page.frameLocator('iframe[title="Preview of your page"]');
+  await expect(editor).toBeVisible();
+  await expect(frame).toHaveCount(0);
+
+  // Preview swaps the editor for the rendered page, in the same space.
+  await page.getByRole("button", { name: "Preview" }).click();
   await expect(preview.getByRole("heading", { name: "Hello" })).toBeVisible();
-  await page
-    .getByRole("textbox", { name: "Your HTML answer" })
-    .fill("<!doctype html><html><body><h1>Updated page</h1></body></html>");
+
+  // Back to the code, change it, and the preview shows the new page.
+  await page.getByRole("button", { name: "Code" }).click();
+  await editor.fill("<!doctype html><html><body><h1>Updated page</h1></body></html>");
+  await page.getByRole("button", { name: "Preview" }).click();
   await expect(preview.getByRole("heading", { name: "Updated page" })).toBeVisible();
 });

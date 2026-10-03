@@ -42,7 +42,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/shadcn/sidebar";
-import { Toaster } from "@/components/shadcn/sonner";
+import { AppToaster } from "@/components/ui/AppToaster";
 import { TooltipProvider } from "@/components/shadcn/tooltip";
 import { LogoMark } from "@/components/ui/Logo";
 import { useSession, useSignOut } from "@/lib/auth/useSession";
@@ -289,15 +289,7 @@ export function AppShell({
           </div>
         </SidebarInset>
         {student ? <CoachWidget /> : null}
-        <Toaster
-          theme={resolved}
-          richColors
-          closeButton
-          position="bottom-right"
-          // Above the coach button in the student app.
-          offset={student ? { bottom: 88, right: 20 } : undefined}
-          mobileOffset={student ? { bottom: 88 } : undefined}
-        />
+        <AppToaster aboveCoach={student} />
       </SidebarProvider>
     </TooltipProvider>
   );

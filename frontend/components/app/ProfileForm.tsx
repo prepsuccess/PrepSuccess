@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { CircleAlert, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
 import { Button } from "@/components/shadcn/button";
 import {

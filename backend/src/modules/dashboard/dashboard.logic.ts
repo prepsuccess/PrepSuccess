@@ -178,7 +178,7 @@ export function buildNextSteps(input: {
       id: `check-${skill.name}`,
       kind: "check",
       title: `Check your ${skill.name}`,
-      detail: "You said you know it — five questions show where you really stand.",
+      detail: "You said you know it — a short check shows where you really stand.",
       href: "/assessment",
     });
   }

@@ -1,25 +1,24 @@
 import { prisma } from "../../db/prisma.js";
 import type { Assessment, AssessmentResult, Prisma, Skill } from "../../generated/prisma/client.js";
 import { AppError } from "../../lib/http.js";
-import { generateJson } from "../../services/ai-agent/ai.service.js";
 import { toSkill } from "../skills/skills.schemas.js";
 import {
-  MAX_SCORE,
-  QUESTIONS_PER_CHECK,
   START_DIFFICULTY,
   askedQuestions,
-  buildQuestionPrompt,
   currentQuestion,
+  drawPool,
+  levelsToTopUp,
+  maxScoreFor,
   nextDifficulty,
   percentOf,
   pickQuestion,
   poolIsUsable,
-  questionPoolSchema,
   scoreOf,
-  toStoredQuestions,
+  seenBankIds,
   verdict,
   type StoredQuestion,
 } from "./assessment.logic.js";
+import { loadBank, topUpBank } from "./bank.service.js";
 import type { AssessmentState } from "./assessment.schemas.js";
 
 type FullAssessment = Assessment & { skill: Skill; result: AssessmentResult | null };
@@ -46,7 +45,7 @@ function toState(assessment: FullAssessment): AssessmentState {
     id: assessment.id,
     skill: toSkill(assessment.skill),
     status: assessment.status === "COMPLETED" ? "completed" : "in_progress",
-    total_questions: QUESTIONS_PER_CHECK,
+    total_questions: assessment.questionCount,
     answered: answered.length,
     current_question:
       current && assessment.status === "IN_PROGRESS"
@@ -94,12 +93,17 @@ async function loadOwn(userId: string, assessmentId: string) {
   return assessment;
 }
 
+/** At most this many AI calls to top up the bank before a check starts. */
+const MAX_TOP_UPS = 2;
+
 /**
  * POST /ai/assessment/start — resumes an unfinished check on the skill, or
- * generates a fresh question pool (one AI call) and asks the first question.
- * Nothing is saved if the AI call fails.
+ * starts one of `questionCount` questions drawn from the skill's shared bank,
+ * preferring questions this student hasn't seen. If the bank is short of
+ * fresh questions the AI adds a batch first (it only grows to 100), so most
+ * checks start with no AI call at all. Nothing is saved if that call fails.
  */
-export async function startAssessment(userId: string, skillId: string) {
+export async function startAssessment(userId: string, skillId: string, questionCount: number) {
   const skill = await prisma.skill.findFirst({
     where: { id: skillId, isActive: true, isDeleted: false },
   });
@@ -112,29 +116,28 @@ export async function startAssessment(userId: string, skillId: string) {
   });
   if (unfinished) return toState(unfinished);
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { userId },
-    select: { profileData: true },
+  const previous = await prisma.assessment.findMany({
+    where: { userId, skillId },
+    select: { questions: true },
   });
-  const { data: pool } = await generateJson(
-    {
-      userId,
-      feature: "assessment",
-      system: buildQuestionPrompt(skill, (profile?.profileData ?? {}) as Record<string, unknown>),
-      messages: [{ role: "user", content: `Write the ${skill.name} questions now.` }],
-      temperature: 0.8,
-      maxOutputTokens: 8000,
-      // Aptitude answers must be computed, not pattern-matched.
-      thinking: skill.category === "APTITUDE",
-      // A dozen questions (with reasoning, for aptitude) can take ~30s.
-      timeoutMs: 60_000,
-    },
-    questionPoolSchema,
-  );
+  const seen = seenBankIds(previous);
 
-  const questions = toStoredQuestions(pool);
-  if (!poolIsUsable(questions)) {
-    throw new AppError(502, "AI_BAD_RESPONSE", "The AI gave an unusable answer. Please try again.");
+  let bank = await loadBank(skill.id);
+  for (let call = 0; call < MAX_TOP_UPS; call++) {
+    const levels = levelsToTopUp(bank, seen, questionCount);
+    if (!levels.length) break;
+    const added = await topUpBank(skill, levels, userId);
+    bank = await loadBank(skill.id);
+    if (!added) break;
+  }
+
+  const questions = drawPool(bank, seen, questionCount);
+  if (!poolIsUsable(questions, questionCount)) {
+    throw new AppError(
+      503,
+      "NOT_ENOUGH_QUESTIONS",
+      "We couldn't gather enough questions for this check. Try a shorter one, or try again shortly.",
+    );
   }
   const first = pickQuestion(questions, START_DIFFICULTY)!;
   first.asked_order = 1;
@@ -143,6 +146,7 @@ export async function startAssessment(userId: string, skillId: string) {
     data: {
       userId,
       skillId,
+      questionCount,
       questions: questions as unknown as Prisma.InputJsonArray,
     },
     include: withSkillAndResult,
@@ -185,7 +189,7 @@ export async function answerQuestion(
   current.answered_at = new Date().toISOString();
 
   const answeredCount = askedQuestions(questions).length;
-  const finished = answeredCount >= QUESTIONS_PER_CHECK;
+  const finished = answeredCount >= assessment.questionCount;
   if (!finished) {
     const next = pickQuestion(questions, nextDifficulty(current.difficulty, current.correct));
     if (next) next.asked_order = answeredCount + 1;
@@ -209,15 +213,26 @@ export async function answerQuestion(
         "That question was already answered. Reload to see the next one.",
       );
     }
+    // Quality signals on the shared question.
+    if (current.bank_id) {
+      await tx.checkQuestion.updateMany({
+        where: { id: current.bank_id },
+        data: {
+          timesAsked: { increment: 1 },
+          ...(current.correct ? { timesCorrect: { increment: 1 } } : {}),
+        },
+      });
+    }
     if (complete) {
       const score = scoreOf(questions);
+      const maxScore = maxScoreFor(assessment.questionCount);
       await tx.assessmentResult.create({
         data: {
           assessmentId: assessment.id,
           score,
-          maxScore: MAX_SCORE,
+          maxScore,
           threshold: assessment.skill.masteryThreshold,
-          masteryStatus: verdict(score, assessment.skill.masteryThreshold).mastery,
+          masteryStatus: verdict(score, maxScore, assessment.skill.masteryThreshold).mastery,
         },
       });
     }

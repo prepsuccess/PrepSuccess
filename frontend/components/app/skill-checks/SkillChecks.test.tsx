@@ -118,7 +118,7 @@ describe("SkillChecks", () => {
     expect(screen.getByText("Python")).toBeInTheDocument();
   });
 
-  it("explains the wait while the AI writes the questions, then opens the check", async () => {
+  it("asks how many questions (10 minimum), then explains the wait and opens the check", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));
     let body: unknown;
@@ -138,9 +138,27 @@ describe("SkillChecks", () => {
     );
 
     const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "How many questions?" }),
+    ).toBeInTheDocument();
+    // 10 is the default and the smallest choice.
+    const choices = within(dialog).getAllByRole("radio");
+    expect(choices.map((c) => c.textContent?.match(/^\d+/)?.[0])).toEqual([
+      "10",
+      "15",
+      "20",
+      "25",
+      "30",
+    ]);
+    expect(choices[0]).toHaveAttribute("aria-checked", "true");
+    expect(body).toBeUndefined(); // nothing starts until the student confirms
+
+    await userEvent.click(within(dialog).getByRole("radio", { name: /^20/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Start 20 questions" }));
+
     expect(dialog).toHaveTextContent("Preparing your Data structures & algorithms check");
-    expect(dialog).toHaveTextContent("10–30 seconds");
-    expect(body).toEqual({ skill_id: dsa.id });
+    expect(dialog).toHaveTextContent("Picking 20 questions");
+    await waitFor(() => expect(body).toEqual({ skill_id: dsa.id, question_count: 20 }));
 
     release();
     await waitFor(() =>
@@ -172,6 +190,7 @@ describe("SkillChecks", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Retake — SQL" }));
     const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Start 10 questions" }));
     expect(await within(dialog).findByText("Couldn't start the check")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("The AI is busy right now.");
 

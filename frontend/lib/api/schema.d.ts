@@ -1219,7 +1219,7 @@ export interface paths {
         put?: never;
         /**
          * Start (or resume) a skill check
-         * @description Resumes an unfinished check on the skill if there is one. Otherwise one AI call writes a pool of multiple-choice questions (easy, medium, hard) and the first — a medium one — is returned. Correct answers never leave the server until a question is answered. Nothing is saved if the AI call fails.
+         * @description Resumes an unfinished check on the skill if there is one (question_count is ignored then). Otherwise starts a check of question_count questions (10-30, default 10) drawn from the skill's shared question bank, preferring ones this student hasn't seen. If the bank is short of fresh questions, the AI first adds a batch (the bank grows to 100 per skill), so most starts make no AI call. The first question, a medium one, is returned. Correct answers never leave the server until a question is answered.
          */
         post: {
             parameters: {
@@ -1308,7 +1308,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED` — try again shortly. */
+                /** @description `AI_UNAVAILABLE`, `AI_NOT_CONFIGURED` or `NOT_ENOUGH_QUESTIONS` — try again shortly. */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3791,6 +3791,12 @@ export interface components {
         StartAssessmentRequest: {
             /** Format: uuid */
             skill_id: string;
+            /**
+             * @description How many questions to ask (10-30). Ignored when resuming an unfinished check.
+             * @default 10
+             * @example 10
+             */
+            question_count: number;
         };
         AssessmentAnswerRequest: {
             /** @example q5 */

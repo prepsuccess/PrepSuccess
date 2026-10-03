@@ -53,7 +53,8 @@ function Standing({ skill }: { skill: MySkill }) {
           </>
         ) : (
           <p className="text-muted-foreground text-sm">
-            You haven&apos;t checked {skill.name} yet. Five quick questions show where you stand.
+            You haven&apos;t checked {skill.name} yet. A short check — 10 questions or more — shows
+            where you stand.
           </p>
         )}
         <div className="flex flex-wrap gap-2">

@@ -21,6 +21,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "questions:generate": "tsx scripts/generate-questions.ts",
     "admin:promote": "tsx scripts/promote-admin.ts",
     "sentry:test": "tsx scripts/sentry-test.ts",
     "openapi:export": "tsx scripts/export-openapi.ts",

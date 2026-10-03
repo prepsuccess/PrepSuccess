@@ -14,6 +14,7 @@
 //   assessment_results score + mastery verdict for an attempt
 //   ai_conversations   turn-by-turn AI chat log
 //   practical_tasks / user_task_submissions / learning_resources
+//   check_questions    the reusable question bank behind skill checks (100 per skill)
 //   ai_usage           one row per AI call — the free-trial meter (SCRUM-129)
 //   notifications      in-app notifications (SCRUM-48)
 
@@ -193,6 +194,7 @@ model Skill {
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   assessments    Assessment[]
+  checkQuestions CheckQuestion[]
   practicalTasks PracticalTask[]
   resources      LearningResource[]
 
@@ -203,19 +205,21 @@ model Skill {
 /// One adaptive attempt on one skill. Retakes create new rows, which gives
 /// Phase 2 its progress-over-time history.
 model Assessment {
-  id          String           @id @default(uuid()) @db.Uuid
-  userId      String           @map("user_id") @db.Uuid
-  skillId     String           @map("skill_id") @db.Uuid
-  mode        AssessmentMode   @default(DIAGNOSTIC)
-  status      AssessmentStatus @default(IN_PROGRESS)
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  skillId       String           @map("skill_id") @db.Uuid
+  mode          AssessmentMode   @default(DIAGNOSTIC)
+  status        AssessmentStatus @default(IN_PROGRESS)
+  /// How many questions the student chose for this check (10-30; older checks had 5).
+  questionCount Int              @default(5) @map("question_count")
   /// The AI-generated question pool and every answer given (assessment.logic.ts):
   /// [{ id, difficulty, question, options, answer_index, explanation,
   ///    asked_order, chosen_index, correct, answered_at }]. answer_index never leaves the server.
-  questions   Json             @default("[]")
-  startedAt   DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
-  completedAt DateTime?        @map("completed_at") @db.Timestamptz(6)
-  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  questions     Json             @default("[]")
+  startedAt     DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt   DateTime?        @map("completed_at") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   skill         Skill             @relation(fields: [skillId], references: [id], onDelete: Restrict)
@@ -258,6 +262,38 @@ model AIConversation {
 
   @@index([userId, agentType])
   @@map("ai_conversations")
+}
+
+/// The question bank for skill checks: AI-written multiple-choice questions,
+/// saved and reused across students (up to 100 per skill), so each check is
+/// drawn from it instead of written from scratch. Answers are marked on the
+/// server; answerIndex never leaves it until the question is answered.
+model CheckQuestion {
+  id           String     @id @default(uuid()) @db.Uuid
+  skillId      String     @map("skill_id") @db.Uuid
+  difficulty   Difficulty
+  question     String
+  /// Exactly four options, in canonical order; shuffled per check.
+  options      Json
+  answerIndex  Int        @map("answer_index")
+  explanation  String
+  /// Normalised-text hash, so the same question is never stored twice for a skill.
+  fingerprint  String     @db.VarChar(64)
+  /// "ai" today; "admin" once admins can author questions.
+  source       String     @default("ai") @db.VarChar(20)
+  /// Quality signals: how often it was answered, and answered right.
+  timesAsked   Int        @default(0) @map("times_asked")
+  timesCorrect Int        @default(0) @map("times_correct")
+  isActive     Boolean    @default(true) @map("is_active")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@unique([skillId, fingerprint])
+  @@index([skillId, difficulty])
+  @@map("check_questions")
 }
 
 // ---------------------------------------------------------------------------

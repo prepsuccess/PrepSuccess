@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
-import { CircleAlert, Eye, FileCode2, Play, RotateCcw, SquareTerminal } from "lucide-react";
+import { CircleAlert, Code2, Eye, FileCode2, Play, RotateCcw, SquareTerminal } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
 import { Button } from "@/components/shadcn/button";
 import { Skeleton } from "@/components/shadcn/skeleton";
@@ -87,7 +87,10 @@ function ConsolePanel({ result, running }: { result: RunResult | null; running: 
   );
 }
 
-/** Live preview of an HTML page. Scripts are off and it can't reach the app. */
+/**
+ * Live preview of an HTML page, filling the editor's space. Scripts are off
+ * and it can't reach the app. White like a real browser page, in both themes.
+ */
 function PreviewPanel({ code }: { code: string }) {
   const [shown, setShown] = useState(code);
   useEffect(() => {
@@ -95,12 +98,7 @@ function PreviewPanel({ code }: { code: string }) {
     return () => clearTimeout(timer);
   }, [code]);
   return (
-    <iframe
-      title="Preview of your page"
-      sandbox=""
-      srcDoc={shown}
-      className="h-72 w-full bg-white lg:h-[35dvh]"
-    />
+    <iframe title="Preview of your page" sandbox="" srcDoc={shown} className="size-full bg-white" />
   );
 }
 
@@ -116,6 +114,8 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
   const [content, setContent] = useState(() => readDraft(task.id) ?? latest?.content ?? starter);
   const [result, setResult] = useState<RunResult | null>(null);
   const [running, setRunning] = useState(false);
+  // HTML/CSS tasks: show the code or the rendered page in the same space.
+  const [previewing, setPreviewing] = useState(false);
   const fieldId = useId();
   const hintId = useId();
 
@@ -171,22 +171,48 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
             </span>
           ) : null}
         </label>
-        {starter ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={unchanged || isLoading}
-            onClick={() => change(starter)}
-            className="pointer-coarse:h-11"
-          >
-            <RotateCcw />
-            Reset
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {task.runner === "preview" ? (
+            <Button
+              type="button"
+              variant={previewing ? "default" : "outline"}
+              size="sm"
+              aria-pressed={previewing}
+              onClick={() => setPreviewing(!previewing)}
+              className="pointer-coarse:h-11"
+            >
+              {previewing ? <Code2 /> : <Eye />}
+              {previewing ? "Code" : "Preview"}
+            </Button>
+          ) : null}
+          {starter ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={unchanged || isLoading}
+              onClick={() => change(starter)}
+              className="pointer-coarse:h-11"
+            >
+              <RotateCcw />
+              Reset
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      <div className={cn("lg:min-h-0 lg:flex-1", isCode && "h-[24rem] lg:h-auto")}>
+      {/* overflow-hidden: the editor never spills over what's below it. */}
+      <div
+        className={cn(
+          "relative overflow-hidden lg:min-h-0 lg:flex-1",
+          isCode && "h-[24rem] lg:h-auto",
+        )}
+      >
+        {previewing ? (
+          <div className="absolute inset-0 z-10">
+            <PreviewPanel code={content} />
+          </div>
+        ) : null}
         {isCode ? (
           <CodeEditor
             id={fieldId}
@@ -214,41 +240,27 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
         )}
       </div>
 
-      {task.runner ? (
+      {task.runner === "run" ? (
         <div className="shrink-0 border-t">
           <div className="bg-muted/50 flex items-center justify-between gap-2 border-b px-3 py-1.5">
             <span className="flex items-center gap-2 text-sm font-medium">
-              {task.runner === "run" ? (
-                <SquareTerminal className="text-muted-foreground size-4" aria-hidden />
-              ) : (
-                <Eye className="text-muted-foreground size-4" aria-hidden />
-              )}
-              {task.runner === "run" ? "Console" : "Preview"}
+              <SquareTerminal className="text-muted-foreground size-4" aria-hidden />
+              Console
             </span>
-            {task.runner === "run" ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={run}
-                disabled={running || isLoading}
-                className="pointer-coarse:h-11"
-              >
-                {running ? <Spinner className="size-4" /> : <Play />}
-                Run
-                <kbd className="text-muted-foreground hidden font-sans text-xs sm:inline">
-                  Ctrl+↵
-                </kbd>
-              </Button>
-            ) : (
-              <span className="text-muted-foreground text-xs">Updates as you type</span>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={run}
+              disabled={running || isLoading}
+              className="pointer-coarse:h-11"
+            >
+              {running ? <Spinner className="size-4" /> : <Play />}
+              Run
+              <kbd className="text-muted-foreground hidden font-sans text-xs sm:inline">Ctrl+↵</kbd>
+            </Button>
           </div>
-          {task.runner === "run" ? (
-            <ConsolePanel result={result} running={running} />
-          ) : (
-            <PreviewPanel code={content} />
-          )}
+          <ConsolePanel result={result} running={running} />
         </div>
       ) : null}
 

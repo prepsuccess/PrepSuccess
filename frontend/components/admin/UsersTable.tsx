@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Copy, MoreHorizontal, ShieldCheck, UserCheck, UserX, Users } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { DataTable, SortableHeader } from "@/components/app/data-table";
 import {
   AlertDialog,

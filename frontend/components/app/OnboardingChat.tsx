@@ -219,8 +219,12 @@ function Chat({ state }: { state: OnboardingState }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // The coach is on the skills question: offer chips so the student picks
-  // exactly what's saved, instead of trusting free text to the AI.
-  const askingSkills = state.progress.items.find((item) => !item.done)?.field === "skills";
+  // exactly what's saved, instead of trusting free text to the AI. Only when
+  // the server sent the options (an older API doesn't); typing always works.
+  const skillOptions = state.skill_options as OnboardingState["skill_options"] | undefined;
+  const askingSkills =
+    Boolean(skillOptions?.stacks?.length || skillOptions?.topics?.length) &&
+    state.progress.items.find((item) => !item.done)?.field === "skills";
 
   // Keep the newest message (or the typing dots) in view.
   useEffect(() => {
@@ -309,7 +313,7 @@ function Chat({ state }: { state: OnboardingState }) {
             ) : null}
             {askingSkills ? (
               <SkillPicker
-                options={state.skill_options}
+                options={skillOptions!}
                 disabled={sending}
                 onSubmit={(skills) => void deliver(`I know: ${skills.join(", ")}`, skills)}
               />

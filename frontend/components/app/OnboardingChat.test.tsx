@@ -141,6 +141,19 @@ describe("OnboardingChat", () => {
     expect(screen.queryByRole("region", { name: "Pick what you know" })).not.toBeInTheDocument();
   });
 
+  it("still works without skill options from an older API — typing only", async () => {
+    const legacy: Partial<ReturnType<typeof state>> = state({ degree: "BCA", student_year: 3 }, [
+      greeting,
+    ]);
+    delete legacy.skill_options;
+    server.use(http.get(`${API}/api/v1/ai/onboarding`, () => ok(legacy)));
+    renderChat();
+
+    expect(await screen.findByText("Hi Asha! What are you studying?")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Pick what you know" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Your message")).toBeInTheDocument();
+  });
+
   it("Shift+Enter adds a new line instead of sending", async () => {
     server.use(http.get(`${API}/api/v1/ai/onboarding`, () => ok(start)));
     renderChat();

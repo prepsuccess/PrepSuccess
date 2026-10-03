@@ -74,7 +74,9 @@ export function SkillPicker({
       <div className="space-y-1.5">
         <p className="text-muted-foreground text-xs font-medium">Stacks</p>
         <div className="flex flex-wrap gap-2">
-          {options.stacks.map((stack) => chip(stack.name, `Includes ${stack.skills.join(", ")}`))}
+          {(options.stacks ?? []).map((stack) =>
+            chip(stack.name, `Includes ${stack.skills.join(", ")}`),
+          )}
         </div>
       </div>
 
@@ -96,7 +98,7 @@ export function SkillPicker({
       </button>
       {showAll ? (
         <div id={listId} className="max-h-64 space-y-3 overflow-y-auto pr-1">
-          {options.topics.map(({ topic, skills }) => (
+          {(options.topics ?? []).map(({ topic, skills }) => (
             <div key={topic} className="space-y-1.5">
               <p className="text-muted-foreground text-xs font-medium">{topic}</p>
               <div className="flex flex-wrap gap-2">{skills.map((name) => chip(name))}</div>

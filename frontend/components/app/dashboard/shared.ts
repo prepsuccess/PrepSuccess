@@ -4,6 +4,9 @@ export type CategoryKey = Dashboard["readiness"]["categories"][number]["category
 
 export const PASS_MARK = 40;
 
+/** The readiness score we call placement ready — the student's target. */
+export const READY_MARK = 70;
+
 /** Indigo and coral, each with a soft tint — the dashboard's whole palette. */
 export const PALETTE = {
   indigo: "var(--dash-indigo)",
@@ -20,7 +23,7 @@ export const CATEGORY_META: Record<CategoryKey, { label: string; color: string }
 
 /** Words for a readiness score, so the number never stands alone. */
 export function readinessBand(score: number) {
-  if (score >= 70) return "Placement ready";
+  if (score >= READY_MARK) return "Placement ready";
   if (score >= PASS_MARK) return "Getting there";
   return "Just getting started";
 }

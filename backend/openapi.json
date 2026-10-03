@@ -6697,6 +6697,39 @@
               "hard"
             ]
           },
+          "language": {
+            "type": "string",
+            "enum": [
+              "html",
+              "javascript",
+              "typescript",
+              "jsx",
+              "python",
+              "java",
+              "c",
+              "cpp",
+              "sql",
+              "shell",
+              "text"
+            ],
+            "description": "Editor language. 'text' is a plain written answer.",
+            "example": "javascript"
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "run",
+                  "preview"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither."
+          },
           "attempts": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -6734,6 +6767,8 @@
           "skill_id",
           "title",
           "difficulty",
+          "language",
+          "runner",
           "attempts",
           "best"
         ],

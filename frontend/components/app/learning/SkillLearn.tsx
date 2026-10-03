@@ -181,16 +181,13 @@ export function SkillLearn({ slug }: { slug: string }) {
             </header>
 
             {/* Phones read top to bottom: standing, study, practise. Desktop puts
-                study on the left and standing + practise in a sidebar. */}
+                standing beside study, and practise full width underneath. */}
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-              <div className="lg:col-start-2 lg:row-start-1">
+              <div className="lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1">
                 <Standing skill={skill} />
               </div>
 
-              <section
-                aria-labelledby="study"
-                className="lg:col-start-1 lg:row-span-2 lg:row-start-1"
-              >
+              <section aria-labelledby="study" className="lg:col-start-1 lg:row-start-1">
                 <SectionHead
                   id="study"
                   title="Study"
@@ -202,16 +199,16 @@ export function SkillLearn({ slug }: { slug: string }) {
                   Study first, then retake the check to see your progress.
                 </p>
               </section>
-
-              <section aria-labelledby="practise" className="lg:col-start-2 lg:row-start-2">
-                <SectionHead
-                  id="practise"
-                  title="Practise"
-                  hint="Hands-on tasks, marked by AI against a rubric."
-                />
-                <TaskList slug={skill.slug} />
-              </section>
             </div>
+
+            <section aria-labelledby="practise">
+              <SectionHead
+                id="practise"
+                title="Practise"
+                hint="Five hands-on tasks, easy to hard. Write code in a real editor; the AI marks it against a rubric."
+              />
+              <TaskList slug={skill.slug} />
+            </section>
           </div>
         );
       }}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useLayoutEffect, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import { LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/shadcn/avatar";
 import {
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/shadcn/dropdown-menu";
 import { Separator } from "@/components/shadcn/separator";
+import { cn } from "@/lib/utils/cn";
 import {
   Sidebar,
   SidebarContent,
@@ -150,7 +151,9 @@ function UserMenu() {
 /**
  * Sidebar + top bar frame shared by the student app and the admin panel
  * (shadcn/ui sidebar). Collapses to icons on desktop (Ctrl/⌘+B), becomes a
- * sheet on phones; the open state is remembered in a cookie. Owns the app's
+ * sheet on phones; the open state is remembered in a cookie. Practice task
+ * pages are a workspace: the sidebar starts collapsed there and the page uses
+ * the full width, without changing the saved state elsewhere. Owns the app's
  * dark mode: applied while mounted, removed when leaving for the marketing site.
  */
 export function AppShell({
@@ -173,12 +176,25 @@ export function AppShell({
   const home = nav[0];
   const { resolved } = useAppTheme();
 
+  // Task pages (task + editor side by side) get their own sidebar state, closed on arrival.
+  const workspace = pathname.startsWith("/tasks/");
+  const [savedOpen, setSavedOpen] = useState(defaultOpen);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    if (workspace) setWorkspaceOpen(false);
+  }
+
   // Before paint, so switching themes or arriving from the marketing site never flashes.
   useLayoutEffect(() => applyTheme(resolved), [resolved]);
 
   return (
     <TooltipProvider delayDuration={0}>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <SidebarProvider
+        open={workspace ? workspaceOpen : savedOpen}
+        onOpenChange={workspace ? setWorkspaceOpen : setSavedOpen}
+      >
         <Sidebar collapsible="icon">
           <SidebarHeader>
             <SidebarMenu>
@@ -259,7 +275,12 @@ export function AppShell({
               <UserMenu />
             </div>
           </header>
-          <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div
+            className={cn(
+              "mx-auto w-full flex-1 px-4 py-6 sm:px-6 lg:px-8",
+              workspace ? "max-w-screen-2xl lg:py-6" : "max-w-6xl lg:py-8",
+            )}
+          >
             {children}
           </div>
         </SidebarInset>

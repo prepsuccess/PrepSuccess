@@ -118,78 +118,77 @@ function TaskBody({ task }: { task: TaskDetail }) {
   }, [latestId]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Link
-          href={`/learn/${task.skill.slug}`}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeft className="size-4" aria-hidden /> {task.skill.name}
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">{task.title}</h1>
-          <Badge variant="outline" className="capitalize">
-            {task.difficulty}
-          </Badge>
+    // Phones: title, task, feedback, then the editor. Laptops and up: the task
+    // scrolls on the left while the editor fills the window on the right,
+    // like a coding platform (the app sidebar starts collapsed here).
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Link
+            href={`/learn/${task.skill.slug}`}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+          >
+            <ArrowLeft className="size-4" aria-hidden /> {task.skill.name}
+          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-foreground text-2xl font-semibold tracking-tight">{task.title}</h1>
+            <Badge variant="outline" className="capitalize">
+              {task.difficulty}
+            </Badge>
+          </div>
         </div>
-      </div>
 
-      {/* Phones: task, feedback, then the editor. Wide screens: task and
-          feedback on the left, the editor beside them like a coding platform. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="space-y-5">
-              <Prose text={task.description} className="text-foreground" />
-              <div className="bg-muted rounded-lg p-4 text-sm">
-                <h2 className="text-foreground mb-2 font-semibold">
-                  How it&apos;s marked · pass mark {task.pass_mark}%
-                </h2>
-                <ul className="space-y-1">
-                  {task.rubric.map((c) => (
-                    <li key={c.id} className="flex justify-between gap-3">
-                      <span>{c.description}</span>
-                      <span className="text-muted-foreground shrink-0 tabular-nums">
-                        {points(c.points)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-
-          {latest ? (
-            <div ref={feedbackRef} tabIndex={-1} className="outline-none">
-              <SubmissionFeedback submission={latest} heading="Latest feedback" />
-            </div>
-          ) : null}
-
-          {earlier.length ? (
-            <details className="group">
-              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm">
-                Earlier attempts ({earlier.length})
-              </summary>
-              <ol className="mt-3 space-y-3">
-                {earlier.map((s) => (
-                  <li key={s.id}>
-                    <SubmissionFeedback
-                      submission={s}
-                      heading={new Date(s.created_at).toLocaleString(undefined, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    />
+        <Card>
+          <CardContent className="space-y-5">
+            <Prose text={task.description} className="text-foreground" />
+            <div className="bg-muted rounded-lg p-4 text-sm">
+              <h2 className="text-foreground mb-2 font-semibold">
+                How it&apos;s marked · pass mark {task.pass_mark}%
+              </h2>
+              <ul className="space-y-1">
+                {task.rubric.map((c) => (
+                  <li key={c.id} className="flex justify-between gap-3">
+                    <span>{c.description}</span>
+                    <span className="text-muted-foreground shrink-0 tabular-nums">
+                      {points(c.points)}
+                    </span>
                   </li>
                 ))}
-              </ol>
-            </details>
-          ) : null}
-        </div>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="xl:sticky xl:top-4">
-          <TaskWorkspace key={latest?.id ?? "new"} task={task} latest={latest} />
-        </div>
+        {latest ? (
+          <div ref={feedbackRef} tabIndex={-1} className="outline-none">
+            <SubmissionFeedback submission={latest} heading="Latest feedback" />
+          </div>
+        ) : null}
+
+        {earlier.length ? (
+          <details className="group">
+            <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm">
+              Earlier attempts ({earlier.length})
+            </summary>
+            <ol className="mt-3 space-y-3">
+              {earlier.map((s) => (
+                <li key={s.id}>
+                  <SubmissionFeedback
+                    submission={s}
+                    heading={new Date(s.created_at).toLocaleString(undefined, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  />
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
+      </div>
+
+      <div className="lg:sticky lg:top-20">
+        <TaskWorkspace key={latest?.id ?? "new"} task={task} latest={latest} />
       </div>
     </div>
   );

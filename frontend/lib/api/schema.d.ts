@@ -4292,6 +4292,14 @@ export interface components {
             title: string;
             /** @enum {string} */
             difficulty: "easy" | "medium" | "hard";
+            /**
+             * @description Editor language. 'text' is a plain written answer.
+             * @example javascript
+             * @enum {string}
+             */
+            language: "html" | "javascript" | "typescript" | "jsx" | "python" | "java" | "c" | "cpp" | "sql" | "shell" | "text";
+            /** @description How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither. */
+            runner: ("run" | "preview") | null;
             attempts: number;
             /** @description The student's best attempt so far; null if never attempted. */
             best: {

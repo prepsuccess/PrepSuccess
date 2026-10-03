@@ -36,6 +36,14 @@ export const submitTaskSchema = z
   .meta({ id: "SubmitTaskRequest" });
 
 const difficulty = z.enum(["easy", "medium", "hard"]);
+const language = z.enum(TASK_LANGUAGES).meta({
+  description: "Editor language. 'text' is a plain written answer.",
+  example: "javascript",
+});
+const runner = z.enum(["run", "preview"]).nullable().meta({
+  description:
+    "How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither.",
+});
 
 const bestSchema = z
   .object({
@@ -51,6 +59,8 @@ export const taskSummarySchema = z
     skill_id: z.uuid(),
     title: z.string().meta({ example: "Top earners per department" }),
     difficulty,
+    language,
+    runner,
     attempts: z.number().int(),
     best: bestSchema,
   })
@@ -100,14 +110,8 @@ export const taskDetailSchema = z
         "Blank line = new paragraph, lines starting '- ' are a list, ``` fences are code.",
     }),
     difficulty,
-    language: z.enum(TASK_LANGUAGES).meta({
-      description: "Editor language. 'text' is a plain written answer.",
-      example: "javascript",
-    }),
-    runner: z.enum(["run", "preview"]).nullable().meta({
-      description:
-        "How the browser can try the answer: 'run' executes JavaScript and shows console output, 'preview' renders an HTML page; null if neither.",
-    }),
+    language,
+    runner,
     starter_code: z
       .string()
       .nullable()

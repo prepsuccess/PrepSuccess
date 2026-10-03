@@ -315,6 +315,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
               skill_id: skill.id,
               title: "Top earners per department",
               difficulty: "medium",
+              language: "sql",
+              runner: null,
               attempts: taskSubmissions.length,
               best: taskSubmissions[0] ? { percent: 80, passed: true } : null,
             },

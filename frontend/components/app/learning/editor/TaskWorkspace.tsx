@@ -49,7 +49,7 @@ function ConsolePanel({ result, running }: { result: RunResult | null; running: 
       role="log"
       aria-live="polite"
       aria-label="Console output"
-      className="bg-muted/40 h-40 overflow-auto px-4 py-3 font-mono text-[13px] leading-relaxed"
+      className="bg-muted/40 h-36 overflow-auto px-4 py-3 font-mono text-[13px] leading-relaxed"
     >
       {running ? (
         <p className="text-muted-foreground">Running…</p>
@@ -99,7 +99,7 @@ function PreviewPanel({ code }: { code: string }) {
       title="Preview of your page"
       sandbox=""
       srcDoc={shown}
-      className="h-72 w-full bg-white"
+      className="h-72 w-full bg-white lg:h-[35dvh]"
     />
   );
 }
@@ -154,7 +154,12 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
   }
 
   return (
-    <form onSubmit={onSubmit} className="bg-card overflow-hidden rounded-xl border shadow-xs">
+    // On wide screens it fills the window height (below the top bar) so the
+    // editor, console and submit button are all in view at once.
+    <form
+      onSubmit={onSubmit}
+      className="bg-card flex flex-col overflow-hidden rounded-xl border shadow-xs lg:h-[calc(100dvh-6.5rem)]"
+    >
       {/* Editor tab bar */}
       <div className="bg-muted/50 flex items-center justify-between gap-2 border-b px-3 py-1.5">
         <label htmlFor={fieldId} className="flex min-w-0 items-center gap-2 text-sm font-medium">
@@ -181,7 +186,7 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
         ) : null}
       </div>
 
-      <div className={cn(isCode && "h-[24rem] lg:h-[30rem]")}>
+      <div className={cn("lg:min-h-0 lg:flex-1", isCode && "h-[24rem] lg:h-auto")}>
         {isCode ? (
           <CodeEditor
             id={fieldId}
@@ -204,13 +209,13 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
             aria-describedby={hintId}
             aria-invalid={Boolean(invalid)}
             placeholder="Write your answer here."
-            className="min-h-72 rounded-none border-0 shadow-none"
+            className="min-h-72 rounded-none border-0 shadow-none lg:h-full lg:min-h-0 lg:resize-none"
           />
         )}
       </div>
 
       {task.runner ? (
-        <div className="border-t">
+        <div className="shrink-0 border-t">
           <div className="bg-muted/50 flex items-center justify-between gap-2 border-b px-3 py-1.5">
             <span className="flex items-center gap-2 text-sm font-medium">
               {task.runner === "run" ? (
@@ -247,22 +252,7 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
         </div>
       ) : null}
 
-      <div className="space-y-3 border-t p-3">
-        <p id={hintId} className="text-muted-foreground flex justify-between gap-3 text-xs">
-          <span>
-            {invalid ??
-              (unchanged
-                ? "Change the starter code to answer the task."
-                : length < MIN_CHARS
-                  ? `At least ${MIN_CHARS} characters.`
-                  : isCode && !task.runner
-                    ? "Runs aren't available for this language — the AI reads and marks your code."
-                    : "The AI marks only what's written here.")}
-          </span>
-          <span className="shrink-0 tabular-nums">
-            {content.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
-          </span>
-        </p>
+      <div className="shrink-0 space-y-3 border-t p-3">
         {error && !invalid ? (
           <Alert variant="destructive">
             <CircleAlert />
@@ -272,13 +262,27 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
             </AlertDescription>
           </Alert>
         ) : null}
-        {isLoading ? (
-          <p role="status" className="text-muted-foreground text-sm">
-            The AI is marking your answer. This can take up to a minute.
+        <div className="flex items-center justify-between gap-3">
+          <p id={hintId} className="text-muted-foreground min-w-0 text-xs">
+            {isLoading ? (
+              <span role="status">
+                The AI is marking your answer. This can take up to a minute.
+              </span>
+            ) : (
+              (invalid ??
+              (unchanged
+                ? "Change the starter code to answer the task."
+                : length < MIN_CHARS
+                  ? `At least ${MIN_CHARS} characters.`
+                  : isCode && !task.runner
+                    ? "Runs aren't available for this language — the AI reads and marks your code."
+                    : "The AI marks only what's written here."))
+            )}
+            <span className="block tabular-nums">
+              {content.length.toLocaleString()} / {MAX_CHARS.toLocaleString()} characters
+            </span>
           </p>
-        ) : null}
-        <div className="flex justify-end">
-          <Button type="submit" disabled={!canSubmit}>
+          <Button type="submit" disabled={!canSubmit} className="shrink-0">
             {isLoading ? <Spinner className="size-4" /> : null}
             {isLoading ? "Reviewing…" : latest ? "Submit again" : "Submit for review"}
           </Button>

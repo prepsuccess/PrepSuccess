@@ -74,6 +74,8 @@ export async function listForSkill(userId: string, slug: string): Promise<SkillT
         skill_id: task.skillId,
         title: task.title,
         difficulty: lower(task.difficulty),
+        language: taskLanguage(skill.slug),
+        runner: taskRunner(skill.slug),
         attempts: task.submissions.length,
         best:
           best === null

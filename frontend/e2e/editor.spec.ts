@@ -35,6 +35,11 @@ test("JavaScript runs in the browser and prints console output", async ({ page }
 
   const editor = page.getByRole("textbox", { name: "Your JavaScript answer" });
   await expect(editor).toContainText("your code here");
+  // A workspace: the app sidebar starts collapsed to give the editor room.
+  await expect(page.locator("[data-slot=sidebar]").first()).toHaveAttribute(
+    "data-state",
+    "collapsed",
+  );
   await expect(page.getByRole("button", { name: "Submit for review" })).toBeDisabled();
 
   await editor.fill(

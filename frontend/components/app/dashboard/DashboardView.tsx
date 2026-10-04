@@ -27,12 +27,16 @@ const ROW = {
   actions: "grid gap-4 xl:grid-cols-3",
   trends: "grid gap-4 xl:grid-cols-3",
 };
-// The detail row holds one to three cards, depending on what's unlocked.
+// The detail row holds one to four cards, depending on what's unlocked. Cards
+// in a row share its height, so their edges line up.
 const DETAIL_GRID: Record<number, string> = {
   1: "grid gap-4",
   2: "grid gap-4 md:grid-cols-2",
   3: "grid gap-4 md:grid-cols-2 xl:grid-cols-3",
+  4: "grid gap-4 md:grid-cols-2",
 };
+// Before the trend chart unlocks, the two category cards share the row evenly.
+const PAIR = "grid gap-4 md:grid-cols-2";
 const WIDE = "xl:col-span-2";
 const LAST_OF_THREE = "md:col-span-2 xl:col-span-1";
 const CATEGORY_STACK = "flex flex-col gap-4 [&>*:first-child]:flex-1";
@@ -140,8 +144,8 @@ export function DashboardView() {
     !ready.calendar && { title: "Practice calendar", need: "Finish your first check" },
   ].filter((item): item is Unlock => Boolean(item));
 
-  // Unlocks takes the trend chart's place while that's locked, otherwise it
-  // joins the detail row.
+  // What's still locked is listed last in the detail row, so it never sits
+  // short beside a taller card.
   const detail = [
     ready.skills &&
       ((cls: string) => <SkillScores key="skills" skills={data.skills} className={cls} />),
@@ -151,8 +155,7 @@ export function DashboardView() {
       ((cls: string) => (
         <PracticeCalendar key="calendar" checkDates={checkDates} className={cls} />
       )),
-    ready.trend &&
-      locked.length > 0 &&
+    locked.length > 0 &&
       ((cls: string) => <Unlocks key="unlocks" items={locked} className={cls} />),
   ].filter((card): card is (cls: string) => React.JSX.Element => Boolean(card));
 
@@ -171,17 +174,20 @@ export function DashboardView() {
         )}
       </div>
 
-      <div className={ROW.trends}>
-        {ready.trend ? (
+      {ready.trend ? (
+        <div className={ROW.trends}>
           <TrendChart history={history} className={WIDE} />
-        ) : (
-          <Unlocks items={locked} className={WIDE} />
-        )}
-        <div className={CATEGORY_STACK}>
+          <div className={CATEGORY_STACK}>
+            <CategoryBars readiness={data.readiness} />
+            <CoverageBar counts={data.counts} />
+          </div>
+        </div>
+      ) : (
+        <div className={PAIR}>
           <CategoryBars readiness={data.readiness} />
           <CoverageBar counts={data.counts} />
         </div>
-      </div>
+      )}
 
       {/* Phase 2: interview questions solved over time, and where to practise next. */}
       <InterviewPractice gaps={data.gaps} />

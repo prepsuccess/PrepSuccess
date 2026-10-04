@@ -9,52 +9,75 @@ import { z } from "zod";
  * SMTP is optional outside production: without it, OTP emails are logged.
  * Google keys are optional: without them, /auth/google answers 503.
  */
-const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(8000),
-  CORS_ORIGINS: z
-    .string()
-    .default("http://localhost:3000")
-    .transform((value) => value.split(",").map((origin) => origin.trim())),
-  /** Public URL of this API (no trailing slash). Builds the Google OAuth redirect URI. */
-  API_PUBLIC_URL: z.url().default("http://localhost:8000"),
-  /** Public URL of the Next.js app (no trailing slash). Google sign-in redirects back here. */
-  FRONTEND_URL: z.url().default("http://localhost:3000"),
-  DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().optional(),
-  JWT_ACCESS_SECRET: z.string().min(32, "Use at least 32 random characters."),
-  /** Also keys the HMAC used to hash refresh tokens and OTP codes at rest. */
-  JWT_REFRESH_SECRET: z.string().min(32, "Use at least 32 random characters."),
-  JWT_ACCESS_TTL: z.string().default("30m"),
-  JWT_REFRESH_TTL: z.string().default("7d"),
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  // ---- AI (services/ai-agent) ----
-  /** "fake" returns scripted replies (tests); "gemini" calls Google. */
-  AI_PROVIDER: z.enum(["gemini", "fake"]).default("gemini"),
-  GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
-  /** Tried when the main model is overloaded or rate-limited. Empty disables it. */
-  GEMINI_FALLBACK_MODEL: z.string().default("gemini-3.1-flash-lite"),
-  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
-  /** Free-trial length from signup. Metered from day one; only blocks when enforced. */
-  AI_TRIAL_DAYS: z.coerce.number().int().positive().default(120),
-  AI_TRIAL_ENFORCED: z.enum(["true", "false"]).default("false"),
-  /** Successful AI calls per user per day — protects the shared free-tier quota. */
-  AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(200),
-  // ---- Monitoring ----
-  /** Sentry project DSN. Empty disables error tracking. */
-  SENTRY_DSN: z.string().optional(),
-  /** Defaults to NODE_ENV; set "staging" on the staging service. */
-  SENTRY_ENVIRONMENT: z.string().optional(),
-  /** Share of requests traced for performance (0-1). Errors are always sent. */
-  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
-  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
-  /** Serve Swagger UI at /docs. Defaults to on outside production. */
-  API_DOCS_ENABLED: z.enum(["true", "false"]).optional(),
-});
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().int().positive().default(8000),
+    CORS_ORIGINS: z
+      .string()
+      .default("http://localhost:3000")
+      .transform((value) => value.split(",").map((origin) => origin.trim())),
+    /** Public URL of this API (no trailing slash). Builds the Google OAuth redirect URI. */
+    API_PUBLIC_URL: z.url().default("http://localhost:8000"),
+    /** Public URL of the Next.js app (no trailing slash). Google sign-in redirects back here. */
+    FRONTEND_URL: z.url().default("http://localhost:3000"),
+    DATABASE_URL: z.string().min(1),
+    DIRECT_URL: z.string().optional(),
+    JWT_ACCESS_SECRET: z.string().min(32, "Use at least 32 random characters."),
+    /** Also keys the HMAC used to hash refresh tokens and OTP codes at rest. */
+    JWT_REFRESH_SECRET: z.string().min(32, "Use at least 32 random characters."),
+    JWT_ACCESS_TTL: z.string().default("30m"),
+    JWT_REFRESH_TTL: z.string().default("7d"),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    // ---- AI (services/ai-agent) ----
+    /** "fake" returns scripted replies (tests); "gemini" calls Google. */
+    AI_PROVIDER: z.enum(["gemini", "fake"]).default("gemini"),
+    GEMINI_API_KEY: z.string().optional(),
+    GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
+    /** Tried when the main model is overloaded or rate-limited. Empty disables it. */
+    GEMINI_FALLBACK_MODEL: z.string().default("gemini-3.1-flash-lite"),
+    AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+    /** Free-trial length from signup. Metered from day one; only blocks when enforced. */
+    AI_TRIAL_DAYS: z.coerce.number().int().positive().default(120),
+    AI_TRIAL_ENFORCED: z.enum(["true", "false"]).default("false"),
+    /** Successful AI calls per user per day — protects the shared free-tier quota. */
+    AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().positive().default(200),
+    // ---- Monitoring ----
+    /** Sentry project DSN. Empty disables error tracking. */
+    SENTRY_DSN: z.string().optional(),
+    /** Defaults to NODE_ENV; set "staging" on the staging service. */
+    SENTRY_ENVIRONMENT: z.string().optional(),
+    /** Share of requests traced for performance (0-1). Errors are always sent. */
+    SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
+    LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+    /** Serve Swagger UI at /docs. Defaults to on outside production. */
+    API_DOCS_ENABLED: z.enum(["true", "false"]).optional(),
+  })
+  .superRefine((env, ctx) => {
+    // The localhost defaults are for development. In production a missing URL would
+    // send Google sign-in (and CORS) to localhost, so refuse to boot instead.
+    if (env.NODE_ENV !== "production") return;
+    const local = (url: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url);
+    for (const key of ["API_PUBLIC_URL", "FRONTEND_URL"] as const) {
+      if (local(env[key])) {
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: "Set the public URL for production.",
+        });
+      }
+    }
+    if (env.CORS_ORIGINS.some(local)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["CORS_ORIGINS"],
+        message: "Set the frontend's public origin for production.",
+      });
+    }
+  });
 
 const parsed = envSchema.safeParse(process.env);
 

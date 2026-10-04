@@ -12,7 +12,7 @@ import { CategoryBars, CoverageBar } from "./Bars";
 import { RetakeBars, SkillScores, TrendChart } from "./Charts";
 import { CoachInsight, CoachInsightPlaceholder, CoachInsightSkeleton } from "./CoachInsight";
 import { CARD_SURFACE, DashCard } from "./DashCard";
-import { FeedbackCard } from "./FeedbackCard";
+import { FeedbackCard, useFeedbackCardDismissed } from "./FeedbackCard";
 import { InterviewPractice } from "./InterviewPractice";
 import { NextSteps } from "./NextSteps";
 import { PracticeCalendar } from "./PracticeCalendar";
@@ -93,7 +93,6 @@ function DashboardSkeleton() {
         <Block body="h-[254px]" />
         <Block className={LAST_OF_THREE} body="h-[254px]" />
       </div>
-      <Block body="h-[68px]" />
     </Rows>
   );
 }
@@ -101,6 +100,7 @@ function DashboardSkeleton() {
 /** The student's home: where they stand, why, and what to do next (GET /dashboard). */
 export function DashboardView() {
   const query = useGetDashboardQuery();
+  const [feedbackDismissed, dismissFeedback] = useFeedbackCardDismissed();
   const showSkeleton = useDelayedFlag(query.isLoading);
   const hasData = Boolean(query.data);
   const hasResults = (query.data?.counts.checked ?? 0) > 0;
@@ -164,6 +164,8 @@ export function DashboardView() {
   return (
     <Rows>
       <AiUsageNotice />
+      {/* Feedback starts at the top; closing it moves it to the bottom. */}
+      {feedbackDismissed ? null : <FeedbackCard onDismiss={dismissFeedback} />}
       <StatTiles data={data} />
 
       <div className={ROW.actions}>
@@ -201,8 +203,8 @@ export function DashboardView() {
         </div>
       ) : null}
 
-      {/* Last, on a row of its own: tell us what to fix or add. */}
-      <FeedbackCard />
+      {/* Closed from the top: it lives here, last, on a row of its own. */}
+      {feedbackDismissed ? <FeedbackCard /> : null}
     </Rows>
   );
 }

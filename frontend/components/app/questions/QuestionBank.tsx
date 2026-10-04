@@ -11,6 +11,8 @@ import {
   FileText,
   Search,
   SearchX,
+  SlidersHorizontal,
+  UserRoundCheck,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/shadcn/badge";
@@ -25,11 +27,21 @@ import {
   useGetQuestionsQuery,
   type QuestionsQuery,
 } from "@/lib/api/endpoints/questions";
+import { useGetMySkillsQuery } from "@/lib/api/endpoints/skills";
 import type { QuestionSummary } from "@/lib/api/types";
 
 export const PAGE_SIZE = 20;
 const ALL = "all";
-const FILTER_KEYS = ["skill", "company", "role", "topic", "difficulty", "status", "q"] as const;
+const FILTER_KEYS = [
+  "skill",
+  "company",
+  "role",
+  "topic",
+  "difficulty",
+  "status",
+  "q",
+  "mine",
+] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 const DIFFICULTIES = [
@@ -65,7 +77,16 @@ function useUrlFilters() {
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
   const active = FILTER_KEYS.filter((key) => value(key)).length;
-  return { value, page, set, active, clear: () => router.replace(pathname, { scroll: false }) };
+  // The dropdown filters only; search and "My skills" sit outside the panel.
+  const picked = FILTER_KEYS.filter((key) => key !== "q" && key !== "mine" && value(key)).length;
+  return {
+    value,
+    page,
+    set,
+    active,
+    picked,
+    clear: () => router.replace(pathname, { scroll: false }),
+  };
 }
 
 function QuestionCard({ question }: { question: QuestionSummary }) {
@@ -121,6 +142,16 @@ export function QuestionBank() {
   const skill = filters.value("skill");
   const { data: options } = useGetQuestionFiltersQuery(skill || undefined);
   const searchId = useId();
+  const panelId = useId();
+  // Closed by default; open when the page arrives already filtered (a shared link).
+  const [showFilters, setShowFilters] = useState(() => filters.picked > 0);
+
+  // "My skills": the skills on the student's profile, matched to the catalogue
+  // the same way the server matches them for ?mine=1.
+  const mine = filters.value("mine") === "1";
+  const { data: mySkills } = useGetMySkillsQuery();
+  const claimed = mySkills?.skills.filter((s) => s.claimed) ?? [];
+  const noProfileSkills = mine && !!mySkills && claimed.length === 0;
 
   // Search updates the URL a moment after typing stops.
   const urlSearch = filters.value("q");
@@ -145,6 +176,7 @@ export function QuestionBank() {
     difficulty: (filters.value("difficulty") || undefined) as QuestionsQuery["difficulty"],
     status: (filters.value("status") || undefined) as QuestionsQuery["status"],
     q: urlSearch || undefined,
+    mine: mine || undefined,
     page: filters.page,
     limit: PAGE_SIZE,
   };
@@ -193,39 +225,80 @@ export function QuestionBank() {
             Prep guides
           </Link>
         </Button>
+        <Button
+          variant={mine ? "default" : "outline"}
+          size="sm"
+          aria-pressed={mine}
+          onClick={() => filters.set({ mine: mine ? "" : "1" })}
+          className="pointer-coarse:h-11"
+        >
+          <UserRoundCheck />
+          My skills
+        </Button>
+        <Button
+          variant={showFilters ? "secondary" : "outline"}
+          size="sm"
+          aria-expanded={showFilters}
+          aria-controls={panelId}
+          aria-label={filters.picked ? `Filters, ${filters.picked} on` : undefined}
+          onClick={() => setShowFilters((open) => !open)}
+          className="pointer-coarse:h-11"
+        >
+          <SlidersHorizontal />
+          Filters
+          {filters.picked ? (
+            <Badge aria-hidden className="ml-0.5 h-5 min-w-5 px-1.5 tabular-nums">
+              {filters.picked}
+            </Badge>
+          ) : null}
+        </Button>
       </div>
 
-      <section aria-label="Filters" className="bg-card space-y-4 rounded-2xl border p-4 shadow-xs">
-        <div className="space-y-1.5">
-          <label htmlFor={searchId} className="text-foreground text-sm font-medium">
-            Search questions
-          </label>
-          <div className="relative">
-            <Search
-              aria-hidden
-              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-            />
-            <input
-              id={searchId}
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="e.g. joins, closures, deadlock"
-              autoComplete="off"
-              className="border-input bg-card focus-visible:border-ring h-11 w-full rounded-xl border pr-10 pl-9 text-base outline-none md:text-sm [&::-webkit-search-cancel-button]:hidden"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Clear search"
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg outline-none focus-visible:ring-3"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+      <div className="space-y-1.5">
+        <label htmlFor={searchId} className="text-foreground text-sm font-medium">
+          Search questions
+        </label>
+        <div className="relative">
+          <Search
+            aria-hidden
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+          />
+          <input
+            id={searchId}
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="e.g. joins, closures, deadlock"
+            autoComplete="off"
+            className="border-input bg-card focus-visible:border-ring h-11 w-full rounded-xl border pr-10 pl-9 text-base outline-none md:text-sm [&::-webkit-search-cancel-button]:hidden"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg outline-none focus-visible:ring-3"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
+        {mine && claimed.length ? (
+          <p className="text-muted-foreground text-sm">
+            Showing your skills: {claimed.map((s) => s.name).join(", ")} ·{" "}
+            <Link href="/profile" className="text-foreground underline underline-offset-4">
+              Edit
+            </Link>
+          </p>
+        ) : null}
+      </div>
+
+      <section
+        id={panelId}
+        aria-label="Filters"
+        hidden={!showFilters}
+        className="bg-card space-y-4 rounded-2xl border p-4 shadow-xs"
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* A new skill has its own topics, so the topic filter resets. */}
           {select(
@@ -244,14 +317,21 @@ export function QuestionBank() {
           {select("difficulty", "Difficulty", "Any difficulty", DIFFICULTIES)}
           {select("status", "Your progress", "All questions", STATUSES)}
         </div>
-        {filters.active ? (
+        {filters.picked ? (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setSearch("");
-              filters.clear();
-            }}
+            // Resets the dropdowns only; the search box has its own clear button.
+            onClick={() =>
+              filters.set({
+                skill: "",
+                company: "",
+                role: "",
+                topic: "",
+                difficulty: "",
+                status: "",
+              })
+            }
             className="pointer-coarse:h-11"
           >
             <X />
@@ -266,22 +346,35 @@ export function QuestionBank() {
         errorTitle="Couldn't load questions"
         isEmpty={(data) => data.meta.total === 0}
         empty={
-          <EmptyPanel
-            icon={SearchX}
-            title="No questions match"
-            description="Try fewer filters or a different search."
-            action={
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearch("");
-                  filters.clear();
-                }}
-              >
-                Clear filters
-              </Button>
-            }
-          />
+          noProfileSkills ? (
+            <EmptyPanel
+              icon={UserRoundCheck}
+              title="No skills on your profile yet"
+              description="Add the skills you know to your profile, and My skills shows questions for just those."
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/profile">Add skills</Link>
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyPanel
+              icon={SearchX}
+              title="No questions match"
+              description="Try fewer filters or a different search."
+              action={
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearch("");
+                    filters.clear();
+                  }}
+                >
+                  Clear filters
+                </Button>
+              }
+            />
+          )
         }
       >
         {({ questions, meta }) => {

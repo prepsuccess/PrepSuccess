@@ -49,6 +49,7 @@ const db = vi.hoisted(() => {
     pdf: null as null | Record<string, unknown>,
     lastWhere: null as unknown,
     lastPage: null as unknown,
+    profileSkills: [] as unknown[],
   };
   const mine = (userId: string, questionId: string) =>
     state.progress.filter((p) => p.userId === userId && p.questionId === questionId);
@@ -93,6 +94,9 @@ const db = vi.hoisted(() => {
           isActive: true,
           isDeleted: false,
         })),
+      },
+      userProfile: {
+        findUnique: vi.fn(async () => ({ profileData: { skills: state.profileSkills } })),
       },
       questionBank: {
         findMany: vi.fn(async (args) => {
@@ -511,6 +515,34 @@ describe("who can do what", () => {
     await request(app).get("/api/v1/admin/questions").set(admin);
     expect(db.state.lastWhere).not.toHaveProperty("isActive");
     const bad = await request(app).get("/api/v1/admin/questions?include_inactive=yes").set(admin);
+    expect(bad.status).toBe(422);
+  });
+
+  it("mine=true keeps only the skills on the student's profile", async () => {
+    // Free text from the profile: an alias, a stack, and something not in the catalogue.
+    db.state.profileSkills = ["JS", "MERN stack", "Pottery", 42];
+    const res = await request(app).get("/api/v1/questions?mine=true").set(student);
+    expect(res.status).toBe(200);
+    const where = db.state.lastWhere as { AND: Record<string, unknown>[] };
+    const bySkills = where.AND.find((c) => (c.skill as { slug?: { in?: string[] } })?.slug?.in) as {
+      skill: { slug: { in: string[] } };
+    };
+    expect(bySkills.skill.slug.in).toEqual(
+      expect.arrayContaining(["javascript", "mongodb", "react", "nodejs"]),
+    );
+    expect(bySkills.skill.slug.in).not.toContain("pottery");
+
+    // No skills on the profile: nothing matches, rather than everything.
+    db.state.profileSkills = [];
+    await request(app).get("/api/v1/questions?mine=true").set(student);
+    expect(db.state.lastWhere).toMatchObject({
+      AND: expect.arrayContaining([{ skill: { slug: { in: [] } } }]),
+    });
+
+    // Off by default; any other value is rejected.
+    await request(app).get("/api/v1/questions").set(student);
+    expect(JSON.stringify(db.state.lastWhere)).not.toContain('"in"');
+    const bad = await request(app).get("/api/v1/questions?mine=yes").set(student);
     expect(bad.status).toBe(422);
   });
 

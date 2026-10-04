@@ -24,6 +24,14 @@ export const listQuestionsQuerySchema = z
       .enum(["bookmarked", "solved", "unsolved"])
       .optional()
       .meta({ description: "Your own progress on the question." }),
+    mine: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+      .meta({
+        description:
+          "`true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty.",
+      }),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(PAGE_LIMIT_MAX).default(PAGE_LIMIT_DEFAULT),
   })

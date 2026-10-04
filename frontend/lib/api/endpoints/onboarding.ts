@@ -46,7 +46,9 @@ export const onboardingApi = baseApi.injectEndpoints({
       // usage is refetched either way. Finishing onboarding also changes the
       // dashboard's next steps and the claimed skills.
       invalidatesTags: (result) =>
-        result?.onboarding.completed ? ["AiStatus", "Dashboard", "MySkills"] : ["AiStatus"],
+        result?.onboarding.completed
+          ? ["AiStatus", "Dashboard", "MySkills", "Questions"]
+          : ["AiStatus"],
     }),
   }),
 });

@@ -21,8 +21,8 @@ export const usersApi = baseApi.injectEndpoints({
           // The form shows the error; the cache keeps the last good user.
         }
       },
-      // Profile skills feed the claimed skills and the dashboard.
-      invalidatesTags: (result) => (result ? ["Dashboard", "MySkills"] : []),
+      // Profile skills feed the claimed skills, the dashboard and "My skills" questions.
+      invalidatesTags: (result) => (result ? ["Dashboard", "MySkills", "Questions"] : []),
     }),
   }),
 });

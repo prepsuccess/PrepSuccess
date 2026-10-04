@@ -75,6 +75,11 @@ describe("QuestionBank", () => {
     expect(sent?.get("company")).toBe("TCS");
     expect(sent?.get("page")).toBe("2");
     expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    // Arriving already filtered opens the panel and counts the filters on its button.
+    expect(screen.getByRole("button", { name: "Filters, 2 on" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     // A skill is chosen, so its topics can be picked.
     expect(screen.getByLabelText("Topic")).toBeInTheDocument();
   });
@@ -109,6 +114,13 @@ describe("QuestionBank", () => {
     renderWithStore(<QuestionBank />, { signedInAs: testUser });
     await screen.findByRole("link", { name: /WHERE and HAVING/ });
 
+    // The filters start folded away behind their button.
+    expect(screen.queryByRole("combobox", { name: "Company" })).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Filters" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
     // The company changes the URL, but this render's search params are still the old ones
     // when the search debounce fires.
     await userEvent.click(screen.getByRole("combobox", { name: "Company" }));
@@ -120,6 +132,65 @@ describe("QuestionBank", () => {
         scroll: false,
       }),
     );
+  });
+
+  const mySkill = (name: string, slug: string, claimed: boolean) => ({
+    id: crypto.randomUUID(),
+    slug,
+    name,
+    category: "technical" as const,
+    topic: null,
+    description: null,
+    mastery_threshold: 40,
+    claimed,
+    in_progress_id: null,
+    last_result: null,
+    attempts: 0,
+  });
+
+  it("My skills narrows the list to the skills on the profile", async () => {
+    setUrl("mine=1");
+    let sent: URLSearchParams | undefined;
+    server.use(
+      http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
+      http.get(`${API}/api/v1/skills/mine`, () =>
+        ok({
+          skills: [mySkill("SQL", "sql", true), mySkill("Java", "java", false)],
+          unmatched_claims: [],
+        }),
+      ),
+      http.get(`${API}/api/v1/questions`, ({ request }) => {
+        sent = new URL(request.url).searchParams;
+        return HttpOk([summary], { page: 1, limit: 20, total: 1 });
+      }),
+    );
+    renderWithStore(<QuestionBank />, { signedInAs: testUser });
+
+    await screen.findByRole("link", { name: /WHERE and HAVING/ });
+    expect(sent?.get("mine")).toBe("true");
+    expect(await screen.findByText(/Showing your skills: SQL/)).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "My skills" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    // It isn't one of the panel's filters, so the Filters button stays uncounted.
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    expect(replace).toHaveBeenLastCalledWith("/questions", { scroll: false });
+  });
+
+  it("My skills with nothing on the profile points to the profile", async () => {
+    setUrl("mine=1");
+    server.use(
+      http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
+      http.get(`${API}/api/v1/skills/mine`, () =>
+        ok({ skills: [mySkill("SQL", "sql", false)], unmatched_claims: [] }),
+      ),
+      http.get(`${API}/api/v1/questions`, () => HttpOk([], { page: 1, limit: 20, total: 0 })),
+    );
+    renderWithStore(<QuestionBank />, { signedInAs: testUser });
+
+    expect(await screen.findByText("No skills on your profile yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add skills" })).toHaveAttribute("href", "/profile");
   });
 
   it("moves to the last page when ?page is past the end", async () => {

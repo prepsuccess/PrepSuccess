@@ -9,6 +9,7 @@ import type {
 import { AppError } from "../../lib/http.js";
 import { startOfIndianDay } from "../../lib/time.js";
 import { getDashboard } from "../dashboard/dashboard.service.js";
+import { matchClaims } from "../skills/skills.logic.js";
 import { buildWhere, solvedByWeek } from "./questions.logic.js";
 import type { ListQuestionsQuery, QuestionDetail, QuestionSummary } from "./questions.schemas.js";
 
@@ -50,10 +51,28 @@ const withMine = (userId: string) => ({
   progress: { where: { userId } },
 });
 
+/** Catalogue slugs for the skills on the student's profile (same matching as the dashboard). */
+async function profileSkillSlugs(userId: string) {
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId },
+    select: { profileData: true },
+  });
+  const data = (profile?.profileData ?? {}) as Record<string, unknown>;
+  const claims = Array.isArray(data.skills)
+    ? data.skills.filter((s): s is string => typeof s === "string")
+    : [];
+  return matchClaims(claims).slugs;
+}
+
 /** GET /questions — filtered, paginated, easiest first within each skill. */
 export async function listQuestions(userId: string, query: ListQuestionsQuery) {
+  const { mine, ...filters } = query;
   const where = buildWhere(
-    { ...query, difficulty: query.difficulty ? upper(query.difficulty) : undefined },
+    {
+      ...filters,
+      difficulty: filters.difficulty ? upper(filters.difficulty) : undefined,
+      skills: mine ? await profileSkillSlugs(userId) : undefined,
+    },
     userId,
   );
   const [rows, total] = await Promise.all([

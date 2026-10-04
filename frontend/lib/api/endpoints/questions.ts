@@ -18,6 +18,8 @@ export interface QuestionsQuery {
   difficulty?: QuestionDifficulty;
   q?: string;
   status?: "bookmarked" | "solved" | "unsolved";
+  /** Only the skills on the student's profile. */
+  mine?: boolean;
   page: number;
   limit: number;
 }

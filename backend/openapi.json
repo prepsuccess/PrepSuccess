@@ -1627,6 +1627,20 @@
           },
           {
             "in": "query",
+            "name": "mine",
+            "schema": {
+              "description": "`true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty.",
+              "default": "false",
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "description": "`true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty."
+          },
+          {
+            "in": "query",
             "name": "page",
             "schema": {
               "default": 1,

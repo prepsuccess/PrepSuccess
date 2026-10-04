@@ -1345,6 +1345,8 @@ export interface paths {
                     q?: string;
                     /** @description Your own progress on the question. */
                     status?: "bookmarked" | "solved" | "unsolved";
+                    /** @description `true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty. */
+                    mine?: "true" | "false";
                     page?: number;
                     limit?: number;
                 };

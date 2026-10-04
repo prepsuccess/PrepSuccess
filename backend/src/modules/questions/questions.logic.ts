@@ -22,6 +22,8 @@ export interface QuestionFilters {
   difficulty?: Difficulty;
   q?: string;
   status?: QuestionStatusFilter;
+  /** Only these skill slugs (the student's own skills); empty matches nothing. */
+  skills?: string[];
 }
 
 const live = { isActive: true, isDeleted: false } as const;
@@ -30,6 +32,7 @@ const live = { isActive: true, isDeleted: false } as const;
 export function buildWhere(filters: QuestionFilters, userId: string) {
   const and: Prisma.QuestionBankWhereInput[] = [{ ...live, skill: live }];
   if (filters.skill) and.push({ skill: { slug: filters.skill } });
+  if (filters.skills) and.push({ skill: { slug: { in: filters.skills } } });
   if (filters.company) and.push({ company: filters.company });
   if (filters.role) and.push({ role: filters.role });
   if (filters.topic) and.push({ topic: { equals: filters.topic, mode: "insensitive" } });

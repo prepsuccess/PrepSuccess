@@ -10,6 +10,10 @@ const skillResultSchema = z
     category,
     assessment_id: z.uuid().meta({ description: "The latest finished check, to review answers." }),
     percent: z.number().int().meta({ example: 64 }),
+    threshold: z.number().int().meta({
+      description: "The pass mark (percent) this result was scored against.",
+      example: 40,
+    }),
     mastery: z.enum(["mastered", "needs_revision"]),
     completed_at: z.iso.datetime(),
     attempts: z.number().int(),
@@ -70,7 +74,12 @@ export const dashboardSchema = z
     skills: z.array(skillResultSchema).meta({ description: "Latest result per checked skill." }),
     gaps: z
       .array(skillResultSchema)
-      .meta({ description: "Up to 3 skills below the pass mark, weakest first." }),
+      .meta({ description: "Up to 3 skills below their pass mark, weakest first." }),
+    check_dates: z.array(z.iso.date()).meta({
+      description:
+        "The India date of every check finished in the last 365 days, oldest first (one entry per check), for the practice calendar.",
+      example: ["2026-09-28", "2026-10-02", "2026-10-02"],
+    }),
     next_steps: z.array(
       z.object({
         id: z.string(),
@@ -99,6 +108,10 @@ export const insightResponseSchema = z
     ),
     plan: z.array(z.object({ title: z.string(), detail: z.string() })),
     generated_at: z.iso.datetime().nullable(),
+    stale: z.boolean().optional().meta({
+      description:
+        "True when the results changed but refreshing the take failed (e.g. the AI is busy): this is the previous take.",
+    }),
   })
   .meta({ id: "AiInsight" });
 

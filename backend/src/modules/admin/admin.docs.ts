@@ -98,12 +98,17 @@ export const adminPaths: ZodOpenApiPathsObject = {
       "Create a skill",
       {
         ...ok(adminSkillSchema, "Created.", "201"),
-        ...errors({ ...adminOnly, 409: "`SLUG_TAKEN`.", ...VALIDATION_422 }),
+        ...errors({
+          ...adminOnly,
+          409: "`SLUG_TAKEN` — a skill that isn't deleted uses that slug.",
+          ...VALIDATION_422,
+        }),
       },
       {
         description:
           "Onboarding claims are matched against the built-in catalogue's aliases, so a new skill " +
-          "can be checked from the skill list but isn't auto-matched from the chat yet.",
+          "can be checked from the skill list but isn't auto-matched from the chat yet. If a " +
+          "deleted skill has the slug, it is restored with the new details instead.",
         requestBody: json(createSkillSchema),
       },
     ),

@@ -8,7 +8,7 @@ import {
   currentQuestion,
   drawPool,
   levelsToTopUp,
-  maxScoreFor,
+  maxScoreForPool,
   nextDifficulty,
   percentOf,
   pickQuestion,
@@ -101,7 +101,9 @@ const MAX_TOP_UPS = 2;
  * starts one of `questionCount` questions drawn from the skill's shared bank,
  * preferring questions this student hasn't seen. If the bank is short of
  * fresh questions the AI adds a batch first (it only grows to 100), so most
- * checks start with no AI call at all. Nothing is saved if that call fails.
+ * checks start with no AI call at all. If that call fails (daily limit, AI
+ * busy) the check still starts when the bank can already fill it; otherwise
+ * the AI's error is returned and nothing is saved.
  */
 export async function startAssessment(userId: string, skillId: string, questionCount: number) {
   const skill = await prisma.skill.findFirst({
@@ -109,11 +111,7 @@ export async function startAssessment(userId: string, skillId: string, questionC
   });
   if (!skill) throw new AppError(404, "SKILL_NOT_FOUND", "That skill isn't available.");
 
-  const unfinished = await prisma.assessment.findFirst({
-    where: { userId, skillId, status: "IN_PROGRESS" },
-    include: withSkillAndResult,
-    orderBy: { startedAt: "desc" },
-  });
+  const unfinished = await findUnfinished(prisma, userId, skillId);
   if (unfinished) return toState(unfinished);
 
   const previous = await prisma.assessment.findMany({
@@ -123,16 +121,25 @@ export async function startAssessment(userId: string, skillId: string, questionC
   const seen = seenBankIds(previous);
 
   let bank = await loadBank(skill.id);
+  let topUpError: unknown = null;
   for (let call = 0; call < MAX_TOP_UPS; call++) {
-    const levels = levelsToTopUp(bank, seen, questionCount);
+    const levels = levelsToTopUp(bank.questions, seen, questionCount, bank.stored);
     if (!levels.length) break;
-    const added = await topUpBank(skill, levels, userId);
+    let added: number;
+    try {
+      added = await topUpBank(skill, levels, userId);
+    } catch (error) {
+      // Topping up is only a nice-to-have when the bank can already fill the check.
+      topUpError = error;
+      break;
+    }
     bank = await loadBank(skill.id);
     if (!added) break;
   }
 
-  const questions = drawPool(bank, seen, questionCount);
+  const questions = drawPool(bank.questions, seen, questionCount);
   if (!poolIsUsable(questions, questionCount)) {
+    if (topUpError) throw topUpError;
     throw new AppError(
       503,
       "NOT_ENOUGH_QUESTIONS",
@@ -142,16 +149,32 @@ export async function startAssessment(userId: string, skillId: string, questionC
   const first = pickQuestion(questions, START_DIFFICULTY)!;
   first.asked_order = 1;
 
-  const created = await prisma.assessment.create({
-    data: {
-      userId,
-      skillId,
-      questionCount,
-      questions: questions as unknown as Prisma.InputJsonArray,
-    },
-    include: withSkillAndResult,
+  return prisma.$transaction(async (tx) => {
+    // Two tabs starting the same skill at once: the second waits here, then
+    // finds the first one's check and resumes it instead of starting another.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`assessment:${userId}:${skillId}`}::text))`;
+    const started = await findUnfinished(tx, userId, skillId);
+    if (started) return toState(started);
+
+    const created = await tx.assessment.create({
+      data: {
+        userId,
+        skillId,
+        questionCount,
+        questions: questions as unknown as Prisma.InputJsonArray,
+      },
+      include: withSkillAndResult,
+    });
+    return toState(created);
   });
-  return toState(created);
+}
+
+function findUnfinished(db: Prisma.TransactionClient, userId: string, skillId: string) {
+  return db.assessment.findFirst({
+    where: { userId, skillId, status: "IN_PROGRESS" },
+    include: withSkillAndResult,
+    orderBy: { startedAt: "desc" },
+  });
 }
 
 /** GET /ai/assessment/:id — the attempt so far, to resume or review. */
@@ -225,7 +248,8 @@ export async function answerQuestion(
     }
     if (complete) {
       const score = scoreOf(questions);
-      const maxScore = maxScoreFor(assessment.questionCount);
+      // Out of what this check's own pool allowed (see maxScoreForPool).
+      const maxScore = maxScoreForPool(questions, assessment.questionCount);
       await tx.assessmentResult.create({
         data: {
           assessmentId: assessment.id,

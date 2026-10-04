@@ -20,6 +20,8 @@ const BCRYPT_ROUNDS = 12;
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 3;
 const OTP_RESEND_SECONDS = 60;
+/** A just-rotated refresh token replayed within this window is a second tab, not a thief. */
+const REFRESH_RACE_GRACE_MS = 60_000;
 
 // Compared against when the email doesn't exist, so a login for an unknown
 // account takes as long as one with a wrong password (no user enumeration).
@@ -49,8 +51,8 @@ async function recentlySent(email: string, purpose: OtpPurpose) {
   return Boolean(latest && Date.now() - latest.createdAt.getTime() < OTP_RESEND_SECONDS * 1000);
 }
 
-/** Stores a fresh code (only the newest one is valid) and emails it. */
-async function issueOtp(email: string, purpose: OtpPurpose) {
+/** Stores a fresh code (only the newest one is valid) and returns it with its row id. */
+async function storeOtp(email: string, purpose: OtpPurpose) {
   const code = generateOtp();
   const [, created] = await prisma.$transaction([
     prisma.emailOtp.updateMany({
@@ -67,26 +69,20 @@ async function issueOtp(email: string, purpose: OtpPurpose) {
       select: { id: true },
     }),
   ]);
-
-  try {
-    await sendOtpEmail(email, code, OTP_TTL_MINUTES, purpose);
-  } catch (error) {
-    logger.error({ err: error, purpose }, "OTP email failed");
-    // Drop the undelivered code so the resend cooldown doesn't block a retry.
-    await prisma.emailOtp.delete({ where: { id: created.id } }).catch(() => {});
-    throw new AppError(
-      503,
-      "EMAIL_SEND_FAILED",
-      "We couldn't send the code right now. Please try again.",
-    );
-  }
+  return { id: created.id, code };
 }
+
+const tooManyAttempts = () =>
+  new AppError(400, "OTP_TOO_MANY_ATTEMPTS", "Too many wrong attempts. Request a new code.");
 
 /**
  * Checks a code against the newest unused one for this email + purpose. A
  * wrong code uses up an attempt; the third wrong one burns the code. A right
  * code isn't consumed here — consumeOtp does that inside the transaction
  * that acts on it.
+ *
+ * The attempt is claimed atomically before comparing, so parallel guesses
+ * can't all read "0 attempts used" and get more than OTP_MAX_ATTEMPTS tries.
  */
 async function checkOtp(email: string, purpose: OtpPurpose, code: string) {
   const otp = await prisma.emailOtp.findFirst({
@@ -100,29 +96,39 @@ async function checkOtp(email: string, purpose: OtpPurpose, code: string) {
   if (otp.expiresAt.getTime() < Date.now()) {
     throw new AppError(400, "OTP_EXPIRED", "That code has expired. Request a new one.");
   }
-  if (otp.attempts >= OTP_MAX_ATTEMPTS) {
-    throw new AppError(
-      400,
-      "OTP_TOO_MANY_ATTEMPTS",
-      "Too many wrong attempts. Request a new code.",
-    );
-  }
-  if (!safeEqual(otp.otpHash, hashOtp(email, code))) {
-    const attempts = otp.attempts + 1;
+
+  const claimed = await prisma.emailOtp.updateMany({
+    where: { id: otp.id, isUsed: false, attempts: { lt: OTP_MAX_ATTEMPTS } },
+    data: { attempts: { increment: 1 } },
+  });
+  if (claimed.count === 0) throw tooManyAttempts();
+
+  if (safeEqual(otp.otpHash, hashOtp(email, code))) {
+    // A right code doesn't count against them (it matters if what follows fails).
     await prisma.emailOtp.update({
       where: { id: otp.id },
-      data: { attempts, ...(attempts >= OTP_MAX_ATTEMPTS ? { isUsed: true } : {}) },
+      data: { attempts: { decrement: 1 } },
     });
-    const left = OTP_MAX_ATTEMPTS - attempts;
-    throw new AppError(
-      400,
-      "OTP_INVALID",
-      left > 0
-        ? `That code isn't right. ${left} attempt${left === 1 ? "" : "s"} left.`
-        : "Too many wrong attempts. Request a new code.",
-    );
+    return otp;
   }
-  return otp;
+
+  // Burn the code once the last attempt is used, then report what's left.
+  await prisma.emailOtp.updateMany({
+    where: { id: otp.id, attempts: { gte: OTP_MAX_ATTEMPTS } },
+    data: { isUsed: true },
+  });
+  const current = await prisma.emailOtp.findUnique({
+    where: { id: otp.id },
+    select: { attempts: true },
+  });
+  const left = Math.max(0, OTP_MAX_ATTEMPTS - (current?.attempts ?? OTP_MAX_ATTEMPTS));
+  throw new AppError(
+    400,
+    "OTP_INVALID",
+    left > 0
+      ? `That code isn't right. ${left} attempt${left === 1 ? "" : "s"} left.`
+      : "Too many wrong attempts. Request a new code.",
+  );
 }
 
 /** Marks a checked code used, atomically, so two concurrent requests can't both use it. */
@@ -136,6 +142,12 @@ async function consumeOtp(tx: Prisma.TransactionClient, otpId: string) {
   }
 }
 
+/**
+ * POST /auth/send-otp. Unlike forgot-password this answers 409 for a
+ * registered email — accepted on purpose: signup has to tell people to log in
+ * instead, and the endpoint is rate limited. The email is sent before
+ * answering so a failure can be reported (503) and retried straight away.
+ */
 export async function sendSignupOtp(email: string) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) {
@@ -153,7 +165,19 @@ export async function sendSignupOtp(email: string) {
     );
   }
 
-  await issueOtp(email, "SIGNUP");
+  const otp = await storeOtp(email, "SIGNUP");
+  try {
+    await sendOtpEmail(email, otp.code, OTP_TTL_MINUTES, "SIGNUP");
+  } catch (error) {
+    logger.error({ err: error, purpose: "SIGNUP" }, "OTP email failed");
+    // Drop the undelivered code so the resend cooldown doesn't block a retry.
+    await prisma.emailOtp.delete({ where: { id: otp.id } }).catch(() => {});
+    throw new AppError(
+      503,
+      "EMAIL_SEND_FAILED",
+      "We couldn't send the code right now. Please try again.",
+    );
+  }
   return { message: `We sent a 6-digit code to ${email}.`, email };
 }
 
@@ -205,20 +229,26 @@ export async function register(input: RegisterInput) {
  * POST /auth/forgot-password. Answers the same way whether or not the email
  * has an account (and inside the resend cooldown), so it can't be used to
  * find out who's registered. Only active accounts are sent a code.
+ *
+ * The email isn't awaited: SMTP latency or a failure would otherwise show
+ * which addresses have an account. A failed send is only logged; the code
+ * row stays, so asking again after the cooldown sends a fresh one.
  */
 export async function sendPasswordResetOtp(email: string) {
   const response = {
     message: `If ${email} has a PrepSuccess account, we sent a 6-digit code to it.`,
     email,
   };
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { isActive: true, isDeleted: true },
-  });
-  if (!user || !user.isActive || user.isDeleted) return response;
-  if (await recentlySent(email, "PASSWORD_RESET")) return response;
+  const [user, cooling] = await Promise.all([
+    prisma.user.findUnique({ where: { email }, select: { isActive: true, isDeleted: true } }),
+    recentlySent(email, "PASSWORD_RESET"),
+  ]);
+  if (!user || !user.isActive || user.isDeleted || cooling) return response;
 
-  await issueOtp(email, "PASSWORD_RESET");
+  const otp = await storeOtp(email, "PASSWORD_RESET");
+  void sendOtpEmail(email, otp.code, OTP_TTL_MINUTES, "PASSWORD_RESET").catch((error: unknown) =>
+    logger.error({ err: error, purpose: "PASSWORD_RESET" }, "OTP email failed"),
+  );
   return response;
 }
 
@@ -245,7 +275,7 @@ export async function resetPassword(input: ResetPasswordInput) {
     // Every other session ends; this one gets fresh tokens below.
     await tx.refreshToken.updateMany({
       where: { userId: user.id, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), revokeReason: "password_reset" },
     });
     return { ...(await issueTokens(updated.id, updated.role, tx)), user: toAuthUser(updated) };
   });
@@ -276,36 +306,46 @@ export async function login(input: LoginInput) {
   return { ...(await issueTokens(user.id, user.role)), user: toAuthUser(user) };
 }
 
-/** Rotates a refresh token. Reusing an already-rotated token revokes every session of that user. */
+const sessionExpired = () =>
+  new AppError(401, "INVALID_REFRESH_TOKEN", "Your session has expired. Sign in again.");
+const refreshRace = () =>
+  new AppError(409, "REFRESH_RACE", "Your session was just refreshed in another tab. Try again.");
+
+/**
+ * Rotates a refresh token. What happens to an already-revoked token depends on
+ * why it was revoked (refresh_tokens.revoke_reason):
+ *   - rotated < 60s ago → another tab refreshed at the same moment: 409, nothing revoked
+ *   - rotated longer ago → replayed, likely stolen: every session of the user is revoked
+ *   - logout / password reset / admin / reuse → just 401
+ */
 export async function refresh(refreshToken: string) {
   const stored = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashSecret(refreshToken) },
     include: { user: { include: withProfile } },
   });
 
-  if (!stored) {
-    throw new AppError(401, "INVALID_REFRESH_TOKEN", "Your session has expired. Sign in again.");
-  }
+  if (!stored) throw sessionExpired();
   if (stored.revokedAt) {
-    // A revoked token being replayed means it was likely stolen.
-    await prisma.refreshToken.updateMany({
-      where: { userId: stored.userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-    throw new AppError(401, "INVALID_REFRESH_TOKEN", "Your session has expired. Sign in again.");
+    if (stored.revokeReason === "rotated") {
+      if (Date.now() - stored.revokedAt.getTime() < REFRESH_RACE_GRACE_MS) throw refreshRace();
+      await prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date(), revokeReason: "reuse" },
+      });
+    }
+    throw sessionExpired();
   }
   if (stored.expiresAt.getTime() < Date.now() || !stored.user.isActive || stored.user.isDeleted) {
-    throw new AppError(401, "INVALID_REFRESH_TOKEN", "Your session has expired. Sign in again.");
+    throw sessionExpired();
   }
 
   return prisma.$transaction(async (tx) => {
     const revoked = await tx.refreshToken.updateMany({
       where: { id: stored.id, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), revokeReason: "rotated" },
     });
-    if (revoked.count !== 1) {
-      throw new AppError(401, "INVALID_REFRESH_TOKEN", "Your session has expired. Sign in again.");
-    }
+    // Another request rotated it between our read and this write.
+    if (revoked.count !== 1) throw refreshRace();
     return {
       ...(await issueTokens(stored.userId, stored.user.role, tx)),
       user: toAuthUser(stored.user),
@@ -316,7 +356,7 @@ export async function refresh(refreshToken: string) {
 export async function logout(refreshToken: string) {
   await prisma.refreshToken.updateMany({
     where: { tokenHash: hashSecret(refreshToken), revokedAt: null },
-    data: { revokedAt: new Date() },
+    data: { revokedAt: new Date(), revokeReason: "logout" },
   });
   return { message: "Signed out." };
 }
@@ -354,6 +394,10 @@ export async function loginWithGoogle(identity: GoogleIdentity) {
     });
 
     if (byEmail) {
+      // Checked before linking, so a deactivated account isn't modified.
+      if (byEmail.isDeleted || !byEmail.isActive) {
+        throw new AppError(403, "ACCOUNT_DEACTIVATED", "This account has been deactivated.");
+      }
       if (byEmail.googleId && byEmail.googleId !== identity.googleId) {
         throw new AppError(
           409,

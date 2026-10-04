@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from "react";
 import { CircleAlert, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { EmptyPanel } from "@/components/app/EmptyPanel";
+import { safeGuideUrl } from "@/components/app/questions/PrepGuides";
 import { SelectField, TextareaField, TextField } from "@/components/app/form-fields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
 import { Badge } from "@/components/shadcn/badge";
@@ -302,6 +303,8 @@ export function PrepPdfsManager() {
               <TableBody>
                 {pdfs.map((pdf) => {
                   const tags = [pdf.skill?.name, pdf.company, pdf.role].filter(Boolean);
+                  // Never render a javascript: (or other non-https) link.
+                  const link = safeGuideUrl(pdf.file_url);
                   return (
                     <TableRow key={pdf.id} className={pdf.is_active ? "" : "opacity-60"}>
                       <TableCell className="max-w-md whitespace-normal">
@@ -324,15 +327,21 @@ export function PrepPdfsManager() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <a
-                          href={pdf.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 underline underline-offset-2"
-                        >
-                          Open <ExternalLink className="size-3" aria-hidden />
-                          <span className="sr-only">{pdf.title} (opens in a new tab)</span>
-                        </a>
+                        {link ? (
+                          <a
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 underline underline-offset-2"
+                          >
+                            Open <ExternalLink className="size-3" aria-hidden />
+                            <span className="sr-only">{pdf.title} (opens in a new tab)</span>
+                          </a>
+                        ) : (
+                          <span className="text-destructive text-xs" title={pdf.file_url}>
+                            Unsafe link: edit it
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {pdf.downloads.toLocaleString()}

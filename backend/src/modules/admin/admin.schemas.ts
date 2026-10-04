@@ -264,6 +264,8 @@ const rubricInput = z
         .max(40),
       description: z.string().trim().min(1).max(300),
       points: z.number().int().min(1).max(10),
+      // The model answer the AI marks against; never shown to students.
+      expected: z.string().trim().max(500).optional(),
     }),
   )
   .min(1)
@@ -300,7 +302,12 @@ export const adminTaskSchema = z
     title: z.string(),
     description: z.string(),
     difficulty: z.enum(difficulties),
-    rubric: z.array(rubricCriterionSchema),
+    // Admins see the private model answer students never get.
+    rubric: z.array(
+      rubricCriterionSchema.extend({
+        expected: z.string().optional().meta({ description: "Private model answer for the AI." }),
+      }),
+    ),
     is_active: z.boolean(),
   })
   .meta({ id: "AdminTask" });

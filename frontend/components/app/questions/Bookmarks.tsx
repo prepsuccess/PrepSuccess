@@ -21,6 +21,12 @@ export function Bookmarks() {
   const query = useGetBookmarksQuery({ page, limit: PAGE_SIZE });
   const [setBookmark, { isLoading: removing }] = useSetBookmarkMutation();
 
+  // Removing the last bookmark on a page leaves it empty: step back to the last page.
+  const current = query.currentData;
+  if (current && current.questions.length === 0 && current.meta.total > 0 && page > 1) {
+    setPage(Math.max(1, Math.min(page - 1, Math.ceil(current.meta.total / current.meta.limit))));
+  }
+
   async function remove(id: string) {
     try {
       await setBookmark({ id, on: false }).unwrap();
@@ -42,7 +48,7 @@ export function Bookmarks() {
         query={query}
         skeleton={<Skeleton className="h-64 rounded-2xl" aria-hidden />}
         errorTitle="Couldn't load your bookmarks"
-        isEmpty={(data) => data.questions.length === 0}
+        isEmpty={(data) => data.meta.total === 0}
         empty={
           <EmptyPanel
             icon={Bookmark}

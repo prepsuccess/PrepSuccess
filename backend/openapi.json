@@ -474,7 +474,7 @@
           "Auth"
         ],
         "summary": "Email a password-reset code",
-        "description": "Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. Always answers 200 with the same message, whether or not the email is registered and even inside the 60-second resend cooldown, so it can't be used to discover accounts.",
+        "description": "Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. Always answers 200 with the same message, whether or not the email is registered and even inside the 60-second resend cooldown, so it can't be used to discover accounts. The email is sent in the background, so a mail failure doesn't change the answer either.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -534,16 +534,6 @@
           },
           "429": {
             "description": "`TOO_MANY_REQUESTS` — rate limit hit; wait a minute.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "`EMAIL_SEND_FAILED` — try again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -648,7 +638,7 @@
           "Auth"
         ],
         "summary": "Exchange a refresh token for a new token pair",
-        "description": "Rotates the refresh token: the one you send is revoked and a new pair is returned. Reusing an already-rotated token signs the user out of every session.",
+        "description": "Rotates the refresh token: the one you send is revoked and a new pair is returned. If the token was rotated less than 60 seconds ago (another tab refreshed at the same moment), answers 409 and revokes nothing — retry with the newest token. Replaying a token rotated longer ago signs the user out of every session.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -698,6 +688,16 @@
           },
           "401": {
             "description": "`INVALID_REFRESH_TOKEN` — sign in again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`REFRESH_RACE` — another tab just refreshed; use its tokens or retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -846,7 +846,7 @@
             }
           },
           "401": {
-            "description": "`UNAUTHORIZED` (no token) or `INVALID_TOKEN` (expired/invalid).",
+            "description": "`UNAUTHORIZED` (no token, or the account is deactivated/deleted) or `INVALID_TOKEN` (expired/invalid).",
             "content": {
               "application/json": {
                 "schema": {
@@ -864,35 +864,36 @@
           "Auth"
         ],
         "summary": "Start Google sign-in (browser redirect)",
-        "description": "Open this URL in the browser (a link, not fetch). Redirects to Google's consent screen. Google then returns to `/api/v1/auth/google/callback`, which redirects to the frontend's `/auth/callback#access_token=…&refresh_token=…&next=…`, or to `/login?error=<code>` on failure.",
+        "description": "Open this URL in the browser (a link, not fetch). Redirects to Google's consent screen. Google then returns to `/api/v1/auth/google/callback`, which redirects to the frontend's `/auth/callback#access_token=…&refresh_token=…&next=…&nonce=…`, or to `/login?error=<code>` on failure. `nonce` is echoed back unchanged; the frontend must check it matches the one it sent. Without Google keys on the server it redirects to `/login?error=google_not_configured`; an invalid `nonce` redirects to `/login?error=google_failed`.",
         "parameters": [
           {
             "in": "query",
             "name": "next",
             "schema": {
-              "description": "Same-site path to land on after sign-in.",
+              "description": "Same-site path to land on after sign-in. Anything else is ignored.",
               "example": "/dashboard",
               "type": "string"
             },
-            "description": "Same-site path to land on after sign-in."
+            "description": "Same-site path to land on after sign-in. Anything else is ignored."
+          },
+          {
+            "in": "query",
+            "name": "nonce",
+            "schema": {
+              "description": "Random value the frontend keeps (sessionStorage) and expects back in the callback fragment, so a sign-in it didn't start (login CSRF) is rejected. 16–128 of [A-Za-z0-9_-].",
+              "example": "k3J9xQ2mW7pL0aZ8vB4nR6tY",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Random value the frontend keeps (sessionStorage) and expects back in the callback fragment, so a sign-in it didn't start (login CSRF) is rejected. 16–128 of [A-Za-z0-9_-]."
           }
         ],
         "responses": {
           "302": {
-            "description": "Redirect to Google's consent screen."
+            "description": "Redirect to Google's consent screen, or to `/login?error=<code>`."
           },
           "429": {
             "description": "`TOO_MANY_REQUESTS` — rate limit hit; wait a minute.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "`GOOGLE_NOT_CONFIGURED` — Google keys missing on the server.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1400,7 +1401,7 @@
             }
           },
           "429": {
-            "description": "`COACH_DAILY_LIMIT`, `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
+            "description": "`COACH_DAILY_LIMIT`, `COACH_BUSY` (a reply is still on its way), `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1866,7 +1867,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Bookmarks, newest first.",
+            "description": "Bookmarks, most recently bookmarked first.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2646,7 +2647,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Counts the download (for admin analytics) and returns the link to open.",
+        "description": "Counts the download (for admin analytics; once per student per guide per day) and returns the link to open.",
         "parameters": [
           {
             "in": "path",
@@ -2773,9 +2774,15 @@
             "in": "query",
             "name": "include_inactive",
             "schema": {
-              "default": true,
-              "type": "boolean"
-            }
+              "description": "`false` hides inactive questions.",
+              "default": "true",
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "description": "`false` hides inactive questions."
           },
           {
             "in": "query",
@@ -2918,6 +2925,7 @@
             "bearerAuth": []
           }
         ],
+        "description": "If a deleted question in this skill has the same title, it is restored with this content.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2996,7 +3004,7 @@
             }
           },
           "409": {
-            "description": "`QUESTION_EXISTS` — same title in this skill.",
+            "description": "`QUESTION_EXISTS` — a live question in this skill has that title.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5849,7 +5857,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Onboarding claims are matched against the built-in catalogue's aliases, so a new skill can be checked from the skill list but isn't auto-matched from the chat yet.",
+        "description": "Onboarding claims are matched against the built-in catalogue's aliases, so a new skill can be checked from the skill list but isn't auto-matched from the chat yet. If a deleted skill has the slug, it is restored with the new details instead.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5918,7 +5926,7 @@
             }
           },
           "409": {
-            "description": "`SLUG_TAKEN`.",
+            "description": "`SLUG_TAKEN` — a skill that isn't deleted uses that slug.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8250,6 +8258,10 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 10
+                },
+                "expected": {
+                  "type": "string",
+                  "maxLength": 500
                 }
               },
               "required": [
@@ -8310,6 +8322,10 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 10
+                },
+                "expected": {
+                  "type": "string",
+                  "maxLength": 500
                 }
               },
               "required": [
@@ -10310,7 +10326,21 @@
             "items": {
               "$ref": "#/components/schemas/DashboardSkillResult"
             },
-            "description": "Up to 3 skills below the pass mark, weakest first."
+            "description": "Up to 3 skills below their pass mark, weakest first."
+          },
+          "check_dates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "description": "The India date of every check finished in the last 365 days, oldest first (one entry per check), for the practice calendar.",
+            "example": [
+              "2026-09-28",
+              "2026-10-02",
+              "2026-10-02"
+            ]
           },
           "next_steps": {
             "type": "array",
@@ -10359,6 +10389,7 @@
           "counts",
           "skills",
           "gaps",
+          "check_dates",
           "next_steps"
         ],
         "additionalProperties": false
@@ -10399,6 +10430,13 @@
             "maximum": 9007199254740991,
             "example": 64
           },
+          "threshold": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "The pass mark (percent) this result was scored against.",
+            "example": 40
+          },
           "mastery": {
             "type": "string",
             "enum": [
@@ -10438,6 +10476,7 @@
           "category",
           "assessment_id",
           "percent",
+          "threshold",
           "mastery",
           "completed_at",
           "attempts",
@@ -10521,6 +10560,10 @@
                 "type": "null"
               }
             ]
+          },
+          "stale": {
+            "description": "True when the results changed but refreshing the take failed (e.g. the AI is busy): this is the previous take.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -10834,7 +10877,9 @@
             "example": "join"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.",
+            "example": "Correct JOIN between employees and departments"
           },
           "points": {
             "type": "integer",
@@ -10903,7 +10948,9 @@
                       "example": "join"
                     },
                     "description": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.",
+                      "example": "Correct JOIN between employees and departments"
                     },
                     "points": {
                       "type": "integer",
@@ -11593,7 +11640,33 @@
           "rubric": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/RubricCriterion"
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "join"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.",
+                  "example": "Correct JOIN between employees and departments"
+                },
+                "points": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "expected": {
+                  "description": "Private model answer for the AI.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "points"
+              ],
+              "additionalProperties": false
             }
           },
           "is_active": {

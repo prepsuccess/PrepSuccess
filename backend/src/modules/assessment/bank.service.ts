@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma.js";
 import type { Prisma, Skill } from "../../generated/prisma/client.js";
 import { generateJson } from "../../services/ai-agent/ai.service.js";
 import {
+  LEVELS,
   avoidList,
   buildQuestionPrompt,
   questionBatchSchema,
@@ -16,23 +17,37 @@ import {
  * skill, and reused by every student — so most checks need no AI call.
  */
 
-const live = { isActive: true, isDeleted: false } as const;
+export interface LoadedBank {
+  /** Live questions (active, not deleted), oldest first: what a check draws from. */
+  questions: BankQuestion[];
+  /**
+   * Questions held per level, including ones an admin deactivated — the
+   * count the bank's per-level cap is measured against (see toBankRows).
+   */
+  stored: Record<Difficulty, number>;
+}
 
-/** A skill's live bank, oldest first. */
-export async function loadBank(skillId: string): Promise<BankQuestion[]> {
+/** A skill's bank: the live questions to draw from, and how full each level is. */
+export async function loadBank(skillId: string): Promise<LoadedBank> {
   const rows = await prisma.checkQuestion.findMany({
-    where: { skillId, ...live },
+    where: { skillId, isDeleted: false },
     orderBy: { createdAt: "asc" },
   });
-  return rows.map((row) => ({
-    id: row.id,
-    difficulty: row.difficulty,
-    question: row.question,
-    options: Array.isArray(row.options) ? (row.options as string[]) : [],
-    answerIndex: row.answerIndex,
-    explanation: row.explanation,
-    timesAsked: row.timesAsked,
-  }));
+  const stored = Object.fromEntries(
+    LEVELS.map((level) => [level, rows.filter((row) => row.difficulty === level).length]),
+  ) as Record<Difficulty, number>;
+  const questions = rows
+    .filter((row) => row.isActive)
+    .map((row) => ({
+      id: row.id,
+      difficulty: row.difficulty,
+      question: row.question,
+      options: Array.isArray(row.options) ? (row.options as string[]) : [],
+      answerIndex: row.answerIndex,
+      explanation: row.explanation,
+      timesAsked: row.timesAsked,
+    }));
+  return { questions, stored };
 }
 
 /**

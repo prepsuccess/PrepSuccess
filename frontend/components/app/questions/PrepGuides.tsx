@@ -12,6 +12,23 @@ import { errorMessage } from "@/lib/api/errors";
 import type { PrepPdf } from "@/lib/api/types";
 import { track } from "@/lib/analytics";
 
+/**
+ * The guide's link if it's safe to open: https only, so a bad link can't run
+ * script (javascript:) or leak over http. Same-origin links are fine too,
+ * which covers the bundled guides in development (http://localhost/guides/…).
+ */
+export function safeGuideUrl(url: string): string | null {
+  const origin = typeof window === "undefined" ? null : window.location.origin;
+  try {
+    const parsed = new URL(url, origin ?? undefined);
+    if (parsed.protocol === "https:") return parsed.href;
+    if (origin && parsed.protocol === "http:" && parsed.origin === origin) return parsed.href;
+  } catch {
+    // Not a URL at all.
+  }
+  return null;
+}
+
 function GuideCard({ guide }: { guide: PrepPdf }) {
   const [download, { isLoading }] = useDownloadPrepPdfMutation();
 
@@ -19,7 +36,13 @@ function GuideCard({ guide }: { guide: PrepPdf }) {
     // Open the tab now (inside the click), so pop-up blockers allow it; point it at the file once known.
     const tab = window.open("", "_blank");
     try {
-      const { url } = await download(guide.id).unwrap();
+      const { url: link } = await download(guide.id).unwrap();
+      const url = safeGuideUrl(link);
+      if (!url) {
+        tab?.close();
+        toast.error("This guide's link can't be opened. Please tell the PrepSuccess team.");
+        return;
+      }
       track("prep_pdf_downloaded", {});
       if (tab) {
         tab.opener = null;

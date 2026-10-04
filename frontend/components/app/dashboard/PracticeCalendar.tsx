@@ -11,6 +11,15 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 /**
+ * A plain date ("2026-10-02", already the student's day) stays that day; a
+ * full timestamp is read in the browser's time zone.
+ */
+function toDay(iso: string) {
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return plain ? new Date(Number(plain[1]), Number(plain[2]) - 1, Number(plain[3])) : new Date(iso);
+}
+
+/**
  * A month view with the days the student finished a check circled in indigo
  * and today in coral — practice streaks at a glance.
  */
@@ -25,13 +34,13 @@ export function PracticeCalendar({
   const [offset, setOffset] = useState(0);
   const month = new Date(today.getFullYear(), today.getMonth() + offset, 1);
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const practised = new Set(checkDates.map((iso) => dayKey(new Date(iso))));
+  const days = checkDates.map(toDay);
+  const practised = new Set(days.map(dayKey));
   const monthName = month.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   const monthShort = month.toLocaleDateString("en-IN", { month: "long" });
-  const inMonth = checkDates.filter((iso) => {
-    const d = new Date(iso);
-    return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
-  }).length;
+  const inMonth = days.filter(
+    (d) => d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear(),
+  ).length;
 
   const cells: (number | null)[] = [
     ...Array.from({ length: month.getDay() }, () => null),

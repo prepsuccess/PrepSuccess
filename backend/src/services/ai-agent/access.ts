@@ -21,23 +21,30 @@ export interface AiAccess {
 // Lives in lib/time (no env import) so pure modules can use it; re-exported for callers here.
 export { startOfIndianDay };
 
+/**
+ * `inFlight` is how many of the user's AI requests are running right now:
+ * they count towards the limit before they're recorded, so a burst of
+ * parallel requests can't all pass the check and overshoot it.
+ */
 export async function getAiAccess(
   userId: string,
   signedUpAt: Date,
   now = new Date(),
+  inFlight = 0,
 ): Promise<AiAccess> {
   const endsAt = new Date(signedUpAt.getTime() + env.AI_TRIAL_DAYS * DAY_MS);
   const trialActive = now < endsAt;
   const enforced = env.AI_TRIAL_ENFORCED === "true";
 
+  // System calls (coach check-ins, bank top-ups) are the platform's, not the student's.
   const requests = await prisma.aiUsage.count({
-    where: { userId, success: true, createdAt: { gte: startOfIndianDay(now) } },
+    where: { userId, success: true, system: false, createdAt: { gte: startOfIndianDay(now) } },
   });
 
   const reason =
     enforced && !trialActive
       ? "AI_TRIAL_ENDED"
-      : requests >= env.AI_DAILY_REQUEST_LIMIT
+      : requests + inFlight >= env.AI_DAILY_REQUEST_LIMIT
         ? "AI_DAILY_LIMIT"
         : null;
 

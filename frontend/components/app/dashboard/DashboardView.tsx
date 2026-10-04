@@ -118,6 +118,9 @@ export function DashboardView() {
 
   const data = query.data;
   const history = data.readiness.history;
+  // Every check of the last year; the history is capped at 20. Falls back to
+  // it for an API that doesn't send check_dates yet.
+  const checkDates = (data as { check_dates?: string[] }).check_dates ?? history.map((p) => p.date);
 
   // A chart only shows once it has something to say; the rest are listed in
   // one Unlocks card instead of a page of empty boxes.
@@ -146,7 +149,7 @@ export function DashboardView() {
       ((cls: string) => <RetakeBars key="retake" skills={data.skills} className={cls} />),
     ready.calendar &&
       ((cls: string) => (
-        <PracticeCalendar key="calendar" checkDates={history.map((p) => p.date)} className={cls} />
+        <PracticeCalendar key="calendar" checkDates={checkDates} className={cls} />
       )),
     ready.trend &&
       locked.length > 0 &&

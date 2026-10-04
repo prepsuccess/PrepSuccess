@@ -188,7 +188,8 @@ function TaskBody({ task }: { task: TaskDetail }) {
       </div>
 
       <div className="lg:sticky lg:top-20">
-        <TaskWorkspace key={latest?.id ?? "new"} task={task} latest={latest} />
+        {/* Keyed by task and attempt: a new task or a new review starts a fresh editor. */}
+        <TaskWorkspace key={`${task.id}:${latest?.id ?? "new"}`} task={task} latest={latest} />
       </div>
     </div>
   );

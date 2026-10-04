@@ -203,6 +203,32 @@ describe("OnboardingChat", () => {
     expect(attempts).toBe(2);
   });
 
+  it("reloads the chat when another tab's message got there first", async () => {
+    let loads = 0;
+    const otherTurn = state({ degree: "BCA" }, [
+      greeting,
+      { role: "user", content: "BCA from the other tab", created_at: at },
+      { role: "assistant", content: "Which year are you in?", created_at: at },
+    ]);
+    server.use(
+      http.get(`${API}/api/v1/ai/onboarding`, () => ok(loads++ === 0 ? start : otherTurn)),
+      http.post(`${API}/api/v1/ai/onboarding/messages`, () =>
+        fail(
+          409,
+          "ONBOARDING_BUSY",
+          "Your last message is still being answered. Try again in a moment.",
+        ),
+      ),
+    );
+    renderChat();
+
+    await userEvent.type(await screen.findByLabelText("Your message"), "B.Tech{Enter}");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("still being answered");
+    expect(await screen.findByText("BCA from the other tab")).toBeInTheDocument();
+    expect(screen.getByLabelText("Your message")).toHaveValue("B.Tech");
+  });
+
   it("shows a summary and the way to the dashboard once complete", async () => {
     const profile = {
       degree: "BCA",

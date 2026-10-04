@@ -321,10 +321,20 @@ For each situation, give the best HTTP status code and a one-line reason:
 10. The upstream payment service is down and timed out.
 `,
     [
-      c("2xx", "Correct codes for 1 and 8 (201, 204)", 2),
-      c("4xx-auth", "Correct 401 vs 403 for 3 and 4", 2),
-      c("4xx-other", "Correct codes for 2, 5, 6, 7 (400/422, 404, 409, 429)", 4),
-      c("5xx", "Correct codes for 9 and 10 (500, 502/503/504) with reasons", 2),
+      c("2xx", "Correct codes for scenarios 1 and 8", 2, "Correct codes for 1 and 8 (201, 204)"),
+      c("4xx-auth", "Correct codes for scenarios 3 and 4", 2, "Correct 401 vs 403 for 3 and 4"),
+      c(
+        "4xx-other",
+        "Correct codes for scenarios 2, 5, 6 and 7",
+        4,
+        "Correct codes for 2, 5, 6, 7 (400/422, 404, 409, 429)",
+      ),
+      c(
+        "5xx",
+        "Correct codes for scenarios 9 and 10, with reasons",
+        2,
+        "Correct codes for 9 and 10 (500, 502/503/504) with reasons",
+      ),
     ],
     `
 1.
@@ -478,7 +488,12 @@ db.orders.find({ customerId: 42, status: "shipped" }).sort({ createdAt: -1 }).li
 `,
     [
       c("explain", "Uses explain and reads COLLSCAN, totalDocsExamined vs nReturned", 2),
-      c("index", "Creates { customerId: 1, status: 1, createdAt: -1 } or equivalent", 3),
+      c(
+        "index",
+        "Creates a suitable compound index for the query",
+        3,
+        "Creates { customerId: 1, status: 1, createdAt: -1 } or equivalent",
+      ),
       c("order", "Explains the equality-sort-range rule", 2),
       c("prefix", "Correctly answers the prefix question for both queries", 2),
       c("cost", "Names a cost such as slower writes or extra memory", 1),

@@ -119,12 +119,15 @@ describe("CoachWidget", () => {
     expect(within(chat).getByLabelText("Ask your coach")).toBeDisabled();
   });
 
-  it("stays out of the onboarding chat and skill checks", () => {
+  it("stays out of the onboarding chat and skill checks", async () => {
     expect(coachHiddenOn("/onboarding")).toBe(true);
     expect(coachHiddenOn("/assessment/6d9c5e3a-4b2f-4c8d-9eaf-3f4b5c6d7e8f")).toBe(true);
     expect(coachHiddenOn("/assessment")).toBe(false);
     pathname = "/assessment/abc";
     renderCoach();
     expect(screen.queryByRole("button", { name: "Ask your AI coach" })).not.toBeInTheDocument();
+    // No pings there either, so the check-in never lands mid-test.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(pings).toBe(0);
   });
 });

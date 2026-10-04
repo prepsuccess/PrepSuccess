@@ -42,6 +42,7 @@ erDiagram
         string token_hash UK
         timestamptz expires_at
         timestamptz revoked_at
+        string revoke_reason "rotated logout password_reset admin reuse"
     }
     email_otps {
         string email
@@ -102,6 +103,8 @@ erDiagram
         int input_tokens
         int output_tokens
         bool success
+        bool system "not asked for by the student; not counted in their daily limit"
+        timestamptz created_at "indexed alone and with user_id"
     }
     notifications {
         uuid user_id FK
@@ -145,6 +148,18 @@ before an account exists.
 
 `ai_conversations.agent_type` also has `COACH` for the coach chat.
 
+Columns added later (migration `20261010000000_bug_fixes`):
+
+| Column | Purpose |
+|---|---|
+| `refresh_tokens.revoke_reason` | Why a token was revoked: `rotated` (replaced by a refresh), `logout`, `password_reset`, `admin` or `reuse`. Only replaying a `rotated` token (more than 60 s after it was rotated) is treated as theft and signs the user out everywhere. Null while the token is live. |
+| `ai_usage.system` | `true` for calls the student didn't ask for (coach check-in, question-bank top-up script): kept for cost tracking but not counted against the student's daily AI limit. |
+| `ai_usage` index on `created_at` | Admin analytics read usage by date range across all users. |
+| `user_question_progress.bookmarked_at` | When the question was last bookmarked; orders My bookmarks, so solving a question doesn't reorder the list. Existing bookmarks were backfilled from `updated_at`. |
+
+Old rows in `email_otps`, `refresh_tokens` and read `notifications` are removed
+by `npm run db:cleanup` ([DEPLOYMENT.md](DEPLOYMENT.md) §3); `ai_usage` is kept.
+
 ## Phase 2 — Interview prep (built)
 
 ```mermaid
@@ -172,6 +187,7 @@ erDiagram
         uuid user_id FK
         uuid question_id FK
         bool bookmarked
+        timestamptz bookmarked_at "orders My bookmarks"
         timestamptz solved_at "first solve; null if not solved"
     }
     prep_pdfs {

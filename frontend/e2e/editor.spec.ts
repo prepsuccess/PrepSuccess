@@ -26,6 +26,9 @@ async function openTask(page: Page, overrides: Partial<TaskDetail>) {
     route.fulfill({ contentType: "application/json", json: envelope(task) }),
   );
   await page.goto(`/tasks/${TASK_ID}`);
+  // CodeMirror is a lazy chunk; on a cold server with every worker busy it can
+  // take longer than the default wait to arrive.
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
 }
 
 test("JavaScript runs in the browser and prints console output", async ({ page }) => {

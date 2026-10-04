@@ -57,13 +57,15 @@ roll_no, email and aadhaar_no are each unique per student. A student can take a 
     [
       c(
         "candidate",
-        "Lists roll_no, email and aadhaar_no as candidate keys with a sensible PK choice",
+        "Lists every candidate key with a sensible primary key choice",
         3,
+        "Lists roll_no, email and aadhaar_no as candidate keys with a sensible PK choice",
       ),
       c(
         "composite",
-        "Registration PK is (roll_no, course_code, semester) with the repeat-course reason",
+        "Correct primary key for Registration, with the reason",
         3,
+        "Registration PK is (roll_no, course_code, semester) with the repeat-course reason",
       ),
       c("fk", "Identifies both foreign keys correctly", 2),
       c("defs", "Correct definitions of super, candidate and alternate keys", 2),
@@ -133,8 +135,18 @@ Answer in SQL comments:
 `,
     [
       c("conflicts", "Lists the conflicting pairs on A and B correctly", 2),
-      c("graph", "Precedence graph has T1 -> T2 (on A) and T2 -> T1 (on B)", 2),
-      c("verdict", "Concludes not conflict serializable because of the cycle", 2),
+      c(
+        "graph",
+        "Correct precedence graph",
+        2,
+        "Precedence graph has T1 -> T2 (on A) and T2 -> T1 (on B)",
+      ),
+      c(
+        "verdict",
+        "Correct verdict on conflict serializability, with the reason",
+        2,
+        "Concludes not conflict serializable because of the cycle",
+      ),
       c("locking", "Correct strict 2PL behaviour and a valid deadlock example", 2),
       c("isolation", "Four isolation levels with the correct anomalies for each", 2),
     ],
@@ -624,7 +636,12 @@ Actual not spam      10                130
 `,
     [
       c("values", "Correct TP/FP/FN/TN read from the matrix", 2),
-      c("formulas", "Correct formulas: accuracy 0.85, precision 0.8, recall 0.667, F1 0.727", 4),
+      c(
+        "formulas",
+        "Correct formulas and values for accuracy, precision, recall and F1",
+        4,
+        "Correct formulas: accuracy 0.85, precision 0.8, recall 0.667, F1 0.727",
+      ),
       c("imbalance", "Explains the accuracy paradox with imbalance", 2),
       c("tradeoff", "Sensible recall-first and precision-first examples", 2),
     ],
@@ -661,8 +678,8 @@ y: 2  4  5  4  5
 `,
     [
       c("slope", "Correct least-squares slope and intercept", 4),
-      c("predict", "Correct prediction 5.8 for x = 6", 2),
-      c("mse", "Correct MSE of 0.48", 2),
+      c("predict", "Correct prediction for x = 6", 2, "Correct prediction 5.8 for x = 6"),
+      c("mse", "Correct MSE", 2, "Correct MSE of 0.48"),
       c("explain", "Clear explanation of slope and MSE", 2),
     ],
     `

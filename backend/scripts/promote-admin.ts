@@ -24,7 +24,7 @@ await prisma.$transaction([
   prisma.user.update({ where: { id: user.id }, data: { role: "ADMIN", isActive: true } }),
   prisma.refreshToken.updateMany({
     where: { userId: user.id, revokedAt: null },
-    data: { revokedAt: new Date() },
+    data: { revokedAt: new Date(), revokeReason: "admin" },
   }),
 ]);
 console.log(`${email} is now an admin. Sign in again to use the admin panel.`);

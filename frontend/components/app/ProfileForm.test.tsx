@@ -5,6 +5,10 @@ import { API, fail, http, ok, server } from "@/test/server";
 import { renderWithStore, testUser } from "@/test/render";
 import { ProfileForm } from "./ProfileForm";
 
+// jsdom has no pointer capture; the Radix Select calls it when opened with a pointer.
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.releasePointerCapture ??= () => {};
+
 const renderForm = (onDone = () => {}) =>
   renderWithStore(<ProfileForm user={testUser} onDone={onDone} />, { signedInAs: testUser });
 
@@ -74,5 +78,43 @@ describe("ProfileForm", () => {
     );
     // The message sits on the field (announced there), not in a form-level banner.
     expect(screen.queryByText(/Couldn.t save your details/)).toBeNull();
+  });
+
+  it("shows a 422 for a field the form doesn't show in the banner", async () => {
+    server.use(
+      http.patch(`${API}/api/v1/users/me`, () =>
+        fail(422, "VALIDATION_ERROR", "Request validation failed.", [
+          { path: ["profile", "skills"], message: "Too many skills." },
+        ]),
+      ),
+    );
+    const onDone = vi.fn();
+    renderForm(onDone);
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText(/Couldn.t save your details/)).toBeInTheDocument();
+    expect(screen.getByText("Too many skills.")).toBeInTheDocument();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("can clear the year of study", async () => {
+    let body: { profile: Record<string, unknown> } | undefined;
+    server.use(
+      http.patch(`${API}/api/v1/users/me`, async ({ request }) => {
+        body = (await request.json()) as typeof body;
+        return ok({ ...testUser, profile: { ...testUser.profile, student_year: null } });
+      }),
+    );
+    const onDone = vi.fn();
+    renderForm(onDone);
+
+    await userEvent.click(screen.getByLabelText(/Year of study/));
+    await userEvent.click(await screen.findByRole("option", { name: "Not set" }));
+    expect(screen.getByLabelText(/Year of study/)).toHaveTextContent("Choose your year");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(body!.profile).toMatchObject({ student_year: null });
   });
 });

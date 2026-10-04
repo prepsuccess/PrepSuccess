@@ -38,8 +38,12 @@ export const FIELD_LABELS: Record<(typeof REQUIRED_FIELDS)[number], string> = {
   goals: "Your goals",
 };
 
-/** Fields that accumulate across answers instead of being replaced. */
-const LIST_FIELDS = new Set(["skills", "interests", "goals"]);
+/**
+ * Fields that accumulate across answers instead of being replaced, and the
+ * most items each keeps — the same caps as a profile edit (users.schemas
+ * profileFields; a test checks they match).
+ */
+export const LIST_LIMITS: Record<string, number> = { skills: 50, interests: 20, goals: 10 };
 
 /** Hard cap on student turns, so one chat can't burn the shared AI quota. */
 export const MAX_STUDENT_TURNS = 30;
@@ -102,14 +106,27 @@ export function sanitizeExtracted(extracted: Record<string, unknown>): ProfileDa
   return clean;
 }
 
-/** Merges new facts in: lists are unioned (case-insensitive), everything else replaced. */
+/**
+ * Merges new facts in: lists are unioned without case-insensitive
+ * duplicates (within the new batch too) and capped at LIST_LIMITS, keeping
+ * what was there first; everything else is replaced.
+ */
 export function mergeProfile(current: ProfileData, extracted: ProfileData): ProfileData {
   const merged: ProfileData = { ...current };
   for (const [key, value] of Object.entries(extracted)) {
-    if (LIST_FIELDS.has(key) && Array.isArray(value)) {
-      const existing = Array.isArray(merged[key]) ? (merged[key] as string[]) : [];
-      const seen = new Set(existing.map((item) => item.toLowerCase()));
-      merged[key] = [...existing, ...value.filter((item: string) => !seen.has(item.toLowerCase()))];
+    const limit = LIST_LIMITS[key];
+    if (limit !== undefined && Array.isArray(value)) {
+      const existing: unknown[] = Array.isArray(merged[key]) ? (merged[key] as unknown[]) : [];
+      const seen = new Set<string>();
+      const items: string[] = [];
+      for (const item of [...existing, ...(value as unknown[])]) {
+        if (typeof item !== "string") continue;
+        const norm = item.trim().toLowerCase();
+        if (!norm || seen.has(norm)) continue;
+        seen.add(norm);
+        items.push(item);
+      }
+      merged[key] = items.slice(0, limit);
     } else {
       merged[key] = value;
     }

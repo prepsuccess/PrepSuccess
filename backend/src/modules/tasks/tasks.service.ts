@@ -13,6 +13,7 @@ import {
   TASK_PASS_PERCENT,
   buildReviewPrompt,
   parseRubric,
+  publicCriterion,
   scoreReview,
   taskLanguage,
   taskReviewSchema,
@@ -42,7 +43,12 @@ function toSubmission(submission: UserTaskSubmission): SubmissionResponse {
       summary: feedback.summary ?? "",
       strengths: feedback.strengths ?? [],
       improvements: feedback.improvements ?? [],
-      criteria: feedback.criteria ?? [],
+      // Strip anything beyond the public label, score and comment.
+      criteria: (feedback.criteria ?? []).map((c) => ({
+        ...publicCriterion(c),
+        score: c.score,
+        comment: c.comment,
+      })),
     },
     created_at: submission.createdAt.toISOString(),
   };
@@ -109,7 +115,8 @@ function toDetail(
     runner: taskRunner(task.skill.slug),
     starter_code: task.starterCode,
     pass_mark: TASK_PASS_PERCENT,
-    rubric: parseRubric(task.evaluationCriteria).criteria,
+    // Never `expected`: that's the model answer, for the reviewer only.
+    rubric: parseRubric(task.evaluationCriteria).criteria.map(publicCriterion),
     submissions: submissions.map(toSubmission),
   };
 }
@@ -145,13 +152,15 @@ export async function submitTask(userId: string, taskId: string, content: string
       }),
       messages: [{ role: "user", content: wrapSubmission(content) }],
       temperature: 0.2,
-      maxOutputTokens: 2000,
+      // Thinking tokens count against this budget; too low truncates the JSON.
+      maxOutputTokens: 8000,
       thinking: true,
       timeoutMs: 60_000,
     },
     taskReviewSchema,
   );
 
+  // Throws a retryable 502 (nothing saved) if the AI skipped a criterion.
   const scored = scoreReview(rubric, review);
   const submission = await prisma.userTaskSubmission.create({
     data: {

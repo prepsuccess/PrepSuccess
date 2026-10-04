@@ -4,8 +4,12 @@ export const THEME_STORAGE_KEY = "ps-app-theme";
 export const DARK_QUERY = "(prefers-color-scheme: dark)";
 export const DEFAULT_THEME = "light";
 
-/** Paths rendered inside the app shell — the only places dark mode applies. */
-export const APP_PATH_PATTERN = "^/(dashboard|profile|assessment|admin)(/|$)";
+/**
+ * Paths rendered inside the app shell — the only places dark mode applies.
+ * Keep in step with the routes under app/(app) and app/admin.
+ */
+export const APP_PATH_PATTERN =
+  "^/(dashboard|onboarding|assessment|learn|tasks|questions|prep-guides|profile|admin)(/|$)";
 
 /**
  * Runs before first paint (from the root layout's boot script) so a dark-mode

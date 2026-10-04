@@ -1,5 +1,7 @@
+/* eslint-disable no-console -- CLI output */
+import { isDeepStrictEqual } from "node:util";
+
 import { prisma } from "../src/db/prisma.js";
-import { env } from "../src/config/env.js";
 import { QUESTION_CATALOGUE } from "../src/modules/questions/catalogue.js";
 import { GUIDE_CATALOGUE } from "../src/modules/questions/guides.js";
 import { RESOURCE_CATALOGUE } from "../src/modules/resources/catalogue.js";
@@ -7,22 +9,93 @@ import { SKILL_CATALOGUE } from "../src/modules/skills/catalogue.js";
 import { TASK_CATALOGUE } from "../src/modules/tasks/catalogue.js";
 
 /**
- * Seeds the skill catalogue, learning resources, practical tasks and the
- * interview question bank: `npm run db:seed`. Safe to re-run after editing
- * the catalogues:
- *   - skills upsert by slug;
- *   - resources, tasks and questions match on skill + title and are updated in place.
- * Nothing is deleted: skills, resources or tasks removed from a catalogue are
- * left alone (students may have used them) — deactivate them from the admin
- * panel instead. Rows an admin soft-deleted stay deleted.
+ * Seeds the skill catalogue, learning resources, practical tasks, the
+ * interview question bank and the prep guides: `npm run db:seed`.
+ *
+ * By default it only INSERTS catalogue rows that don't exist yet — skills by
+ * slug; resources, tasks and questions by skill + title; guides by title — and
+ * leaves existing rows alone, so edits made in the admin panel survive a
+ * re-run. `npm run db:seed -- --update` also overwrites existing rows' content
+ * with the catalogue (use it after editing a catalogue file on purpose).
+ *
+ * Nothing is ever deleted, and an admin's deactivate / soft delete is kept in
+ * both modes: rows removed from a catalogue are left alone (students may have
+ * used them). Safe to run repeatedly.
  */
 
+const update = process.argv.includes("--update");
+
+// Guide links are built from FRONTEND_URL. Seeding a remote database with
+// localhost links would send every student to a page that doesn't exist.
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "host.docker.internal"]);
+const hostOf = (url: string | undefined) => {
+  try {
+    return url ? new URL(url).hostname : "";
+  } catch {
+    return "";
+  }
+};
+const frontendUrl = process.env.FRONTEND_URL?.trim();
+if (
+  !LOCAL_HOSTS.has(hostOf(process.env.DATABASE_URL)) &&
+  (!frontendUrl || LOCAL_HOSTS.has(hostOf(frontendUrl)))
+) {
+  console.error(
+    "Refusing to seed: DATABASE_URL points at a remote database but FRONTEND_URL is " +
+      (frontendUrl ? `local (${frontendUrl})` : "not set") +
+      ", so the prep guide links would point at localhost.\n" +
+      "Set FRONTEND_URL to that environment's site, e.g. FRONTEND_URL=https://prepsuccess.vercel.app",
+  );
+  await prisma.$disconnect();
+  process.exit(1);
+}
+
+interface Tally {
+  created: number;
+  updated: number;
+  unchanged: number;
+}
+const tallies: Record<string, Tally> = {};
+const tally = (name: string) => (tallies[name] = { created: 0, updated: 0, unchanged: 0 });
+
+/** True when any field in `data` differs from the stored row (JSON compared by value). */
+const differs = (row: Record<string, unknown>, data: Record<string, unknown>) =>
+  Object.entries(data).some(([key, value]) => !isDeepStrictEqual(row[key], value));
+
+/**
+ * Creates the row when it's missing; with --update, refreshes it when its
+ * content differs from the catalogue. Returns nothing — it only counts.
+ */
+async function sync<Row extends { id: string }>(
+  count: Tally,
+  existing: Row | null,
+  create: () => Promise<unknown>,
+  refresh: (id: string) => Promise<unknown>,
+  data: Record<string, unknown>,
+) {
+  if (!existing) {
+    await create();
+    count.created++;
+  } else if (update && differs(existing, data)) {
+    await refresh(existing.id);
+    count.updated++;
+  } else {
+    count.unchanged++;
+  }
+}
+
+// ---- Skills ----------------------------------------------------------------
+
+const skills = tally("skills");
 for (const { slug, name, category, topic, description } of SKILL_CATALOGUE) {
-  await prisma.skill.upsert({
-    where: { slug },
-    create: { slug, name, category, topic, description },
-    update: { name, category, topic, description },
-  });
+  const data = { name, category, topic: topic ?? null, description: description ?? null };
+  await sync(
+    skills,
+    await prisma.skill.findUnique({ where: { slug } }),
+    () => prisma.skill.create({ data: { slug, ...data } }),
+    (id) => prisma.skill.update({ where: { id }, data }),
+    data,
+  );
 }
 
 const skillIds = new Map(
@@ -34,48 +107,56 @@ const skillId = (slug: string) => {
   return id;
 };
 
-let resources = 0;
+// ---- Learning resources ----------------------------------------------------
+
+const resources = tally("learning resources");
 for (const resource of RESOURCE_CATALOGUE) {
+  const key = { skillId: skillId(resource.skill), title: resource.title };
   const data = {
-    skillId: skillId(resource.skill),
-    title: resource.title,
     type: resource.type,
     url: resource.url ?? null,
     content: resource.content ?? null,
-    source: resource.source,
+    source: resource.source ?? null,
   };
-  const existing = await prisma.learningResource.findFirst({
-    where: { skillId: data.skillId, title: data.title },
-    select: { id: true },
-  });
-  if (existing) await prisma.learningResource.update({ where: { id: existing.id }, data });
-  else await prisma.learningResource.create({ data });
-  resources++;
+  await sync(
+    resources,
+    await prisma.learningResource.findFirst({ where: key, orderBy: { createdAt: "asc" } }),
+    () => prisma.learningResource.create({ data: { ...key, ...data } }),
+    (id) => prisma.learningResource.update({ where: { id }, data }),
+    data,
+  );
 }
 
-let tasks = 0;
+// ---- Practical tasks -------------------------------------------------------
+
+const tasks = tally("practical tasks");
 for (const task of TASK_CATALOGUE) {
+  const key = { skillId: skillId(task.skill), title: task.title };
   const data = {
-    skillId: skillId(task.skill),
-    title: task.title,
     description: task.description,
     difficulty: task.difficulty,
-    evaluationCriteria: { criteria: task.rubric.map((c) => ({ ...c })) },
+    // Criteria are stored as-is (including an optional `expected`); the JSON
+    // round trip drops undefined keys so the comparison matches what's stored.
+    evaluationCriteria: JSON.parse(JSON.stringify({ criteria: task.rubric })) as {
+      criteria: object[];
+    },
     starterCode: task.starter ?? null,
   };
-  const existing = await prisma.practicalTask.findFirst({
-    where: { skillId: data.skillId, title: data.title },
-    select: { id: true },
-  });
-  if (existing) await prisma.practicalTask.update({ where: { id: existing.id }, data });
-  else await prisma.practicalTask.create({ data });
-  tasks++;
+  await sync(
+    tasks,
+    await prisma.practicalTask.findFirst({ where: key, orderBy: { createdAt: "asc" } }),
+    () => prisma.practicalTask.create({ data: { ...key, ...data } }),
+    (id) => prisma.practicalTask.update({ where: { id }, data }),
+    data,
+  );
 }
 
-// Interview questions keep an admin's soft delete / deactivation: only the content is refreshed.
-let questions = 0;
+// ---- Interview questions ---------------------------------------------------
+
+const questions = tally("interview questions");
 for (const question of QUESTION_CATALOGUE) {
-  const content = {
+  const key = { skillId: skillId(question.skill), title: question.title };
+  const data = {
     body: question.body,
     answer: question.answer,
     topic: question.topic,
@@ -83,22 +164,24 @@ for (const question of QUESTION_CATALOGUE) {
     company: question.company ?? null,
     role: question.role ?? null,
   };
-  const skill = skillId(question.skill);
-  await prisma.questionBank.upsert({
-    where: { skillId_title: { skillId: skill, title: question.title } },
-    create: { skillId: skill, title: question.title, ...content },
-    update: content,
-  });
-  questions++;
+  await sync(
+    questions,
+    await prisma.questionBank.findUnique({ where: { skillId_title: key } }),
+    () => prisma.questionBank.create({ data: { ...key, ...data } }),
+    (id) => prisma.questionBank.update({ where: { id }, data }),
+    data,
+  );
 }
 
-// Prep guides served by the frontend; links follow FRONTEND_URL. Matched by
-// title; an admin's hide/delete is kept, only the details are refreshed.
-const frontend = env.FRONTEND_URL.replace(/\/$/, "");
-let guides = 0;
+// ---- Prep guides -----------------------------------------------------------
+
+// PDFs served by the frontend; links follow FRONTEND_URL. Matched by title
+// (the oldest row with it). A row with that title that doesn't point at the
+// bundled file was added by an admin — it's left alone in both modes.
+const frontend = (frontendUrl || "http://localhost:3000").replace(/\/$/, "");
+const guides = tally("prep guides");
 for (const guide of GUIDE_CATALOGUE) {
   const data = {
-    title: guide.title,
     description: guide.description,
     fileUrl: `${frontend}/guides/${guide.file}`,
     skillId: guide.skill ? skillId(guide.skill) : null,
@@ -107,15 +190,28 @@ for (const guide of GUIDE_CATALOGUE) {
   };
   const existing = await prisma.prepPdf.findFirst({
     where: { title: guide.title },
-    select: { id: true },
+    orderBy: { createdAt: "asc" },
   });
-  if (existing) await prisma.prepPdf.update({ where: { id: existing.id }, data });
-  else await prisma.prepPdf.create({ data });
-  guides++;
+  if (existing && !existing.fileUrl.endsWith(`/guides/${guide.file}`)) {
+    guides.unchanged++;
+    continue;
+  }
+  await sync(
+    guides,
+    existing,
+    () => prisma.prepPdf.create({ data: { title: guide.title, ...data } }),
+    (id) => prisma.prepPdf.update({ where: { id }, data }),
+    data,
+  );
 }
 
-// eslint-disable-next-line no-console -- CLI output
-console.log(
-  `Seeded ${SKILL_CATALOGUE.length} skills, ${resources} learning resources, ${tasks} practical tasks, ${questions} interview questions and ${guides} prep guides.`,
-);
+console.log(`Seed finished (${update ? "--update: refreshed changed rows" : "insert only"}):`);
+for (const [name, { created, updated, unchanged }] of Object.entries(tallies)) {
+  console.log(
+    `  ${name.padEnd(20)} ${created} created, ${updated} updated, ${unchanged} unchanged`,
+  );
+}
+if (!update) {
+  console.log("Existing rows were left as they are; run with --update to refresh them.");
+}
 await prisma.$disconnect();

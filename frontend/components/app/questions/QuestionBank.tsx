@@ -52,7 +52,9 @@ function useUrlFilters() {
   const page = Math.max(1, Number(params.get("page")) || 1);
 
   const set = (changes: Partial<Record<FilterKey | "page", string>>) => {
-    const next = new URLSearchParams(params);
+    // Start from the URL as it is now, not as it was at render: the search
+    // debounce fires later and mustn't undo a filter picked in the meantime.
+    const next = new URLSearchParams(window.location.search);
     for (const [key, val] of Object.entries(changes)) {
       if (val && val !== ALL) next.set(key, val);
       else next.delete(key);
@@ -147,6 +149,17 @@ export function QuestionBank() {
     limit: PAGE_SIZE,
   };
   const result = useGetQuestionsQuery(query);
+
+  // ?page past the end (a shared link, or fewer results now): go to the last page.
+  const current = result.currentData;
+  const lastPage = current ? Math.max(1, Math.ceil(current.meta.total / current.meta.limit)) : null;
+  const pastEnd = !!current && current.questions.length === 0 && current.meta.total > 0;
+  useEffect(() => {
+    if (pastEnd && lastPage && filters.page > lastPage) {
+      filters.set({ page: lastPage > 1 ? String(lastPage) : "" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the result changes
+  }, [pastEnd, lastPage, filters.page]);
 
   const select = (
     key: FilterKey,
@@ -251,7 +264,7 @@ export function QuestionBank() {
         query={result}
         skeleton={<ListSkeleton />}
         errorTitle="Couldn't load questions"
-        isEmpty={(data) => data.questions.length === 0}
+        isEmpty={(data) => data.meta.total === 0}
         empty={
           <EmptyPanel
             icon={SearchX}

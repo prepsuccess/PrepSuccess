@@ -8,7 +8,9 @@ import { DashboardView } from "./DashboardView";
 
 const weights = { technical: 50, aptitude: 30, soft: 20 };
 
-const empty: Dashboard = {
+// Asserted rather than annotated, so the fixtures work before and after the
+// generated types pick up `threshold` and `check_dates`.
+const empty = {
   onboarding_completed: true,
   readiness: {
     score: null,
@@ -42,7 +44,8 @@ const empty: Dashboard = {
       href: "/assessment",
     },
   ],
-};
+  check_dates: [],
+} as Dashboard;
 
 const dsa = {
   skill_id: "00000000-0000-4000-8000-000000000001",
@@ -51,6 +54,7 @@ const dsa = {
   category: "technical" as const,
   assessment_id: "00000000-0000-4000-8000-0000000000a1",
   percent: 29,
+  threshold: 40,
   mastery: "needs_revision" as const,
   completed_at: "2026-10-03T10:00:00.000Z",
   attempts: 1,
@@ -69,7 +73,11 @@ const sql = {
 };
 
 const now = new Date().toISOString();
-const withResults: Dashboard = {
+const pad = (n: number) => String(n).padStart(2, "0");
+const today = new Date();
+/** Today as the API's plain India date — the test runs in the same zone. */
+const todayDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+const withResults = {
   ...empty,
   readiness: {
     score: 40,
@@ -107,7 +115,8 @@ const withResults: Dashboard = {
       href: `/assessment/${dsa.assessment_id}`,
     },
   ],
-};
+  check_dates: [todayDate, todayDate, todayDate],
+} as Dashboard;
 
 const insight: AiInsight = {
   status: "ready",
@@ -205,7 +214,7 @@ describe("DashboardView", () => {
     expect(card("Before and after")).toHaveTextContent("1 skill retaken");
     expect(
       within(card("Skill scores")).getByRole("link", {
-        name: "SQL: 50%, mastered. Review answers",
+        name: "SQL: 50%, mastered (pass mark 40%). Review answers",
       }),
     ).toHaveAttribute("href", `/assessment/${sql.assessment_id}`);
     expect(
@@ -260,6 +269,43 @@ describe("DashboardView", () => {
     const month = new Date().toLocaleDateString("en-IN", { month: "long" });
     expect(screen.getByText(`3 checks in ${month}`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled();
+  });
+
+  it("counts every check on the calendar, not just the 20 in the progress line", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () =>
+        ok({ ...withResults, check_dates: Array.from({ length: 25 }, () => todayDate) }),
+      ),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+    );
+    renderDashboard();
+
+    const month = new Date().toLocaleDateString("en-IN", { month: "long" });
+    expect(await screen.findByText(`25 checks in ${month}`)).toBeInTheDocument();
+  });
+
+  it("marks each skill against its own pass mark", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () =>
+        ok({
+          ...withResults,
+          skills: [
+            { ...dsa, threshold: 45 },
+            { ...sql, threshold: 45 },
+          ],
+        }),
+      ),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+    );
+    renderDashboard();
+
+    const scores = await screen.findByRole("region", { name: "Skill scores" });
+    expect(scores).toHaveTextContent("45% pass mark");
+    expect(
+      within(scores).getByRole("link", { name: /^SQL: 50%, mastered \(pass mark 45%\)/ }),
+    ).toBeInTheDocument();
   });
 
   it("lists the six weakest skills and links to the rest", async () => {

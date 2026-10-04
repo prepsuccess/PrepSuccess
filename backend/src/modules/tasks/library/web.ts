@@ -209,7 +209,12 @@ The .profile card in the starter should be exactly 300px wide in total (includin
 Add a short CSS comment explaining what box-sizing changed.
 `,
     [
-      c("boxsizing", "Uses box-sizing: border-box so the card is exactly 300px", 3),
+      c(
+        "boxsizing",
+        "Fixes the sizing so the card is exactly 300px wide",
+        3,
+        "Uses box-sizing: border-box so the card is exactly 300px",
+      ),
       c("card", "Correct padding, border, radius and shadow", 2),
       c("avatar", "Avatar is an 80px circle (border-radius: 50%) and centred", 3),
       c("spacing", "Controls margins for name/role and explains box-sizing", 2),
@@ -308,7 +313,12 @@ Lay out the dashboard in the starter with CSS only:
       c("autofit", "Stat cards use repeat(auto-fit, minmax(150px, 1fr))", 2),
       c("variables", "Custom properties with a dark theme that only overrides variables", 2),
       c("responsive", "Media query re-orders areas into one column in the required order", 2),
-      c("overflow", "Prevents grid blowout (min-width: 0 or minmax(0, 1fr))", 1),
+      c(
+        "overflow",
+        "Prevents grid blowout from long content",
+        1,
+        "Prevents grid blowout (min-width: 0 or minmax(0, 1fr))",
+      ),
     ],
     `
 <!doctype html>

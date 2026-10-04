@@ -1,21 +1,39 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app.js";
 import { durationToMs, generateOtp, hashSecret, safeEqual } from "../src/lib/crypto.js";
+import { captureError } from "../src/lib/monitoring.js";
 import { errorHandler } from "../src/middleware/error-handler.js";
 import { requireAuth } from "../src/middleware/require-auth.js";
 import { loginSchema } from "../src/modules/auth/auth.schemas.js";
 import { signAccessToken, verifyAccessToken } from "../src/modules/auth/tokens.js";
 
-// These tests cover everything that doesn't need a database: validation,
-// tokens and the auth guard. The full signup → login → refresh flow is
-// checked manually against a real Postgres.
+// These tests cover validation, tokens, the auth guard and the error
+// handler. The guard reads the account on every request, so the one user row
+// it needs is mocked. The full signup → login → refresh flow is checked
+// manually against a real Postgres.
+
+const db = vi.hoisted(() => ({
+  account: null as null | { role: string; isActive: boolean; isDeleted: boolean },
+}));
+// Client mistakes like a bad JSON body must not be reported as server errors.
+vi.mock("../src/lib/monitoring.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/monitoring.js")>()),
+  captureError: vi.fn(),
+}));
+vi.mock("../src/db/prisma.js", () => ({
+  prisma: { user: { findUnique: vi.fn(async () => db.account) } },
+}));
 
 const app = createApp();
 const USER_ID = "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d";
+
+beforeEach(() => {
+  db.account = { role: "STUDENT", isActive: true, isDeleted: false };
+});
 
 describe("crypto helpers", () => {
   it("parses TTL durations", () => {
@@ -88,6 +106,68 @@ describe("requireAuth", () => {
     const res = await request(guarded).get("/admin").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("401s a valid token for a deactivated, deleted or missing account", async () => {
+    const token = signAccessToken(USER_ID, "STUDENT");
+    for (const account of [
+      { role: "STUDENT", isActive: false, isDeleted: false },
+      { role: "STUDENT", isActive: true, isDeleted: true },
+      null,
+    ]) {
+      db.account = account;
+      const res = await request(guarded).get("/any").set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatchObject({
+        code: "UNAUTHORIZED",
+        message: "Sign in to continue.",
+      });
+    }
+  });
+
+  it("uses the role from the database, not the token", async () => {
+    // Demoted after the token was issued: the ADMIN claim no longer counts.
+    const adminToken = signAccessToken(USER_ID, "ADMIN");
+    const demoted = await request(guarded)
+      .get("/admin")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(demoted.status).toBe(403);
+
+    // Promoted after the token was issued: the new role applies straight away.
+    db.account = { role: "ADMIN", isActive: true, isDeleted: false };
+    const studentToken = signAccessToken(USER_ID, "STUDENT");
+    const promoted = await request(guarded)
+      .get("/any")
+      .set("Authorization", `Bearer ${studentToken}`);
+    expect(promoted.body.user).toEqual({ id: USER_ID, role: "ADMIN" });
+  });
+});
+
+describe("error handler — request bodies", () => {
+  it("answers 400 INVALID_JSON for a malformed body", async () => {
+    const res = await request(app)
+      .post("/api/v1/auth/login")
+      .set("Content-Type", "application/json")
+      .send('{"email": ');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatchObject({
+      code: "INVALID_JSON",
+      message: "The request body isn't valid JSON.",
+    });
+    expect(captureError).not.toHaveBeenCalled();
+  });
+
+  it("answers 413 PAYLOAD_TOO_LARGE for a body over the limit", async () => {
+    const res = await request(app)
+      .post("/api/v1/auth/login")
+      .set("Content-Type", "application/json")
+      .send(JSON.stringify({ email: "a@b.co", password: "x".repeat(1_100_000) }));
+    expect(res.status).toBe(413);
+    expect(res.body.error).toMatchObject({
+      code: "PAYLOAD_TOO_LARGE",
+      message: "That request is too large.",
+    });
+    expect(captureError).not.toHaveBeenCalled();
   });
 });
 

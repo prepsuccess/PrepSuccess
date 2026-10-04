@@ -70,17 +70,24 @@ export function fingerprint(question: string) {
  * Whether a check of `count` questions needs the AI to add to the bank first:
  * true when some level has fewer unseen questions than a run could ask
  * there (about half the check) and that level's share of the bank isn't full.
+ *
+ * `stored` is how many questions each level holds, counting ones an admin
+ * deactivated — the same count toBankRows measures room against, so a level
+ * full of hidden questions isn't topped up (and wasted) on every check.
+ * Defaults to the live questions in `bank`.
  */
 export function levelsToTopUp(
   bank: BankQuestion[],
   seen: Set<string>,
   count: number,
+  stored?: Record<Difficulty, number>,
 ): Difficulty[] {
   const need = Math.ceil(count / 2);
   return LEVELS.filter((level) => {
     const atLevel = bank.filter((q) => q.difficulty === level);
     const unseen = atLevel.filter((q) => !seen.has(q.id)).length;
-    return unseen < need && atLevel.length < LEVEL_TARGET[level];
+    const held = stored?.[level] ?? atLevel.length;
+    return unseen < need && held < LEVEL_TARGET[level];
   });
 }
 
@@ -204,6 +211,29 @@ export function pickQuestion(questions: StoredQuestion[], difficulty: Difficulty
     if (found) return found;
   }
   return null;
+}
+
+/**
+ * The best possible score for this check's pool: the all-correct run —
+ * MEDIUM first, then a step up after every answer — through the same
+ * question picking the real check uses. When a level runs short the run
+ * falls back to the nearest level, so a pool with too few HARD questions
+ * can't make a perfect run score below 100%. With enough HARD questions
+ * this equals maxScoreFor(count). Deterministic, so it's recomputed from
+ * the stored pool when the check finishes.
+ */
+export function maxScoreForPool(questions: StoredQuestion[], count: number) {
+  const pool: StoredQuestion[] = questions.map((q) => ({ ...q, asked_order: null }));
+  let level = START_DIFFICULTY;
+  let total = 0;
+  for (let order = 1; order <= count; order++) {
+    const next = pickQuestion(pool, level);
+    if (!next) break;
+    next.asked_order = order;
+    total += POINTS[next.difficulty];
+    level = nextDifficulty(next.difficulty, true);
+  }
+  return total || maxScoreFor(count);
 }
 
 export function scoreOf(questions: StoredQuestion[]) {

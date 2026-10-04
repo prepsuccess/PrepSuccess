@@ -69,7 +69,7 @@ export async function prepPdfs(req: Request, res: Response) {
 }
 
 export async function downloadPrepPdf(req: Request, res: Response) {
-  sendSuccess(req, res, await questions.downloadPrepPdf(pdfId(req)));
+  sendSuccess(req, res, await questions.downloadPrepPdf(req.user!.id, pdfId(req)));
 }
 
 // ---- Admins ------------------------------------------------------------------

@@ -8,6 +8,18 @@ export function notFound(req: Request, _res: Response, next: NextFunction) {
   next(new AppError(404, "ROUTE_NOT_FOUND", `Route ${req.method} ${req.path} was not found.`));
 }
 
+/** body-parser (express.json) tags its errors with a `type`; these are client mistakes, not bugs. */
+function bodyParserError(err: unknown): AppError | null {
+  const type = typeof err === "object" && err !== null ? (err as { type?: unknown }).type : null;
+  if (type === "entity.too.large") {
+    return new AppError(413, "PAYLOAD_TOO_LARGE", "That request is too large.");
+  }
+  if (type === "entity.parse.failed") {
+    return new AppError(400, "INVALID_JSON", "The request body isn't valid JSON.");
+  }
+  return null;
+}
+
 /** Last middleware in the chain: turns anything thrown into the error envelope. */
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
@@ -21,6 +33,12 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       res,
       new AppError(422, "VALIDATION_ERROR", "Request validation failed.", err.issues),
     );
+    return;
+  }
+
+  const clientError = bodyParserError(err);
+  if (clientError) {
+    sendError(req, res, clientError);
     return;
   }
 

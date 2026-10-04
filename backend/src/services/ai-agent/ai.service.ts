@@ -34,7 +34,8 @@ export interface AiRequest {
   timeoutMs?: number;
   /**
    * A platform job (e.g. filling the question bank), not a student request:
-   * skips the trial and daily limit. Usage is still recorded against userId.
+   * skips the trial and daily limit. Usage is still recorded against userId,
+   * marked `system` so it never counts towards their limit.
    */
   systemCall?: boolean;
 }
@@ -95,6 +96,14 @@ export function generateJson<T extends z.ZodType>(
   );
 }
 
+/**
+ * Student requests running right now, per user. They count towards the
+ * daily limit before they're recorded in ai_usage, so parallel requests
+ * can't all slip under it. In memory, per instance: a good-enough guard for
+ * one student's burst, not a global meter.
+ */
+const inFlight = new Map<string, number>();
+
 async function run<T>(
   request: AiRequest,
   parse: (text: string) => T,
@@ -103,26 +112,41 @@ async function run<T>(
   if (!provider.configured) {
     throw new AppError(503, "AI_NOT_CONFIGURED", "AI features aren't available right now.");
   }
+  if (request.systemCall) return attempt(request, parse, jsonSchema);
 
-  const user = await prisma.user.findUnique({
-    where: { id: request.userId },
-    select: { createdAt: true },
-  });
-  if (!user) throw new AppError(401, "UNAUTHORIZED", "Sign in to continue.");
-  const access = request.systemCall
-    ? { reason: null }
-    : await getAiAccess(request.userId, user.createdAt);
-  if (access.reason === "AI_TRIAL_ENDED") {
-    throw new AppError(403, "AI_TRIAL_ENDED", "Your AI free trial has ended.");
+  // Claimed before the first await, so a request started a moment later sees it.
+  const running = inFlight.get(request.userId) ?? 0;
+  inFlight.set(request.userId, running + 1);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: request.userId },
+      select: { createdAt: true },
+    });
+    if (!user) throw new AppError(401, "UNAUTHORIZED", "Sign in to continue.");
+    const access = await getAiAccess(request.userId, user.createdAt, new Date(), running);
+    if (access.reason === "AI_TRIAL_ENDED") {
+      throw new AppError(403, "AI_TRIAL_ENDED", "Your AI free trial has ended.");
+    }
+    if (access.reason === "AI_DAILY_LIMIT") {
+      throw new AppError(
+        429,
+        "AI_DAILY_LIMIT",
+        "You've reached today's AI limit. It resets at midnight.",
+      );
+    }
+    return await attempt(request, parse, jsonSchema);
+  } finally {
+    const left = (inFlight.get(request.userId) ?? 1) - 1;
+    if (left > 0) inFlight.set(request.userId, left);
+    else inFlight.delete(request.userId);
   }
-  if (access.reason === "AI_DAILY_LIMIT") {
-    throw new AppError(
-      429,
-      "AI_DAILY_LIMIT",
-      "You've reached today's AI limit. It resets at midnight.",
-    );
-  }
+}
 
+async function attempt<T>(
+  request: AiRequest,
+  parse: (text: string) => T,
+  jsonSchema?: Record<string, unknown>,
+): Promise<AiResult<T>> {
   // Main model twice (overload is often momentary), then each fallback once.
   // Rate-limited models are skipped, unless every model is (then try anyway).
   const available = provider.models.filter((model) => !isCooling(model));
@@ -136,8 +160,10 @@ async function run<T>(
     if (deadline.aborted) break;
 
     const started = Date.now();
+    // Kept in scope so a reply that fails to parse still records its tokens.
+    let reply: { inputTokens: number; outputTokens: number } | null = null;
     try {
-      const reply = await provider.generate({
+      const response = await provider.generate({
         model,
         system: request.system,
         messages: request.messages,
@@ -147,19 +173,20 @@ async function run<T>(
         thinking: request.thinking,
         signal: deadline,
       });
-      const data = parse(reply.text);
-      await recordUsage(request, model, Date.now() - started, reply, null);
+      reply = response;
+      const data = parse(response.text);
+      await recordUsage(request, model, Date.now() - started, response, null);
       return {
         data,
         model,
-        usage: { inputTokens: reply.inputTokens, outputTokens: reply.outputTokens },
+        usage: { inputTokens: response.inputTokens, outputTokens: response.outputTokens },
       };
     } catch (error) {
       const failure =
         error instanceof AiProviderError
           ? error
           : new AiProviderError(String(error), "AI_UNKNOWN_ERROR", false);
-      await recordUsage(request, model, Date.now() - started, null, failure.code);
+      await recordUsage(request, model, Date.now() - started, reply, failure.code);
       logger.warn(
         { feature: request.feature, model, code: failure.code, err: failure.message },
         "AI attempt failed",
@@ -214,6 +241,7 @@ async function recordUsage(
         outputTokens: reply?.outputTokens ?? 0,
         latencyMs,
         success: errorCode === null,
+        system: Boolean(request.systemCall),
         errorCode,
       },
     });

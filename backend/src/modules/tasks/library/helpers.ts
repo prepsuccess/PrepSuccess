@@ -33,8 +33,19 @@ export const task = (
   ...(starter ? { starter: starter.replace(/^\n/, "").replace(/\s+$/, "") + "\n" } : {}),
 });
 
-export const c = (id: string, description: string, points: number): RubricCriterion => ({
+/**
+ * A rubric criterion. `description` is the public label shown on the task
+ * page, so it must never give the answer away; put the answer itself (values,
+ * orderings, specific fixes) in `expected`, which only the AI reviewer sees.
+ */
+export const c = (
+  id: string,
+  description: string,
+  points: number,
+  expected?: string,
+): RubricCriterion => ({
   id,
   description,
   points,
+  ...(expected ? { expected } : {}),
 });

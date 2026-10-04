@@ -178,7 +178,11 @@ export const adminListQuestionsQuerySchema = z
   .object({
     skill: z.string().trim().max(120).optional(),
     q: z.string().trim().max(100).optional(),
-    include_inactive: z.coerce.boolean().default(true),
+    include_inactive: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true")
+      .meta({ description: "`false` hides inactive questions." }),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   })
@@ -196,7 +200,10 @@ export const adminPrepPdfInputSchema = z
     skill_id: z.uuid().nullable().optional(),
     role: role.nullable().optional(),
     company: company.nullable().optional(),
-    file_url: z.url("Paste a full link, starting with https://").max(500),
+    // https only: the link is opened from students' browsers, so no javascript: or http:.
+    file_url: z
+      .url({ protocol: /^https$/, error: "Paste a full link, starting with https://" })
+      .max(500),
     size_label: z.string().trim().max(50).nullable().optional(),
     is_active: z.boolean().optional(),
   })

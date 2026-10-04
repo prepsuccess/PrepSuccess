@@ -64,7 +64,7 @@ export async function listQuestions(query: {
     prisma.questionBank.findMany({
       where,
       include: { skill: true },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     }),
@@ -76,32 +76,63 @@ export async function listQuestions(query: {
   };
 }
 
+/** A soft-deleted question holding this skill + title (it still owns the unique pair). */
+function findDeleted(skillId: string, title: string) {
+  return prisma.questionBank.findFirst({ where: { skillId, title, isDeleted: true } });
+}
+
+/**
+ * Adds a question. If a deleted question already has this skill and title,
+ * it's brought back with the new content instead of failing with a 409
+ * (students' progress on it comes back too).
+ */
 export async function createQuestion(adminId: string, input: AdminQuestionInput) {
   await assertSkill(input.skill_id);
-  const row = await prisma.questionBank
-    .create({
-      data: {
-        skillId: input.skill_id,
-        title: input.title,
-        body: input.body,
-        answer: input.answer ?? null,
-        topic: input.topic,
-        difficulty: upper(input.difficulty),
-        company: input.company ?? null,
-        role: input.role ?? null,
-        isActive: input.is_active ?? true,
-        createdById: adminId,
-      },
-      include: { skill: true },
-    })
-    .catch(duplicateTitle);
+  const data = {
+    skillId: input.skill_id,
+    title: input.title,
+    body: input.body,
+    answer: input.answer ?? null,
+    topic: input.topic,
+    difficulty: upper(input.difficulty),
+    company: input.company ?? null,
+    role: input.role ?? null,
+    isActive: input.is_active ?? true,
+    createdById: adminId,
+  };
+  const deleted = await findDeleted(input.skill_id, input.title);
+  const row = deleted
+    ? await prisma.questionBank.update({
+        where: { id: deleted.id },
+        data: { ...data, isDeleted: false },
+        include: { skill: true },
+      })
+    : await prisma.questionBank.create({ data, include: { skill: true } }).catch(duplicateTitle);
   return toAdminQuestion(row);
+}
+
+/** Title for a deleted question moved out of the way: "<title> [deleted 1a2b3c4d]". */
+export function deletedTitle(title: string, id: string) {
+  const suffix = ` [deleted ${id.slice(0, 8)}]`;
+  return `${title.slice(0, 200 - suffix.length)}${suffix}`;
 }
 
 export async function updateQuestion(id: string, input: Partial<AdminQuestionInput>) {
   const existing = await prisma.questionBank.findFirst({ where: { id, ...notDeleted } });
   if (!existing) throw new AppError(404, "QUESTION_NOT_FOUND", "That question doesn't exist.");
   if (input.skill_id) await assertSkill(input.skill_id);
+  // Renaming (or moving) onto a deleted question's title: rename the deleted one first.
+  const skillId = input.skill_id ?? existing.skillId;
+  const title = input.title ?? existing.title;
+  if (skillId !== existing.skillId || title !== existing.title) {
+    const deleted = await findDeleted(skillId, title);
+    if (deleted && deleted.id !== id) {
+      await prisma.questionBank.update({
+        where: { id: deleted.id },
+        data: { title: deletedTitle(deleted.title, deleted.id) },
+      });
+    }
+  }
   const row = await prisma.questionBank
     .update({
       where: { id },

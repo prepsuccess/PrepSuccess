@@ -81,7 +81,9 @@ function QuestionStep({
   const [answer, { isLoading, error, reset }] = useAnswerQuestionMutation();
   const query = useGetAssessmentQuery(state.id);
   const [choice, setChoice] = useState<number | null>(null);
-  const stale = isApiError(error) && error.code === "QUESTION_ALREADY_ANSWERED";
+  // The check moved on elsewhere (a double click, another tab): reload to catch up.
+  const finished = isApiError(error) && error.code === "ASSESSMENT_COMPLETE";
+  const stale = finished || (isApiError(error) && error.code === "QUESTION_ALREADY_ANSWERED");
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -179,7 +181,7 @@ function QuestionStep({
                     }}
                   >
                     <RotateCw />
-                    Reload
+                    {finished ? "See results" : "Reload"}
                   </Button>
                 ) : null}
               </AlertDescription>

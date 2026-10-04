@@ -27,6 +27,11 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
+/** Remembers the open state for the next page load (read by the server layouts). */
+function writeSidebarCookie(open: boolean) {
+  document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+}
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
   open: boolean;
@@ -72,13 +77,13 @@ function SidebarProvider({
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
       if (setOpenProp) {
+        // Controlled: the owner decides whether this state is worth remembering
+        // (see writeSidebarCookie), e.g. not a page's temporary workspace state.
         setOpenProp(openState);
       } else {
         _setOpen(openState);
+        writeSidebarCookie(openState);
       }
-
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
     [setOpenProp, open],
   );
@@ -668,4 +673,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  writeSidebarCookie,
 };

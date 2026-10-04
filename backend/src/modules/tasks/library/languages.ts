@@ -55,9 +55,24 @@ students = [
 - Compute the average CGPA per branch as a dict.
 `,
     [
-      c("comprehension", "Correct list comprehension: Asha, Meena, Divya", 3),
-      c("sorting", "sorted() with key=lambda and reverse=True (Meena first, Karan last)", 3),
-      c("grouping", "Correct per-branch averages (CSE 8.9, ECE 7.6, ME 6.4)", 3),
+      c(
+        "comprehension",
+        "Correct list comprehension that picks the right students",
+        3,
+        "Correct list comprehension: Asha, Meena, Divya",
+      ),
+      c(
+        "sorting",
+        "sorted() with a key function, in the correct order",
+        3,
+        "sorted() with key=lambda and reverse=True (Meena first, Karan last)",
+      ),
+      c(
+        "grouping",
+        "Correct per-branch averages",
+        3,
+        "Correct per-branch averages (CSE 8.9, ECE 7.6, ME 6.4)",
+      ),
       c("style", "Readable, idiomatic code", 1),
     ],
     `
@@ -214,7 +229,12 @@ In main(), put a Circle(5), a Rectangle(4, 6) and a Rectangle(3, 3) in a List<Sh
       c("abstract", "Abstract class with an abstract area() and shared describe()", 3),
       c("subclasses", "Circle and Rectangle override area() correctly", 2),
       c("comparable", "Implements Comparable<Shape> using Double.compare on area", 3),
-      c("main", "Sorts the list and prints in order: 9.00, 24.00, 78.54", 2),
+      c(
+        "main",
+        "Sorts the list and prints the areas in the correct order",
+        2,
+        "Sorts the list and prints in order: 9.00, 24.00, 78.54",
+      ),
     ],
     `
 import java.util.*;
@@ -249,7 +269,12 @@ Use a LinkedHashMap<Character, Integer> (or a count array) and keep it O(n). In 
       c("counting", "Counts characters in one pass with a map or int[256]", 3),
       c("order", "Finds the first unique character in original order", 3),
       c("edge", "Returns '_' when no character is unique", 2),
-      c("explain", "Correct O(n) reasoning and the HashMap ordering point", 2),
+      c(
+        "explain",
+        "Correct complexity reasoning and the point about map ordering",
+        2,
+        "Correct O(n) reasoning and the HashMap ordering point",
+      ),
     ],
     `
 import java.util.*;
@@ -285,7 +310,12 @@ Implement the buffer yourself with synchronized, wait() and notifyAll() (not Blo
       c("sync", "put/take are synchronized and use wait/notifyAll correctly", 3),
       c("bounds", "Producer blocks when full, consumer blocks when empty", 2),
       c("threads", "Starts both threads and join()s them before printing", 2),
-      c("result", "Prints the correct sum 210 with no lost or duplicated items", 1),
+      c(
+        "result",
+        "Prints the correct sum with no lost or duplicated items",
+        1,
+        "Prints the correct sum 210 with no lost or duplicated items",
+      ),
       c("explain", "Explains spurious wakeups / re-checking the condition in a while loop", 2),
     ],
     `
@@ -461,7 +491,12 @@ In main(), push 1 to 10, remove index 0, print size, capacity and contents. Expl
 `,
     [
       c("realloc", "Grows by doubling with realloc and handles a NULL return safely", 3),
-      c("ops", "Push, get and removeAt behave correctly (size 9, capacity 16, 2..10)", 3),
+      c(
+        "ops",
+        "Push, get and removeAt behave correctly (right size, capacity and contents)",
+        3,
+        "Push, get and removeAt behave correctly (size 9, capacity 16, 2..10)",
+      ),
       c("bounds", "Bounds checking on get/removeAt", 1),
       c("memory", "vecFree releases memory; no leaks or dangling pointers", 1),
       c("amortised", "Correct amortised O(1) explanation", 2),
@@ -521,8 +556,18 @@ Do it with two indices in O(n) time and O(1) extra space. Then show the one-line
 `,
     [
       c("two-pointer", "Correct slow/fast index approach", 4),
-      c("result", "Returns k = 4 and the right first k elements", 2),
-      c("stl", "Correct nums.erase(std::unique(...), nums.end()) alternative", 2),
+      c(
+        "result",
+        "Returns the correct k and the right first k elements",
+        2,
+        "Returns k = 4 and the right first k elements",
+      ),
+      c(
+        "stl",
+        "Correct one-line STL alternative",
+        2,
+        "Correct nums.erase(std::unique(...), nums.end()) alternative",
+      ),
       c("modern", "Clean C++ with a small main() test", 2),
     ],
     `
@@ -592,7 +637,12 @@ Use std::unordered_map for counting and a std::priority_queue (min-heap of size 
       c("count", "Counts with unordered_map", 2),
       c("heap", "Size-k heap with a correct custom comparator (lambda or struct)", 4),
       c("ties", "Breaks frequency ties alphabetically and returns the right order", 2),
-      c("complexity", "States O(n log k) (plus counting) correctly", 2),
+      c(
+        "complexity",
+        "States the time complexity correctly",
+        2,
+        "States O(n log k) (plus counting) correctly",
+      ),
     ],
     `
 #include <iostream>

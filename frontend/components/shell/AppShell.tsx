@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useLayoutEffect, useState, type ReactNode } from "react";
-import { LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react";
+import { LogOut, Monitor, Moon, ShieldCheck, Sun, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/shadcn/avatar";
 import {
   Breadcrumb,
@@ -41,12 +41,14 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  writeSidebarCookie,
 } from "@/components/shadcn/sidebar";
 import { AppToaster } from "@/components/ui/AppToaster";
 import { TooltipProvider } from "@/components/shadcn/tooltip";
 import { LogoMark } from "@/components/ui/Logo";
 import { useSession, useSignOut } from "@/lib/auth/useSession";
 import { applyTheme, useAppTheme, type ThemePreference } from "@/lib/theme/appTheme";
+import { EmptyPanel } from "@/components/app/EmptyPanel";
 import { activeNavItem, navByArea, type NavArea } from "./nav";
 import { NotificationBell } from "./NotificationBell";
 import { CoachProvider } from "@/components/app/coach/CoachProvider";
@@ -150,6 +152,17 @@ function UserMenu() {
   );
 }
 
+/** What a mentor sees in the student area until mentor tools exist. */
+function MentorComingSoon() {
+  return (
+    <EmptyPanel
+      icon={ShieldCheck}
+      title="Mentor tools are coming soon"
+      description="Your mentor account is active. Tools for following your students' progress are on the way."
+    />
+  );
+}
+
 /**
  * Sidebar + top bar frame shared by the student app and the admin panel
  * (shadcn/ui sidebar). Collapses to icons on desktop (Ctrl/⌘+B), becomes a
@@ -173,6 +186,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? "/";
+  const session = useSession();
   const nav = navByArea[navArea];
   const current = activeNavItem(nav, pathname);
   const home = nav[0];
@@ -188,7 +202,16 @@ export function AppShell({
     if (workspace) setWorkspaceOpen(false);
   }
 
-  const student = navArea === "student";
+  // RequireAuth lets mentors into the student area, but every student endpoint
+  // refuses them: the coach and the student pages are for students only.
+  const role = session.status === "authenticated" ? session.user.role : null;
+  const student = navArea === "student" && role === "student";
+  const mentorInStudentArea = navArea === "student" && role === "mentor";
+
+  const saveOpen = (open: boolean) => {
+    setSavedOpen(open);
+    writeSidebarCookie(open);
+  };
 
   // Before paint, so switching themes or arriving from the marketing site never flashes.
   useLayoutEffect(() => applyTheme(resolved), [resolved]);
@@ -197,7 +220,7 @@ export function AppShell({
     <TooltipProvider delayDuration={0}>
       <SidebarProvider
         open={workspace ? workspaceOpen : savedOpen}
-        onOpenChange={workspace ? setWorkspaceOpen : setSavedOpen}
+        onOpenChange={workspace ? setWorkspaceOpen : saveOpen}
       >
         <Sidebar collapsible="icon">
           <SidebarHeader>
@@ -285,7 +308,7 @@ export function AppShell({
               workspace ? "max-w-screen-2xl lg:py-6" : "max-w-6xl lg:py-8",
             )}
           >
-            {children}
+            {mentorInStudentArea ? <MentorComingSoon /> : children}
           </div>
         </SidebarInset>
         {student ? <CoachWidget /> : null}

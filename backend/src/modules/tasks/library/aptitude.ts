@@ -15,9 +15,19 @@ Solve these and show your working:
 - The ages of A and B are in the ratio 3 : 5 and add up to 48. What will the ratio of their ages be after 6 years?
 `,
     [
-      c("average", "32 (120 - 88), with working", 3),
-      c("percent", "20% reduction (25/125), with working", 4),
-      c("ratio", "Ages 18 and 30 now; 24 : 36 = 2 : 3 after 6 years, with working", 3),
+      c("average", "Q1: the number removed, with working", 3, "32 (120 - 88), with working"),
+      c(
+        "percent",
+        "Q2: the cut in consumption, with working",
+        4,
+        "20% reduction (25/125), with working",
+      ),
+      c(
+        "ratio",
+        "Q3: the ratio of ages after 6 years, with working",
+        3,
+        "Ages 18 and 30 now; 24 : 36 = 2 : 3 after 6 years, with working",
+      ),
     ],
     `
 Q1 Answer:
@@ -43,10 +53,15 @@ Solve these and show your working (interest compounded yearly where it applies):
 - A sum doubles itself in 8 years at simple interest. What is the rate per year?
 `,
     [
-      c("si", "₹1,440, with working", 3),
-      c("ci", "₹2,100 (amount ₹12,100), with working", 3),
-      c("difference", "₹32 (P × r² for 2 years), with working", 2),
-      c("rate", "12.5% per year, with working", 2),
+      c("si", "Simple interest, with working", 3, "₹1,440, with working"),
+      c("ci", "Compound interest, with working", 3, "₹2,100 (amount ₹12,100), with working"),
+      c(
+        "difference",
+        "Difference between compound and simple interest, with working",
+        2,
+        "₹32 (P × r² for 2 years), with working",
+      ),
+      c("rate", "Rate at which the sum doubles, with working", 2, "12.5% per year, with working"),
     ],
   ),
   task(
@@ -62,10 +77,30 @@ Solve these and show your working:
 - A car goes from A to B at 40 km/h and returns at 60 km/h. What is its average speed for the round trip?
 `,
     [
-      c("boat", "5 hours (2 h down at 18 km/h + 3 h up at 12 km/h), with working", 3),
-      c("pipes", "60 minutes (net 1/60 of the tank per minute), with working", 3),
-      c("trains", "12 seconds (300 m at 25 m/s), with working", 2),
-      c("average-speed", "48 km/h (2 × 40 × 60 / 100), not 50, with working", 2),
+      c(
+        "boat",
+        "Boat: time for the round trip, with working",
+        3,
+        "5 hours (2 h down at 18 km/h + 3 h up at 12 km/h), with working",
+      ),
+      c(
+        "pipes",
+        "Pipes: time to fill the tank, with working",
+        3,
+        "60 minutes (net 1/60 of the tank per minute), with working",
+      ),
+      c(
+        "trains",
+        "Trains: time to cross each other, with working",
+        2,
+        "12 seconds (300 m at 25 m/s), with working",
+      ),
+      c(
+        "average-speed",
+        "Average speed for the round trip, with working",
+        2,
+        "48 km/h (2 × 40 × 60 / 100), not 50, with working",
+      ),
     ],
   ),
   task(
@@ -82,14 +117,35 @@ Solve all five and show your working for each:
 - What is the remainder when 2^50 is divided by 7?
 `,
     [
-      c("arrangements", "240 (treat AE as one unit: 5! × 2!), with working", 2),
-      c("dice", "5/36 (2-6, 3-5, 4-4, 5-3, 6-2), with working", 2),
-      c("balls", "5/18 (5C2 / 9C2 = 10/36), with working", 2),
-      c("mixture", "12 litres (milk 42, water must go from 18 to 30), with working", 2),
+      c(
+        "arrangements",
+        "PLACED arrangements with the vowels together, with working",
+        2,
+        "240 (treat AE as one unit: 5! × 2!), with working",
+      ),
+      c(
+        "dice",
+        "Probability that the dice sum to 8, with working",
+        2,
+        "5/36 (2-6, 3-5, 4-4, 5-3, 6-2), with working",
+      ),
+      c(
+        "balls",
+        "Probability that both balls are red, with working",
+        2,
+        "5/18 (5C2 / 9C2 = 10/36), with working",
+      ),
+      c(
+        "mixture",
+        "Water to add to the mixture, with working",
+        2,
+        "12 litres (milk 42, water must go from 18 to 30), with working",
+      ),
       c(
         "remainder",
-        "4 (2^3 leaves remainder 1, so 2^48 leaves 1 and 2^50 leaves 4), with working",
+        "Remainder when 2^50 is divided by 7, with working",
         2,
+        "4 (2^3 leaves remainder 1, so 2^48 leaves 1 and 2^50 leaves 4), with working",
       ),
     ],
   ),
@@ -108,10 +164,20 @@ Find the next term in each series and state the rule you found:
 - AZ, BY, CX, ?
 `,
     [
-      c("series-1", "42 (n × (n + 1), or differences 4, 6, 8, 10, 12)", 2),
-      c("series-2", "95 (each term × 2 + 1)", 2),
-      c("series-3", "N (each letter moves 3 places forward)", 2),
-      c("series-4", "DW (first letter moves forward, second moves backward)", 2),
+      c(
+        "series-1",
+        "Series 1: correct next term",
+        2,
+        "42 (n × (n + 1), or differences 4, 6, 8, 10, 12)",
+      ),
+      c("series-2", "Series 2: correct next term", 2, "95 (each term × 2 + 1)"),
+      c("series-3", "Series 3: correct next term", 2, "N (each letter moves 3 places forward)"),
+      c(
+        "series-4",
+        "Series 4: correct next term",
+        2,
+        "DW (first letter moves forward, second moves backward)",
+      ),
       c("rules", "A clear rule is stated for every series", 2),
     ],
   ),
@@ -128,10 +194,20 @@ Answer each and explain how you got there:
 - A girl faces north. She turns 90° clockwise, then 180° anticlockwise, then 45° clockwise. Which direction does she face now?
 `,
     [
-      c("relation-1", "Brother (grandfather's only son is Riya's father)", 2),
-      c("relation-2", "Granddaughter", 2),
-      c("distance", "10 m to the south-east (6 m east, 8 m south)", 2),
-      c("facing", "North-west", 2),
+      c(
+        "relation-1",
+        "Q1: how the man is related to Riya",
+        2,
+        "Brother (grandfather's only son is Riya's father)",
+      ),
+      c("relation-2", "Q2: how A is related to D", 2, "Granddaughter"),
+      c(
+        "distance",
+        "Q3: distance and direction from the start",
+        2,
+        "10 m to the south-east (6 m east, 8 m south)",
+      ),
+      c("facing", "Q4: the direction she finally faces", 2, "North-west"),
       c("working", "Explains each step, e.g. a family tree or a direction sketch", 2),
     ],
   ),
@@ -151,10 +227,25 @@ Syllogisms – say which conclusions follow (only I, only II, both, or neither) 
 - Statements: No cat is a dog. All dogs are animals. Conclusions: I. Some animals are not cats. II. No animal is a cat.
 `,
     [
-      c("code-1", "BQQMF (each letter shifted one place forward)", 2),
-      c("code-2", "26 (sum of letter positions: 4 + 15 + 7)", 2),
-      c("syllogism-1", "Only II follows, with a reason or Venn diagram", 3),
-      c("syllogism-2", "Only I follows, with a reason or Venn diagram", 3),
+      c(
+        "code-1",
+        "APPLE written in the MANGO code",
+        2,
+        "BQQMF (each letter shifted one place forward)",
+      ),
+      c("code-2", "The value of DOG", 2, "26 (sum of letter positions: 4 + 15 + 7)"),
+      c(
+        "syllogism-1",
+        "Syllogism 1: which conclusions follow, with a reason or Venn diagram",
+        3,
+        "Only II follows, with a reason or Venn diagram",
+      ),
+      c(
+        "syllogism-2",
+        "Syllogism 2: which conclusions follow, with a reason or Venn diagram",
+        3,
+        "Only I follows, with a reason or Venn diagram",
+      ),
     ],
   ),
   task(
@@ -176,8 +267,18 @@ Six people – P, Q, R, S, T and U – live on floors 1 to 6 of a building (floo
 Give the full table (floor, person, language) and answer: who lives on floor 3, what language T likes, and who likes Kotlin. Explain your reasoning step by step.
 `,
     [
-      c("table", "Correct table: 1 S Go, 2 Q Python, 3 U Rust, 4 P Java, 5 T C, 6 R Kotlin", 4),
-      c("questions", "U on floor 3, T likes C, R likes Kotlin", 2),
+      c(
+        "table",
+        "Correct full table of floor, person and language",
+        4,
+        "Correct table: 1 S Go, 2 Q Python, 3 U Rust, 4 P Java, 5 T C, 6 R Kotlin",
+      ),
+      c(
+        "questions",
+        "Answers: who is on floor 3, what T likes, who likes Kotlin",
+        2,
+        "U on floor 3, T likes C, R likes Kotlin",
+      ),
       c("steps", "Clues applied in a sensible order, with cases ruled out explicitly", 3),
       c("check", "Verifies the final arrangement against every clue", 1),
     ],
@@ -217,8 +318,18 @@ Part B – give one word for each:
 Part C – use any two of your Part B words in sentences of your own.
 `,
     [
-      c("part-a", "e.g. frank; extravagant/lavish; careful/thorough; modern/current", 4),
-      c("part-b", "Polyglot, acrophobia, incorrigible, autobiography", 4),
+      c(
+        "part-a",
+        "Part A: a fitting synonym or antonym for each word",
+        4,
+        "e.g. frank; extravagant/lavish; careful/thorough; modern/current",
+      ),
+      c(
+        "part-b",
+        "Part B: the correct one-word substitute for each",
+        4,
+        "Polyglot, acrophobia, incorrigible, autobiography",
+      ),
       c("part-c", "Two correct, natural sentences that show the meaning", 2),
     ],
   ),
@@ -238,11 +349,31 @@ Read the passage and answer the questions in your own words.
 - Suggest a suitable title for the passage.
 `,
     [
-      c("main-idea", "Skills-based hiring rewards learning relevant skills and proving them", 3),
-      c("projects", "They show problem-solving, handling setbacks and finishing work", 2),
-      c("vocab", "Are not given much importance / have little value", 1),
-      c("inference", "They are at a disadvantage because they lack guidance on what to learn", 2),
-      c("title", "A short, fitting title, e.g. 'Skills Over Degrees'", 2),
+      c(
+        "main-idea",
+        "The main idea of the passage",
+        3,
+        "Skills-based hiring rewards learning relevant skills and proving them",
+      ),
+      c(
+        "projects",
+        "Why recruiters value projects",
+        2,
+        "They show problem-solving, handling setbacks and finishing work",
+      ),
+      c(
+        "vocab",
+        "Meaning of 'carry little weight'",
+        1,
+        "Are not given much importance / have little value",
+      ),
+      c(
+        "inference",
+        "Inference about students from colleges with weak placement cells",
+        2,
+        "They are at a disadvantage because they lack guidance on what to learn",
+      ),
+      c("title", "A short, fitting title", 2, "A short, fitting title, e.g. 'Skills Over Degrees'"),
     ],
   ),
   task(
@@ -276,11 +407,22 @@ Briefly say how you found each order.
     [
       c(
         "jumble-1",
-        "BADC, with the linking clues explained (As a result, This, A better approach)",
+        "Para jumble 1: correct order, with the linking clues explained",
         3,
+        "BADC, with the linking clues explained (As a result, This, A better approach)",
       ),
-      c("jumble-2", "QSPR, with the time-order clues explained (At first, Then)", 3),
-      c("blanks", "at, off, affect, were (1 point each)", 4),
+      c(
+        "jumble-2",
+        "Para jumble 2: correct order, with the time-order clues explained",
+        3,
+        "QSPR, with the time-order clues explained (At first, Then)",
+      ),
+      c(
+        "blanks",
+        "Fill in the blanks: the right word in each (1 point each)",
+        4,
+        "at, off, affect, were (1 point each)",
+      ),
     ],
   ),
   task(
@@ -299,15 +441,22 @@ Finally, write a 5-6 sentence paragraph arguing for or against "Attendance shoul
     [
       c(
         "argument-1",
-        "Assumes nothing else changed; weakened by e.g. more companies visiting or a better job market that year",
+        "Argument 1: the assumption and a fact that would weaken it",
         3,
+        "Assumes nothing else changed; weakened by e.g. more companies visiting or a better job market that year",
       ),
       c(
         "argument-2",
-        "One test score is taken as enough to predict all-round job performance (hasty generalisation)",
+        "Argument 2: the flaw in the reasoning",
         2,
+        "One test score is taken as enough to predict all-round job performance (hasty generalisation)",
       ),
-      c("argument-3", "Correlation is not causation – both are caused by the monsoon", 2),
+      c(
+        "argument-3",
+        "Argument 3: the flaw in the reasoning",
+        2,
+        "Correlation is not causation – both are caused by the monsoon",
+      ),
       c("paragraph", "Clear claim, reason, evidence and an answered counter-argument", 3),
     ],
   ),
@@ -336,9 +485,19 @@ CS            90
 Show your working.
 `,
     [
-      c("total", "Total 390 out of 500, i.e. 78%", 4),
-      c("above-average", "Maths and CS (English equals the average, so it is not above)", 3),
-      c("ratio", "90 : 66 = 15 : 11", 3),
+      c("total", "Total and overall percentage, with working", 4, "Total 390 out of 500, i.e. 78%"),
+      c(
+        "above-average",
+        "Subjects strictly above the average, with working",
+        3,
+        "Maths and CS (English equals the average, so it is not above)",
+      ),
+      c(
+        "ratio",
+        "Ratio of the highest to the lowest mark, in simplest form",
+        3,
+        "90 : 66 = 15 : 11",
+      ),
     ],
   ),
   task(
@@ -366,10 +525,15 @@ Other        12%
 Show your working.
 `,
     [
-      c("rent", "₹15,000", 3),
-      c("food-vs-transport", "₹6,000 (10% of ₹60,000)", 3),
-      c("angle", "54° (15% of 360°)", 2),
-      c("savings", "₹10,800", 2),
+      c("rent", "Amount spent on rent, with working", 3, "₹15,000"),
+      c(
+        "food-vs-transport",
+        "How much more is spent on food than on transport, with working",
+        3,
+        "₹6,000 (10% of ₹60,000)",
+      ),
+      c("angle", "Central angle of the Education slice, with working", 2, "54° (15% of 360°)"),
+      c("savings", "Monthly savings, with working", 2, "₹10,800"),
     ],
   ),
   task(
@@ -395,10 +559,20 @@ Year   Pune   Chennai   Sanand
 Show your working.
 `,
     [
-      c("total-growth", "50% (120 to 180 thousand)", 3),
-      c("plant-growth", "Sanand, at 80% (Pune 50%, Chennai 32%)", 3),
-      c("share", "40% (60 of 150)", 2),
-      c("average", "48.75 thousand (195 / 4)", 2),
+      c(
+        "total-growth",
+        "Percentage increase in total production, with working",
+        3,
+        "50% (120 to 180 thousand)",
+      ),
+      c(
+        "plant-growth",
+        "Plant with the highest growth, and by how much, with working",
+        3,
+        "Sanand, at 80% (Pune 50%, Chennai 32%)",
+      ),
+      c("share", "Chennai's share of 2024 production, with working", 2, "40% (60 of 150)"),
+      c("average", "Pune's average yearly production, with working", 2, "48.75 thousand (195 / 4)"),
     ],
   ),
   task(
@@ -418,10 +592,25 @@ A company has 800 employees in four departments. Engineering has 40% of the staf
 Present the department-wise numbers as a small table first.
 `,
     [
-      c("women", "320 women (96 + 100 + 40 + 84), i.e. 40%", 2),
-      c("ratio", "224 : 100 = 56 : 25", 2),
-      c("hiring", "45% (450 women out of 1,000)", 3),
-      c("highest", "HR (70%)", 1),
+      c(
+        "women",
+        "Number and percentage of women, with working",
+        2,
+        "320 women (96 + 100 + 40 + 84), i.e. 40%",
+      ),
+      c(
+        "ratio",
+        "Men in Engineering to men in Sales, in simplest form, with working",
+        2,
+        "224 : 100 = 56 : 25",
+      ),
+      c(
+        "hiring",
+        "Percentage of women after the new hires, with working",
+        3,
+        "45% (450 women out of 1,000)",
+      ),
+      c("highest", "Department with the highest proportion of women", 1, "HR (70%)"),
       c("table", "Clear department table (staff, women, men) used for the working", 2),
     ],
     `

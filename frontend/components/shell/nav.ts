@@ -38,8 +38,21 @@ export const adminNav: ShellNavItem[] = [
 export const navByArea = { student: studentNav, admin: adminNav } as const;
 export type NavArea = keyof typeof navByArea;
 
+// Pages without a nav item of their own, shown under the one they belong to.
+const NAV_PARENTS: [prefix: string, href: string][] = [
+  ["/tasks", "/learn"],
+  ["/onboarding", "/dashboard"],
+];
+
 /** The nav item a path belongs to; the first item (the area's home) only matches exactly. */
-export function activeNavItem(items: ShellNavItem[], pathname: string) {
+export function activeNavItem(items: ShellNavItem[], pathname: string): ShellNavItem | undefined {
+  const parent = NAV_PARENTS.find(
+    ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (parent) {
+    const item = items.find((candidate) => candidate.href === parent[1]);
+    if (item) return item;
+  }
   const [home, ...rest] = items;
   const nested = rest.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),

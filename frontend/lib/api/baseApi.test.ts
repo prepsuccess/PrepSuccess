@@ -1,5 +1,5 @@
 import { waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { saveTokens } from "@/lib/auth/session";
 import { signedIn } from "@/lib/auth/authSlice";
 import { makeStore } from "@/lib/store/store";
@@ -161,6 +161,115 @@ describe("baseApi", () => {
       expect(localStorage.getItem("ps-refresh-token")).toBe("old-refresh");
     },
   );
+
+  const newTokens = {
+    access_token: "new-access",
+    refresh_token: "new-refresh",
+    token_type: "bearer",
+    expires_in: 1800,
+    user: testUser,
+  };
+  /** /me that only accepts the new access token. */
+  const meNeedsNewToken = () =>
+    http.get(`${API}/api/v1/auth/me`, ({ request }) =>
+      request.headers.get("Authorization") === "Bearer new-access"
+        ? ok(testUser)
+        : fail(401, "INVALID_TOKEN", "Expired."),
+    );
+
+  it("retries with the other tab's tokens when the refresh lost a race (409)", async () => {
+    server.use(
+      meNeedsNewToken(),
+      http.post(`${API}/api/v1/auth/refresh`, () => {
+        // Another tab spent the same refresh token a moment earlier and saved the new pair.
+        saveTokens("new-access", "new-refresh");
+        return fail(409, "REFRESH_RACE", "Already refreshed.");
+      }),
+    );
+    const store = signedInStore();
+
+    const me = await store.dispatch(authApi.endpoints.getMe.initiate()).unwrap();
+
+    expect(me.email).toBe(testUser.email);
+    expect(store.getState().auth.status).toBe("signedIn");
+    expect(localStorage.getItem("ps-refresh-token")).toBe("new-refresh");
+  });
+
+  it("never signs out over a lost refresh race, even before the other tab saves", async () => {
+    server.use(
+      meNeedsNewToken(),
+      http.post(`${API}/api/v1/auth/refresh`, () =>
+        fail(409, "REFRESH_RACE", "Already refreshed."),
+      ),
+    );
+    const store = signedInStore();
+
+    const result = await store.dispatch(authApi.endpoints.getMe.initiate());
+
+    expect(result.error).toMatchObject({ status: 401 });
+    expect(store.getState().auth.status).toBe("signedIn");
+    expect(localStorage.getItem("ps-refresh-token")).toBe("old-refresh");
+  });
+
+  it("skips the refresh when another tab already rotated the tokens", async () => {
+    let first = true;
+    server.use(
+      http.get(`${API}/api/v1/auth/me`, ({ request }) => {
+        if (first) {
+          first = false;
+          // The other tab refreshes while this request is in flight.
+          saveTokens("new-access", "new-refresh");
+          return fail(401, "INVALID_TOKEN", "Expired.");
+        }
+        return request.headers.get("Authorization") === "Bearer new-access"
+          ? ok(testUser)
+          : fail(401, "INVALID_TOKEN", "Expired.");
+      }),
+      // No refresh handler: spending the token again would fail the test.
+    );
+    const store = signedInStore();
+
+    const me = await store.dispatch(authApi.endpoints.getMe.initiate()).unwrap();
+
+    expect(me.email).toBe(testUser.email);
+    expect(localStorage.getItem("ps-refresh-token")).toBe("new-refresh");
+  });
+
+  it("keeps another tab's new tokens when the old refresh token is rejected", async () => {
+    server.use(
+      meNeedsNewToken(),
+      http.post(`${API}/api/v1/auth/refresh`, () => {
+        saveTokens("new-access", "new-refresh");
+        return fail(401, "INVALID_REFRESH_TOKEN", "Already used.");
+      }),
+    );
+    const store = signedInStore();
+
+    const me = await store.dispatch(authApi.endpoints.getMe.initiate()).unwrap();
+
+    expect(me.email).toBe(testUser.email);
+    expect(store.getState().auth.status).toBe("signedIn");
+    expect(localStorage.getItem("ps-access-token")).toBe("new-access");
+  });
+
+  it("refreshes under a cross-tab lock when the browser has Web Locks", async () => {
+    const request = vi.fn((_name: string, callback: () => Promise<unknown>) => callback());
+    vi.stubGlobal("navigator", { ...navigator, locks: { request } });
+    try {
+      server.use(
+        meNeedsNewToken(),
+        http.post(`${API}/api/v1/auth/refresh`, () => ok(newTokens)),
+      );
+      const store = signedInStore();
+
+      await store.dispatch(authApi.endpoints.getMe.initiate()).unwrap();
+
+      expect(request).toHaveBeenCalledOnce();
+      expect(request.mock.calls[0]![0]).toBe("ps-refresh");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 
   it("never refreshes for a failed login — a 401 there means wrong password", async () => {
     server.use(

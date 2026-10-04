@@ -2,7 +2,13 @@ import type { Dashboard } from "@/lib/api/types";
 
 export type CategoryKey = Dashboard["readiness"]["categories"][number]["category"];
 
+/** The default pass mark: only a fallback, since each result carries its own. */
 export const PASS_MARK = 40;
+
+/** The pass mark a result was scored against (the API sends it per skill). */
+export function passMarkOf(skill: { percent: number; threshold?: number }) {
+  return skill.threshold ?? PASS_MARK;
+}
 
 /** The readiness score we call placement ready — the student's target. */
 export const READY_MARK = 70;

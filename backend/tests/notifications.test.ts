@@ -17,6 +17,10 @@ const db = vi.hoisted(() => {
   return {
     state,
     prisma: {
+      // requireAuth reads the account on every request.
+      user: {
+        findUnique: vi.fn(async () => ({ role: "STUDENT", isActive: true, isDeleted: false })),
+      },
       notification: {
         create: vi.fn(async ({ data }) => {
           if (state.failCreate) throw new Error("db down");

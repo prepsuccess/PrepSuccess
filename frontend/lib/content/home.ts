@@ -2,7 +2,7 @@ export const hero = {
   eyebrow: "For BCA, B.Tech and MCA students heading into placements",
   title: "Find your weak topics before the interviewer does.",
   description:
-    "Tell PrepSuccess the skills you'd put on your resume. It checks each one with short questions and small tasks, marks what needs revision, and shows you exactly what to study next.",
+    "Tell PrepSuccess the skills you'd put on your resume. It checks each one with adaptive questions, marks what needs revision, and gives you study material, hands-on tasks, real interview questions and an AI coach to close the gap.",
   facts: ["Free to use", "No card needed", "AI coach free for your first 4 months"],
 };
 
@@ -42,7 +42,10 @@ export const topics = [
   "Logical reasoning",
   "Verbal ability",
   "Communication",
-  "Resume",
+  "Python",
+  "Java",
+  "React",
+  "Data interpretation",
 ];
 
 export const pillars = [
@@ -54,12 +57,12 @@ export const pillars = [
   {
     title: "Real skill checks",
     description:
-      "For each skill you claim, it sets a quick question or a small task, scores it, and checks it against a pass mark.",
+      "Adaptive checks for 36 skills. Pick 10 to 30 questions; they get harder when you're right and easier when you're not, then you're scored against a pass mark.",
   },
   {
     title: "A fix for every gap",
     description:
-      "Anything below the pass mark comes with study material, so a weak topic is a starting point — never just a label.",
+      "Every skill comes with study material, five hands-on tasks marked by AI, and real interview questions, so a weak topic is a starting point, never just a label.",
   },
 ] as const;
 
@@ -94,8 +97,8 @@ export const tracks: {
   },
   {
     category: "Soft skills",
-    title: "Communication & resume",
-    topics: ["Written answers", "Emails", "Resume clarity"],
+    title: "Communication & teamwork",
+    topics: ["Written answers", "Emails", "STAR stories"],
     methods: ["written"],
   },
 ];
@@ -111,12 +114,12 @@ export const skillCheck = {
       body: "“I know JavaScript.” One line in the onboarding chat, no form to fill in.",
     },
     {
-      title: "A few quick questions",
-      body: "Short questions on arrays, closures and async code. Each answer decides what comes next.",
+      title: "Adaptive questions",
+      body: "Pick 10 to 30 questions on arrays, closures and async code. Get one right and the next is harder; miss one and it eases off.",
     },
     {
-      title: "One small task",
-      body: "Fix a function that filters an array. The AI reads your code, not just the output.",
+      title: "Hands-on practice",
+      body: "Five tasks per skill in a real code editor. Run JavaScript in the browser; the AI marks your code against a rubric.",
     },
     {
       title: "Your mark",
@@ -141,8 +144,8 @@ export const dashboardRight = [
   { title: "AI-recommended next steps", description: "A short plan, based only on your results." },
   { title: "Learning resources", description: "Study material for each weak topic." },
   {
-    title: "Interview readiness",
-    description: "Where you stand on technical, aptitude and soft skills.",
+    title: "Interview practice",
+    description: "Questions you've solved each week, and links to practise your weak skills.",
   },
 ];
 
@@ -174,18 +177,19 @@ export const loopSteps = [
   {
     step: "04",
     label: "Improve",
-    title: "See where you stand",
+    title: "Practise and improve",
     description:
-      "Your dashboard shows completed topics, revision topics, resources and next steps — and updates every time you come back.",
+      "Study, do hands-on tasks, practise real interview questions and ask your AI coach. Your dashboard tracks it all and updates every time you come back.",
     detail: "Updated as you progress",
   },
 ];
 
 export const roadmap = [
   {
-    phase: "Next up",
+    phase: "Available now",
     title: "Interview question bank",
-    description: "Practice questions by company, role and topic, with your progress saved.",
+    description:
+      "About 700 interview questions by company, role and topic, with model answers, bookmarks and your progress saved.",
     tags: ["Company", "Role", "Topic"],
     preview: "questions",
   },
@@ -200,7 +204,7 @@ export const roadmap = [
   {
     phase: "Coming soon",
     title: "Resume feedback & report",
-    description: "AI resume review for your target role, and a downloadable readiness report.",
+    description: "AI resume review for your target role, and a personalised readiness report.",
     tags: ["Resume", "PDF", "Role-tuned"],
     preview: "resume",
   },
@@ -221,6 +225,11 @@ export const faqs = [
     question: "What happens when I'm weak in a topic?",
     answer:
       "It's marked for revision and comes with study material right away. Study, then come back and check it again.",
+  },
+  {
+    question: "Is there someone to ask when I'm stuck?",
+    answer:
+      "Yes. The AI coach in the corner of every page knows your results and can tell you what to study next, give hints on a task, or explain how anything works. You get 20 messages a day.",
   },
   {
     question: "Can the AI make things up about me?",
@@ -256,7 +265,8 @@ export const resources = {
     {
       type: "Practice",
       title: "Practical tasks",
-      description: "Small hands-on tasks that the AI evaluates and feeds back on.",
+      description:
+        "Five hands-on tasks per skill in a real code editor, marked by AI with feedback.",
     },
   ],
 };

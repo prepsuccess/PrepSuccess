@@ -7,6 +7,8 @@
  * per real occurrence.
  */
 
+import type { CaptureResult } from "posthog-js";
+
 export type AnalyticsEvent =
   | { name: "signup_completed"; props: { method: "email" | "google" } }
   | { name: "onboarding_completed"; props?: undefined }
@@ -24,6 +26,33 @@ const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
 type PostHog = typeof import("posthog-js").default;
 let client: Promise<PostHog | null> | null = null;
 
+// Properties PostHog fills in with a URL. Their query strings and hashes can
+// carry personal data (e.g. /forgot-password?email=…), so only the path is sent.
+const URL_PROPERTIES = [
+  "$current_url",
+  "$pathname",
+  "$referrer",
+  "$initial_current_url",
+  "$initial_referrer",
+];
+
+/** "https://x.y/a?b#c" → "https://x.y/a"; leaves anything else (e.g. "$direct") as is. */
+export function stripQuery(value: unknown): unknown {
+  return typeof value === "string" ? value.split(/[?#]/, 1)[0] : value;
+}
+
+/** before_send hook: strips query strings and hashes from every URL property. */
+export function sanitizeEvent(event: CaptureResult | null): CaptureResult | null {
+  if (!event) return event;
+  for (const bag of [event.properties, event.$set, event.$set_once]) {
+    if (!bag) continue;
+    for (const key of URL_PROPERTIES) {
+      if (key in bag) bag[key] = stripQuery(bag[key]);
+    }
+  }
+  return event;
+}
+
 function load() {
   if (!KEY || typeof window === "undefined") return Promise.resolve(null);
   client ??= import("posthog-js")
@@ -36,6 +65,7 @@ function load() {
         disable_session_recording: true,
         persistence: "memory",
         person_profiles: "never",
+        before_send: sanitizeEvent,
       });
       return posthog;
     })

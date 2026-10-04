@@ -41,7 +41,14 @@ const db = vi.hoisted(() => {
     createdAt: now,
     updatedAt: now,
   };
-  const state = { resources: [] as Record<string, unknown>[], skillUpdates: [] as unknown[] };
+  const state = {
+    resources: [] as Record<string, unknown>[],
+    skillUpdates: [] as unknown[],
+    // requireAuth reads the caller's role from the database, not the token.
+    roles: {} as Record<string, string>,
+    // Active admins left after the update (for the last-admin guard).
+    activeAdmins: 1,
+  };
   return {
     now,
     student,
@@ -50,7 +57,14 @@ const db = vi.hoisted(() => {
     prisma: {
       user: {
         findMany: vi.fn(async () => [student]),
-        count: vi.fn(async () => 1),
+        count: vi.fn(async ({ where } = {}) =>
+          where?.role === "ADMIN" ? db.state.activeAdmins : 1,
+        ),
+        findUnique: vi.fn(async ({ where }) =>
+          db.state.roles[where.id]
+            ? { role: db.state.roles[where.id], isActive: true, isDeleted: false }
+            : null,
+        ),
         findFirst: vi.fn(async ({ where }) => (where.id === student.id ? student : null)),
         update: vi.fn(async ({ data }) => ({ ...student, ...data })),
         groupBy: vi.fn(async () => [
@@ -113,6 +127,7 @@ const db = vi.hoisted(() => {
         })),
       },
       practicalTask: { groupBy: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
       $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(db.prisma)),
     },
   };
@@ -132,6 +147,8 @@ const as = (role: "STUDENT" | "MENTOR" | "ADMIN", id = ADMIN_ID) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   db.state.skillUpdates = [];
+  db.state.roles = { [ADMIN_ID]: "ADMIN", [STUDENT_ID]: "STUDENT" };
+  db.state.activeAdmins = 1;
 });
 
 describe("admin access", () => {
@@ -148,6 +165,7 @@ describe("admin access", () => {
   });
 
   it.each(["STUDENT", "MENTOR"] as const)("rejects a %s on every route", async (role) => {
+    db.state.roles[STUDENT_ID] = role;
     for (const { method, path } of routes) {
       const res = await (request(app) as unknown as Record<string, (p: string) => request.Test>)[
         method
@@ -160,6 +178,11 @@ describe("admin access", () => {
 
   it("rejects anonymous requests", async () => {
     expect((await request(app).get("/api/v1/admin/users")).status).toBe(401);
+  });
+
+  it("rejects an admin token whose account has since been demoted", async () => {
+    db.state.roles[ADMIN_ID] = "STUDENT";
+    expect((await request(app).get("/api/v1/admin/users").set(as("ADMIN"))).status).toBe(403);
   });
 });
 
@@ -198,9 +221,38 @@ describe("admin users", () => {
       .send({ is_active: false });
     expect(res.status).toBe(200);
     expect(res.body.data.is_active).toBe(false);
-    expect(db.prisma.refreshToken.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: STUDENT_ID, revokedAt: null } }),
-    );
+    expect(db.prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { userId: STUDENT_ID, revokedAt: null },
+      data: { revokedAt: expect.any(Date), revokeReason: "admin" },
+    });
+  });
+
+  it("refuses to demote or deactivate the last active admin", async () => {
+    db.state.activeAdmins = 0; // what the count sees after the update
+    for (const body of [{ role: "student" }, { is_active: false }]) {
+      const res = await request(app)
+        .patch(`/api/v1/admin/users/${STUDENT_ID}`)
+        .set(as("ADMIN"))
+        .send(body);
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatchObject({
+        code: "LAST_ADMIN",
+        message: "There must be at least one active admin.",
+      });
+    }
+    // The admin rows are locked inside the transaction, and nobody is signed out.
+    expect(db.prisma.$queryRaw).toHaveBeenCalled();
+    expect(db.prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("doesn't count admins for a change that can't remove one", async () => {
+    db.state.activeAdmins = 0;
+    const res = await request(app)
+      .patch(`/api/v1/admin/users/${STUDENT_ID}`)
+      .set(as("ADMIN"))
+      .send({ role: "admin" });
+    expect(res.status).toBe(200);
+    expect(db.prisma.$queryRaw).not.toHaveBeenCalled();
   });
 
   it("won't let an admin change their own account", async () => {

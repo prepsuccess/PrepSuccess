@@ -19,10 +19,16 @@ import { errorMessage, fieldErrors } from "@/lib/api/errors";
 import type { AuthUser, UpdateMeRequest } from "@/lib/api/types";
 import { isValid, validateRequired } from "@/lib/utils/validation";
 
-const yearOptions = [1, 2, 3, 4, 5, 6].map((year) => ({
-  value: String(year),
-  label: year >= 5 ? `Year ${year} / other` : `Year ${year}`,
-}));
+// The dropdown can't hold an empty value, so "Not set" uses this stand-in; it's stored as "".
+const NOT_SET = "none";
+
+const yearOptions = [
+  { value: NOT_SET, label: "Not set" },
+  ...[1, 2, 3, 4, 5, 6].map((year) => ({
+    value: String(year),
+    label: year >= 5 ? `Year ${year} / other` : `Year ${year}`,
+  })),
+];
 
 // Text profile fields this form edits. Skills, goals and the rest come from the onboarding chat.
 const TEXT_FIELDS = [
@@ -40,6 +46,14 @@ type Values = Record<
   string
 >;
 type Errors = Partial<Record<keyof Values, string>>;
+
+const FORM_FIELDS = new Set<string>([
+  ...TEXT_FIELDS,
+  "first_name",
+  "last_name",
+  "student_year",
+  "graduation_year",
+]);
 
 const PHONE = /^\+?\d[\d\s-]{6,18}\d$/;
 
@@ -114,10 +128,15 @@ export function ProfileForm({ user, onDone }: { user: AuthUser; onDone: () => vo
       toast.success("Profile saved");
       onDone();
     } catch (error) {
-      // Server-side validation lands on the matching field; anything else goes in the banner.
-      const byField = fieldErrors(error) as Errors;
-      if (Object.keys(byField).length > 0) setErrors(byField);
-      else setFormError(errorMessage(error));
+      // Server-side validation lands on the matching field; anything else goes in
+      // the banner, including issues with fields this form doesn't show.
+      const issues = Object.entries(fieldErrors(error));
+      const shown = issues.filter(([name]) => FORM_FIELDS.has(name));
+      const hidden = issues.filter(([name]) => !FORM_FIELDS.has(name));
+      setErrors(Object.fromEntries(shown) as Errors);
+      if (shown.length === 0 || hidden.length > 0) {
+        setFormError(hidden[0]?.[1] ?? errorMessage(error));
+      }
     }
   }
 
@@ -163,6 +182,12 @@ export function ProfileForm({ user, onDone }: { user: AuthUser; onDone: () => vo
               placeholder="Choose your year"
               options={yearOptions}
               {...field("student_year")}
+              onChange={(e) =>
+                setValues((current) => ({
+                  ...current,
+                  student_year: e.target.value === NOT_SET ? "" : e.target.value,
+                }))
+              }
             />
             <TextField
               label="Graduation year"

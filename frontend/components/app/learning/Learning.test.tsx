@@ -35,6 +35,21 @@ describe("Prose", () => {
     expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeInTheDocument();
     expect(container.querySelector("pre code")?.textContent).toBe("SELECT 1;");
   });
+
+  it("keeps lines after a list below it, in their original order", () => {
+    const { container } = render(<Prose text={"Intro\n- a\n- b\nOutro\n- c"} />);
+    const order = Array.from(container.querySelectorAll("p, li")).map((el) => el.textContent);
+    expect(order).toEqual(["Intro", "a", "b", "Outro", "c"]);
+    expect(container.querySelectorAll("ul")).toHaveLength(2);
+  });
+
+  it("uses only the first word of a fence line as the language", () => {
+    const { container } = render(<Prose text={"```py title=demo.py\nprint(1)\n```\nAfter"} />);
+    const code = container.querySelector("pre code")!;
+    expect(code.textContent).toBe("print(1)");
+    expect(code).toHaveAttribute("data-language", "py");
+    expect(screen.getByText("After")).toBeInTheDocument();
+  });
 });
 
 describe("ResourceList", () => {
@@ -171,5 +186,60 @@ describe("TaskView", () => {
 
     expect(await screen.findByText(/The AI is busy right now/)).toBeInTheDocument();
     await waitFor(() => expect(box).toHaveValue("a reasonably long answer to the task"));
+  });
+
+  describe("drafts", () => {
+    const draftKey = `task-draft:${TASK_ID}`;
+    const show = async (submissions: TaskSubmission[]) => {
+      server.use(http.get(`${API}/api/v1/tasks/${TASK_ID}`, () => ok(task(submissions))));
+      renderWithStore(<TaskView id={TASK_ID} />, { signedInAs: testUser });
+      return screen.findByLabelText("Your answer");
+    };
+
+    it("saves a draft against the latest submission", async () => {
+      const box = await show([submission]);
+      await userEvent.clear(box);
+      await userEvent.type(box, "a fresh draft answer");
+      expect(JSON.parse(localStorage.getItem(draftKey)!)).toMatchObject({
+        content: "a fresh draft answer",
+        basedOn: "s1",
+      });
+    });
+
+    it("ignores a draft written before a newer submission", async () => {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ v: 2, content: "stale draft", basedOn: "older" }),
+      );
+      expect(await show([submission])).toHaveValue(submission.content);
+    });
+
+    it("restores a draft written on top of the latest submission", async () => {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ v: 2, content: "draft on top of s1", basedOn: "s1" }),
+      );
+      expect(await show([submission])).toHaveValue("draft on top of s1");
+    });
+
+    it("keeps an old plain-text draft only before the first submission", async () => {
+      localStorage.setItem(draftKey, "old plain draft");
+      expect(await show([])).toHaveValue("old plain draft");
+    });
+
+    it("drops an old plain-text draft once there is a submission", async () => {
+      localStorage.setItem(draftKey, "old plain draft");
+      expect(await show([submission])).toHaveValue(submission.content);
+    });
+
+    it("explains why an over-long answer can't be submitted", async () => {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ v: 2, content: "x".repeat(10_001), basedOn: null }),
+      );
+      await show([]);
+      expect(screen.getByText("Too long: keep it under 10,000 characters.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Submit for review" })).toBeDisabled();
+    });
   });
 });

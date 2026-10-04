@@ -18,7 +18,12 @@ Write isPalindrome(s) that returns true if the string reads the same forwards an
       c("pointers", "Uses two pointers moving inward from both ends", 3),
       c("skip", "Skips non-alphanumeric characters and ignores case", 3),
       c("correct", "Correct output for all sample calls, including the empty string", 3),
-      c("complexity", "States O(n) time and O(1) space", 1),
+      c(
+        "complexity",
+        "States the time and space complexity correctly",
+        1,
+        "States O(n) time and O(1) space",
+      ),
     ],
     `
 function isPalindrome(s) {
@@ -45,7 +50,12 @@ Write firstUnique(s) that returns the first character in the string that appears
       c("count", "Builds a frequency count in one pass", 3),
       c("order", "Second pass returns the first character with count 1", 3),
       c("edge", "Returns null when no unique character exists", 2),
-      c("explain", "Explains the O(n) two-pass idea", 2),
+      c(
+        "explain",
+        "Explains the two-pass idea and its complexity",
+        2,
+        "Explains the O(n) two-pass idea",
+      ),
     ],
     `
 function firstUnique(s) {
@@ -71,8 +81,18 @@ Write longestUniqueSubstring(s) that returns the length of the longest substring
     [
       c("window", "Correct sliding-window approach with a map or set", 4),
       c("correct", "Correct output for all sample calls", 3),
-      c("complexity", "Runs in O(n) and states the complexity", 2),
-      c("trace", "Explains the window on 'abba' (left pointer never moves back)", 1),
+      c(
+        "complexity",
+        "Runs efficiently and states the complexity correctly",
+        2,
+        "Runs in O(n) and states the complexity",
+      ),
+      c(
+        "trace",
+        "Explains how the window moves on 'abba'",
+        1,
+        "Explains the window on 'abba' (left pointer never moves back)",
+      ),
     ],
     `
 function longestUniqueSubstring(s) {
@@ -101,7 +121,12 @@ Write mergeKSorted(arrays) that merges k sorted arrays of numbers into one sorte
       c("heap", "Working min-heap with correct sift-up and sift-down", 3),
       c("merge", "Heap holds at most k items and tracks array and index", 3),
       c("correct", "Correct output for all sample calls, including empty cases", 2),
-      c("complexity", "States O(N log k) and compares with O(N log N)", 2),
+      c(
+        "complexity",
+        "States the complexity and compares it with sorting everything",
+        2,
+        "States O(N log k) and compares with O(N log N)",
+      ),
     ],
     `
 class MinHeap {
@@ -228,7 +253,7 @@ A Student class has rollNo (String) and name (String). Two students are the same
     [
       c("equals", "equals handles same reference, null and type, compares rollNo", 3),
       c("hash", "hashCode uses only rollNo (consistent with equals)", 3),
-      c("demo", "HashSet demo prints size 1", 2),
+      c("demo", "HashSet demo prints the correct size", 2, "HashSet demo prints size 1"),
       c("contract", "Explains the contract and the bug when hashCode is missing", 2),
     ],
     `
@@ -327,8 +352,18 @@ Explain the difference between a process and a thread.
 `,
     [
       c("define", "Correct definitions of process and thread", 2),
-      c("share", "Own: stack, registers, PC; shared: code, heap, open files", 3),
-      c("switch", "Explains cheaper switch (no address-space change, TLB/cache)", 3),
+      c(
+        "share",
+        "Correctly says what each thread has of its own and what threads share",
+        3,
+        "Own: stack, registers, PC; shared: code, heap, open files",
+      ),
+      c(
+        "switch",
+        "Explains which switch is cheaper, and why",
+        3,
+        "Explains cheaper switch (no address-space change, TLB/cache)",
+      ),
       c("examples", "One sensible example for threads and one for processes", 2),
     ],
     `
@@ -363,9 +398,24 @@ For both FCFS (order P1, P2, P3, P4) and non-preemptive SJF:
 `,
     [
       c("gantt", "Correct Gantt charts for both algorithms", 2),
-      c("fcfs", "FCFS: average waiting 10.25 ms, average turnaround 16.25 ms", 3),
-      c("sjf", "SJF: average waiting 7 ms, average turnaround 13 ms", 3),
-      c("drawback", "Picks SJF and names a drawback (starvation, burst unknown)", 2),
+      c(
+        "fcfs",
+        "FCFS: correct average waiting and turnaround times",
+        3,
+        "FCFS: average waiting 10.25 ms, average turnaround 16.25 ms",
+      ),
+      c(
+        "sjf",
+        "SJF: correct average waiting and turnaround times",
+        3,
+        "SJF: average waiting 7 ms, average turnaround 13 ms",
+      ),
+      c(
+        "drawback",
+        "Picks the better algorithm and names a drawback",
+        2,
+        "Picks SJF and names a drawback (starvation, burst unknown)",
+      ),
     ],
     `
 FCFS Gantt chart:
@@ -393,10 +443,30 @@ A process has 3 page frames (all empty at the start) and this page reference str
 - Explain why Optimal can't be used in a real OS, and what Belady's anomaly is (which of these algorithms can suffer from it).
 `,
     [
-      c("fifo", "FIFO trace with 15 page faults", 3),
-      c("lru", "LRU trace with 12 page faults", 3),
-      c("opt", "Optimal trace with 9 page faults", 2),
-      c("theory", "Optimal needs the future; Belady's anomaly explained (FIFO)", 2),
+      c(
+        "fifo",
+        "FIFO trace with the correct number of page faults",
+        3,
+        "FIFO trace with 15 page faults",
+      ),
+      c(
+        "lru",
+        "LRU trace with the correct number of page faults",
+        3,
+        "LRU trace with 12 page faults",
+      ),
+      c(
+        "opt",
+        "Optimal trace with the correct number of page faults",
+        2,
+        "Optimal trace with 9 page faults",
+      ),
+      c(
+        "theory",
+        "Explains why Optimal is not practical, and Belady's anomaly",
+        2,
+        "Optimal needs the future; Belady's anomaly explained (FIFO)",
+      ),
     ],
     `
 FIFO trace:
@@ -425,9 +495,19 @@ A producer puts items into a shared buffer of size N, and a consumer takes them 
 `,
     [
       c("race", "Clear race-condition example on count/buffer", 2),
-      c("init", "Correct initial values: mutex=1, empty=N, full=0", 2),
+      c(
+        "init",
+        "Correct initial semaphore values",
+        2,
+        "Correct initial values: mutex=1, empty=N, full=0",
+      ),
       c("code", "Correct wait/signal order in producer and consumer", 3),
-      c("deadlock", "Explains the deadlock from swapping wait(mutex) and wait(empty)", 2),
+      c(
+        "deadlock",
+        "Explains what goes wrong when the two waits are swapped",
+        2,
+        "Explains the deadlock from swapping wait(mutex) and wait(empty)",
+      ),
       c("multi", "Correct answer on multiple producers/consumers", 1),
     ],
     `
@@ -492,7 +572,12 @@ Then say at which layer a switch, a router and a hub work, and how the OSI layer
     [
       c("order", "All seven layers in the correct order", 3),
       c("detail", "Correct job and an example protocol for each layer", 3),
-      c("devices", "Hub L1, switch L2, router L3", 2),
+      c(
+        "devices",
+        "Correct layer for a hub, a switch and a router",
+        2,
+        "Hub L1, switch L2, router L3",
+      ),
       c("tcpip", "Correct mapping to the TCP/IP model", 2),
     ],
     `
@@ -522,10 +607,20 @@ Your college lab has the network 192.168.10.0/24 and needs it split into 4 equal
 - Which subnet does the host 192.168.10.150 belong to?
 `,
     [
-      c("mask", "Prefix /26 and mask 255.255.255.192", 2),
+      c("mask", "Correct prefix and subnet mask", 2, "Prefix /26 and mask 255.255.255.192"),
       c("ranges", "Correct network, host range and broadcast for all four subnets", 4),
-      c("hosts", "62 usable hosts per subnet using 2^6 - 2", 2),
-      c("lookup", "192.168.10.150 is in 192.168.10.128/26", 2),
+      c(
+        "hosts",
+        "Correct usable hosts per subnet, with the formula",
+        2,
+        "62 usable hosts per subnet using 2^6 - 2",
+      ),
+      c(
+        "lookup",
+        "Correct subnet for the given address",
+        2,
+        "192.168.10.150 is in 192.168.10.128/26",
+      ),
     ],
     `
 Prefix and mask:

@@ -18,7 +18,7 @@ import { Progress } from "@/components/shadcn/progress";
 import { Skeleton } from "@/components/shadcn/skeleton";
 import { Textarea } from "@/components/shadcn/textarea";
 import { QueryState } from "@/components/ui/QueryState";
-import { errorMessage } from "@/lib/api/errors";
+import { errorMessage, isApiError } from "@/lib/api/errors";
 import {
   useGetOnboardingQuery,
   useSendOnboardingMessageMutation,
@@ -207,8 +207,12 @@ function CompletionCard({ profile }: { profile: StudentProfile }) {
   );
 }
 
+/** The chat moved on elsewhere (another tab's turn, or onboarding finished): reload it. */
+const OUT_OF_DATE = new Set(["ONBOARDING_BUSY", "ONBOARDING_COMPLETE"]);
+
 function Chat({ state }: { state: OnboardingState }) {
   const [send, { isLoading: sending }] = useSendOnboardingMessageMutation();
+  const { refetch } = useGetOnboardingQuery();
   const [draft, setDraft] = useState("");
   const [failed, setFailed] = useState<{
     content: string;
@@ -242,6 +246,7 @@ function Chat({ state }: { state: OnboardingState }) {
       // Nothing was saved; give the text back so it can be resent or edited.
       setFailed({ content, skills, error });
       if (!skills) setDraft((current) => current || content);
+      if (isApiError(error) && OUT_OF_DATE.has(error.code)) void refetch();
     }
   }
 

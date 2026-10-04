@@ -36,6 +36,7 @@ const dashboard: DashboardResponse = {
       category: "technical",
       assessment_id: "6d9c5e3a-4b2f-4c8d-9eaf-3f4b5c6d7e8f",
       percent: 32,
+      threshold: 60,
       mastery: "needs_revision",
       completed_at: "2026-10-03T10:00:00.000Z",
       attempts: 1,
@@ -43,6 +44,7 @@ const dashboard: DashboardResponse = {
     },
   ],
   gaps: [],
+  check_dates: ["2026-10-03"],
   next_steps: [
     {
       id: "revise-sql",
@@ -66,58 +68,69 @@ const db = vi.hoisted(() => {
   const user = {
     id: "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d",
     firstName: "Asha",
+    role: "STUDENT",
     isActive: true,
     isDeleted: false,
     createdAt: new Date("2026-10-01T00:00:00.000Z"),
     profile: { profileData: { target_role: "Data Analyst", college: "Christ University" } },
   };
-  return {
-    state,
-    prisma: {
-      user: { findUnique: vi.fn(async () => user) },
-      userTaskSubmission: {
-        findMany: vi.fn(async () => [
-          { task: { title: "Top earners", skill: { name: "SQL" } }, score: 40, passed: false },
-        ]),
-      },
-      aIConversation: {
-        findFirst: vi.fn(async () => state.conversation),
-        create: vi.fn(async ({ data }) => (state.conversation = { id: "c1", ...data })),
-        update: vi.fn(async ({ data }) => Object.assign(state.conversation!, data)),
-      },
-      aiUsage: {
-        count: vi.fn(
-          async ({ where }) =>
-            state.usage.filter(
-              (u) =>
-                u.success &&
-                (!where.feature || u.feature === where.feature) &&
-                u.createdAt >= where.createdAt.gte,
-            ).length,
-        ),
-        create: vi.fn(async ({ data }) =>
-          state.usage.push({ feature: data.feature, success: data.success, createdAt: new Date() }),
-        ),
-      },
-      userActivity: {
-        findUnique: vi.fn(async () => state.activity),
-        upsert: vi.fn(async ({ create, update }) => {
-          state.activity = state.activity ? { ...state.activity, ...update } : { ...create };
-        }),
-        updateMany: vi.fn(async ({ data }) => {
-          const last = state.activity?.lastNudgeAt as Date | null | undefined;
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (last && last > today) return { count: 0 };
+  const prisma = {
+    // Raw SQL used by the coach: the row-locked conversation read and the advisory lock.
+    $queryRaw: vi.fn(async (strings: TemplateStringsArray): Promise<unknown[]> => {
+      if (strings.join("?").includes("pg_advisory_xact_lock")) return [{ locked: 1 }];
+      return state.conversation ? [state.conversation] : [];
+    }),
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
+    user: { findUnique: vi.fn(async () => user) },
+    userTaskSubmission: {
+      findMany: vi.fn(async () => [
+        { task: { title: "Top earners", skill: { name: "SQL" } }, score: 40, passed: false },
+      ]),
+    },
+    aIConversation: {
+      findFirst: vi.fn(async () => state.conversation),
+      create: vi.fn(async ({ data }) => (state.conversation = { id: "c1", ...data })),
+      update: vi.fn(async ({ data }) => Object.assign(state.conversation!, data)),
+    },
+    aiUsage: {
+      count: vi.fn(
+        async ({ where }) =>
+          state.usage.filter(
+            (u) =>
+              u.success &&
+              (!where.feature || u.feature === where.feature) &&
+              u.createdAt >= where.createdAt.gte,
+          ).length,
+      ),
+      create: vi.fn(async ({ data }) =>
+        state.usage.push({ feature: data.feature, success: data.success, createdAt: new Date() }),
+      ),
+    },
+    userActivity: {
+      findUnique: vi.fn(async () => state.activity),
+      upsert: vi.fn(async ({ create, update }) => {
+        state.activity = state.activity ? { ...state.activity, ...update } : { ...create };
+      }),
+      updateMany: vi.fn(async ({ where, data }) => {
+        const last = state.activity?.lastNudgeAt as Date | null | undefined;
+        if (where.lastNudgeAt instanceof Date) {
+          // Releasing a claim: only if it's still ours.
+          if (last?.getTime() !== where.lastNudgeAt.getTime()) return { count: 0 };
           Object.assign(state.activity!, data);
           return { count: 1 };
-        }),
-      },
-      notification: {
-        create: vi.fn(async ({ data }) => state.notifications.push(data)),
-      },
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (last && last > today) return { count: 0 };
+        Object.assign(state.activity!, data);
+        return { count: 1 };
+      }),
+    },
+    notification: {
+      create: vi.fn(async ({ data }) => state.notifications.push(data)),
     },
   };
+  return { state, user, prisma };
 });
 
 vi.mock("../src/db/prisma.js", () => ({ prisma: db.prisma }));
@@ -130,6 +143,7 @@ const { createApp } = await import("../src/app.js");
 const { signAccessToken } = await import("../src/modules/auth/tokens.js");
 const { fakeAi } = await import("../src/services/ai-agent/providers/fake.provider.js");
 const logic = await import("../src/modules/coach/coach.logic.js");
+const coachService = await import("../src/modules/coach/coach.service.js");
 
 const app = createApp();
 const auth = { Authorization: `Bearer ${signAccessToken(USER_ID, "STUDENT")}` };
@@ -137,6 +151,7 @@ const ask = (content: string) =>
   request(app).post("/api/v1/ai/coach/messages").set(auth).send({ content });
 
 beforeEach(() => {
+  vi.clearAllMocks();
   fakeAi.reset();
   db.state.conversation = null;
   db.state.activity = null;
@@ -168,6 +183,24 @@ describe("coach rules", () => {
     const later = logic.trackActivity({ ...first, lastSeenAt: at(25) }, at(40));
     expect(later.activity.sessionStartedAt).toEqual(at(40));
     expect(later.nudgeDue).toBe(false);
+  });
+
+  it("starts the model's history with a user turn", () => {
+    const at = "2026-10-03T06:00:00.000Z";
+    const history = logic.historyWindow([
+      { role: "assistant" as const, content: "Check-in tip", created_at: at, nudge: true },
+      { role: "user" as const, content: "Thanks, what next?", created_at: at },
+    ]);
+    expect(history).toEqual([{ role: "user", content: "Thanks, what next?" }]);
+
+    // A window cut mid-exchange drops the orphan reply at the front too.
+    const long = Array.from({ length: logic.HISTORY_WINDOW + 1 }, (_, i) => ({
+      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
+      content: `m${i}`,
+    }));
+    const window = logic.historyWindow(long);
+    expect(window[0]!.role).toBe("user");
+    expect(window.at(-1)!.content).toBe(`m${logic.HISTORY_WINDOW}`);
   });
 
   it("describes the student from real data only", () => {
@@ -240,9 +273,61 @@ describe("coach chat", () => {
     expect(res.body.data.usage.used).toBe(1);
   });
 
+  it("refuses a second message while the first is still being answered", async () => {
+    const first = coachService.sendCoachMessage(USER_ID, "First?");
+    await expect(coachService.sendCoachMessage(USER_ID, "Second?")).rejects.toMatchObject({
+      status: 429,
+      code: "COACH_BUSY",
+    });
+    await first;
+    expect(fakeAi.calls).toHaveLength(1);
+    // Once answered, the next message goes through.
+    await expect(coachService.sendCoachMessage(USER_ID, "Third?")).resolves.toBeTruthy();
+  });
+
+  it("appends to the latest conversation, not the copy read before the AI call", async () => {
+    db.state.conversation = { id: "c1", messages: [] };
+    const tip = {
+      role: "assistant",
+      content: "Check-in that landed meanwhile",
+      created_at: new Date().toISOString(),
+      nudge: true,
+    };
+    // Another save (a check-in) lands while the AI is answering.
+    db.prisma.$queryRaw.mockImplementationOnce(async () => {
+      db.state.conversation!.messages = [tip];
+      return [db.state.conversation];
+    });
+    fakeAi.reply("Here's a plan.");
+    const res = await ask("Plan my week?");
+    expect(res.status).toBe(200);
+    expect(db.state.conversation!.messages.map((m) => (m as { content: string }).content)).toEqual([
+      "Check-in that landed meanwhile",
+      "Plan my week?",
+      "Here's a plan.",
+    ]);
+  });
+
+  it("re-checks under a lock before creating the conversation", async () => {
+    // No conversation at first; another request creates one while we wait for the lock.
+    db.prisma.$queryRaw.mockImplementationOnce(async () => []);
+    db.prisma.$queryRaw.mockImplementationOnce(async (strings: TemplateStringsArray) => {
+      expect(strings.join("?")).toContain("pg_advisory_xact_lock");
+      db.state.conversation = { id: "c0", messages: [{ role: "user", content: "Earlier" }] };
+      return [{ locked: 1 }];
+    });
+    await ask("Hello");
+    expect(db.prisma.aIConversation.create).not.toHaveBeenCalled();
+    expect(db.state.conversation!.id).toBe("c0");
+    expect(db.state.conversation!.messages).toHaveLength(3);
+  });
+
   it("is for students only", async () => {
+    // The account's role in the database decides, not the token's.
+    db.user.role = "ADMIN";
     const admin = { Authorization: `Bearer ${signAccessToken(USER_ID, "ADMIN")}` };
     expect((await request(app).get("/api/v1/ai/coach").set(admin)).status).toBe(403);
+    db.user.role = "STUDENT";
   });
 });
 
@@ -283,6 +368,23 @@ describe("coach check-in", () => {
     expect(db.state.notifications[0]).toMatchObject({
       body: expect.stringContaining("revise sql"),
     });
+  });
+
+  it("releases the day's check-in when saving it fails", async () => {
+    db.state.activity = {
+      sessionStartedAt: new Date(Date.now() - 31 * 60_000),
+      lastSeenAt: new Date(),
+      lastNudgeAt: null,
+    };
+    db.prisma.$transaction.mockRejectedValueOnce(new Error("db down"));
+    const res = await request(app).post("/api/v1/ai/coach/ping").set(auth);
+    expect(res.body.data).toEqual({ nudged: false });
+    expect(db.state.activity!.lastNudgeAt).toBeNull();
+    expect(db.state.notifications).toHaveLength(0);
+
+    // The next ping tries again.
+    const again = await request(app).post("/api/v1/ai/coach/ping").set(auth);
+    expect(again.body.data).toEqual({ nudged: true });
   });
 
   it("does nothing early in a session", async () => {

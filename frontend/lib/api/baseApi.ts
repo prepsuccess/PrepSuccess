@@ -21,11 +21,14 @@ import { toApiError, type ApiError } from "./errors";
  *    the refresh token the user is signed out (the cache is cleared when the
  *    next session starts — see startSession — so the failing request still
  *    reports its 401). If the refresh can't get through at all, the user stays
- *    signed in and the request reports that error instead.
+ *    signed in and the request reports that error instead. Tabs share the
+ *    tokens (localStorage), so refreshes are serialised across tabs too.
  */
 
 const rawQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
+  // Long enough for a cold start of the API host; past it the request reports TIMEOUT.
+  timeout: 30_000,
   prepareHeaders(headers) {
     const token = getAccessToken();
     if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
@@ -49,9 +52,14 @@ const NO_REFRESH = [
 // session, so the student stays signed in and can simply retry.
 const SESSION_REJECTED = [400, 401, 403];
 
+// Another tab is refreshing the same token right now (the backend rotates it
+// once); that tab saves the new pair, so this one only has to pick it up.
+const REFRESH_RACE = 409;
+
 type Refresh =
   | { outcome: "refreshed" }
-  | { outcome: "rejected" }
+  /** `token` is the refresh token the server turned down (null: there was none). */
+  | { outcome: "rejected"; token: string | null }
   | {
       outcome: "failed";
       error: FetchBaseQueryError;
@@ -59,31 +67,59 @@ type Refresh =
 
 let refreshing: Promise<Refresh> | null = null;
 
-/** Exchanges the refresh token once, however many requests hit a 401 at the same time. */
-function refreshSession(api: Parameters<BaseQueryFn>[1], extra: object): Promise<Refresh> {
-  refreshing ??= (async (): Promise<Refresh> => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return { outcome: "rejected" };
-    const result = await rawQuery(
-      { url: "/api/v1/auth/refresh", method: "POST", body: { refresh_token: refreshToken } },
-      api,
-      extra,
-    );
-    if (result.error) {
-      const status = result.error.status;
-      return typeof status === "number" && SESSION_REJECTED.includes(status)
-        ? { outcome: "rejected" }
-        : { outcome: "failed", error: result.error };
-    }
-    const tokens = (result.data as { data?: { access_token: string; refresh_token: string } })
-      ?.data;
-    if (!tokens) return { outcome: "rejected" };
-    saveTokens(tokens.access_token, tokens.refresh_token);
-    return { outcome: "refreshed" };
-  })().finally(() => {
+/** One refresh attempt; runs under the cross-tab lock when the browser has one. */
+async function exchangeRefreshToken(
+  usedToken: string | null,
+  api: Parameters<BaseQueryFn>[1],
+  extra: object,
+): Promise<Refresh> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return { outcome: "rejected", token: null };
+  // The tokens changed since the request went out: another tab (or an earlier
+  // refresh in this one) already rotated them, so just retry with the new ones.
+  if (refreshToken !== usedToken) return { outcome: "refreshed" };
+  const result = await rawQuery(
+    { url: "/api/v1/auth/refresh", method: "POST", body: { refresh_token: refreshToken } },
+    api,
+    extra,
+  );
+  if (result.error) {
+    const status = result.error.status;
+    if (status === REFRESH_RACE) return { outcome: "refreshed" };
+    return typeof status === "number" && SESSION_REJECTED.includes(status)
+      ? { outcome: "rejected", token: refreshToken }
+      : { outcome: "failed", error: result.error };
+  }
+  const tokens = (result.data as { data?: { access_token: string; refresh_token: string } })?.data;
+  if (!tokens) return { outcome: "rejected", token: refreshToken };
+  saveTokens(tokens.access_token, tokens.refresh_token);
+  return { outcome: "refreshed" };
+}
+
+/**
+ * Exchanges the refresh token once, however many requests hit a 401 at the
+ * same time — in this tab (one shared promise) and across tabs (a Web Lock, so
+ * two tabs never spend the same single-use refresh token).
+ */
+function refreshSession(
+  usedToken: string | null,
+  api: Parameters<BaseQueryFn>[1],
+  extra: object,
+): Promise<Refresh> {
+  if (refreshing) return refreshing;
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  const attempt: Promise<Refresh> = locks
+    ? // request() resolves with the callback's result once the lock is released;
+      // its typings nest the promise, so `then` flattens it.
+      locks
+        .request("ps-refresh", () => exchangeRefreshToken(usedToken, api, extra))
+        .then((result) => result)
+    : exchangeRefreshToken(usedToken, api, extra);
+  const shared = attempt.finally(() => {
     refreshing = null;
   });
-  return refreshing;
+  refreshing = shared;
+  return shared;
 }
 
 /** The envelope's pagination `meta`, for list endpoints that send one (read it in transformResponse). */
@@ -97,16 +133,24 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, ApiError, object, Resp
   extra,
 ) => {
   if (refreshing) await refreshing;
+  // The pair this request is sent with, to tell later whether another tab has rotated it.
+  const usedToken = getRefreshToken();
   let result = await rawQuery(args, api, extra);
 
   const url = typeof args === "string" ? args : args.url;
   if (result.error?.status === 401 && !NO_REFRESH.some((path) => url.includes(path))) {
-    const refresh = await refreshSession(api, extra);
+    const refresh = await refreshSession(usedToken, api, extra);
     if (refresh.outcome === "refreshed") {
       result = await rawQuery(args, api, extra);
     } else if (refresh.outcome === "rejected") {
-      clearTokens();
-      api.dispatch(signedOut());
+      const stored = getRefreshToken();
+      if (stored === refresh.token || !stored) {
+        clearTokens();
+        api.dispatch(signedOut());
+      } else {
+        // Another tab signed in or refreshed meanwhile: its tokens are good.
+        result = await rawQuery(args, api, extra);
+      }
     } else {
       // Couldn't reach the refresh endpoint: report that (e.g. "check your
       // connection") rather than the 401, and keep the tokens for next time.

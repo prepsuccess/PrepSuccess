@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { dashboardApi } from "@/lib/api/endpoints/dashboard";
 import type { AiInsight } from "@/lib/api/types";
-import { authErrorMessage, googleSignInUrl } from "@/lib/auth/google";
+import {
+  authErrorMessage,
+  createGoogleNonce,
+  googleSignInUrl,
+  takeGoogleNonce,
+} from "@/lib/auth/google";
 import { StoreProvider } from "@/lib/store/StoreProvider";
 import { makeStore } from "@/lib/store/store";
 import { API, fail, http, ok, server } from "@/test/server";
@@ -21,8 +26,12 @@ const previousInsight: AiInsight = {
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
-function renderCallback(url: string, store = makeStore()) {
-  window.history.replaceState(null, "", url);
+const NONCE = "n0nce-n0nce-n0nce-n0nce-n0nce-12";
+
+/** Renders the callback as if this tab had started a Google sign-in with NONCE. */
+function renderCallback(url: string, store = makeStore(), nonce: string | null = NONCE) {
+  sessionStorage.setItem("ps-google-nonce", NONCE);
+  window.history.replaceState(null, "", nonce ? `${url}&nonce=${nonce}` : url);
   render(
     <StoreProvider store={store}>
       <GoogleCallback />
@@ -34,6 +43,7 @@ function renderCallback(url: string, store = makeStore()) {
 describe("GoogleCallback", () => {
   afterEach(() => {
     replace.mockReset();
+    sessionStorage.clear();
     window.history.replaceState(null, "", "/");
   });
 
@@ -55,6 +65,33 @@ describe("GoogleCallback", () => {
     expect(window.location.hash).toBe("");
     expect(auth).toBe("Bearer acc");
     expect(store.getState().auth.status).toBe("signedIn");
+    // Used up: the same callback link can't be replayed in this tab.
+    expect(sessionStorage.getItem("ps-google-nonce")).toBeNull();
+  });
+
+  it.each([
+    ["a different nonce", "someone-elses-nonce-0000000000000"],
+    ["no nonce", null],
+  ])("discards the tokens when the callback has %s", async (_case, nonce) => {
+    renderCallback("/auth/callback#access_token=acc&refresh_token=ref", makeStore(), nonce);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?error=google_failed"));
+    expect(localStorage.getItem("ps-access-token")).toBeNull();
+    expect(localStorage.getItem("ps-refresh-token")).toBeNull();
+  });
+
+  it("discards the tokens when this tab never started a Google sign-in", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/auth/callback#access_token=acc&refresh_token=ref&nonce=${NONCE}`,
+    );
+    render(
+      <StoreProvider store={makeStore()}>
+        <GoogleCallback />
+      </StoreProvider>,
+    );
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?error=google_failed"));
+    expect(localStorage.getItem("ps-access-token")).toBeNull();
   });
 
   it("drops anything cached for a previous user in this tab", async () => {
@@ -93,7 +130,7 @@ describe("GoogleCallback", () => {
   });
 
   it("sends the user back to login when tokens are missing", async () => {
-    renderCallback("/auth/callback");
+    renderCallback("/auth/callback#");
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?error=google_failed"));
   });
 
@@ -114,6 +151,21 @@ describe("google helpers", () => {
     expect(googleSignInUrl("/dashboard")).toBe(
       "http://localhost:8000/api/v1/auth/google?next=%2Fdashboard",
     );
+  });
+
+  it("adds the nonce, keeping next", () => {
+    expect(googleSignInUrl("/dashboard", "abc")).toBe(
+      "http://localhost:8000/api/v1/auth/google?next=%2Fdashboard&nonce=abc",
+    );
+  });
+
+  it("creates a fresh 32-character base64url nonce, usable once", () => {
+    const nonce = createGoogleNonce();
+    expect(nonce).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    expect(createGoogleNonce()).not.toBe(nonce);
+    const latest = sessionStorage.getItem("ps-google-nonce");
+    expect(takeGoogleNonce()).toBe(latest);
+    expect(takeGoogleNonce()).toBeNull();
   });
 
   it("maps error codes to sentences", () => {

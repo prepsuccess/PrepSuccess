@@ -100,7 +100,10 @@ export const questionsPaths: ZodOpenApiPathsObject = {
     get: student("My bookmarked questions", {
       requestParams: { query: pageQuerySchema },
       responses: {
-        200: { description: "Bookmarks, newest first.", ...json(paged(questionSummarySchema)) },
+        200: {
+          description: "Bookmarks, most recently bookmarked first.",
+          ...json(paged(questionSummarySchema)),
+        },
         ...errors({ ...studentAuth, ...VALIDATION_422 }),
       },
     }),
@@ -148,7 +151,8 @@ export const questionsPaths: ZodOpenApiPathsObject = {
   },
   "/api/v1/prep-pdfs/{id}/download": {
     post: student("Download a prep guide", {
-      description: "Counts the download (for admin analytics) and returns the link to open.",
+      description:
+        "Counts the download (for admin analytics; once per student per guide per day) and returns the link to open.",
       requestParams: pdfPath,
       responses: {
         ...ok(prepPdfDownloadSchema, "The guide's link."),
@@ -168,13 +172,15 @@ export const questionsPaths: ZodOpenApiPathsObject = {
       },
     }),
     post: admin("Add an interview question", {
+      description:
+        "If a deleted question in this skill has the same title, it is restored with this content.",
       requestBody: json(adminQuestionInputSchema),
       responses: {
         ...ok(adminQuestionSchema, "The new question.", "201"),
         ...errors({
           ...adminAuth,
           404: "`SKILL_NOT_FOUND`.",
-          409: "`QUESTION_EXISTS` — same title in this skill.",
+          409: "`QUESTION_EXISTS` — a live question in this skill has that title.",
           ...VALIDATION_422,
         }),
       },

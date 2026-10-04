@@ -6,7 +6,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { skillCheck, tracks, type TestMethod } from "@/lib/content";
 
 const METHODS: Record<TestMethod, { label: string; icon: LineIconName }> = {
-  questions: { label: "Quick questions", icon: "checklist" },
+  questions: { label: "Adaptive questions", icon: "checklist" },
   task: { label: "Hands-on task", icon: "code" },
   written: { label: "Written answer", icon: "chat" },
 };

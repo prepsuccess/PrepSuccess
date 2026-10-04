@@ -35,7 +35,7 @@ export default function RoadmapPage() {
               </Reveal>
               <Reveal onLoad delay={0.15}>
                 <p className="text-text mt-5 max-w-[60ch] text-[18px] leading-[1.6]">
-                  PrepSuccess launches for college students in November 2026. Every phase after that
+                  Skill checks and interview prep are live for college students now. Every phase
                   builds on the same readiness results, so each one makes the next more useful.
                 </p>
               </Reveal>

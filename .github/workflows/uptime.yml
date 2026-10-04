@@ -1,16 +1,20 @@
 name: Uptime
 
-# Pings each environment's readiness probe (API + database) once an hour.
-# A failed run emails the repo's watchers via GitHub's normal notifications;
-# for faster alerts add an external monitor too (docs/DEPLOYMENT.md §Monitoring).
-# Set the URLs as repository variables: STAGING_API_URL and PRODUCTION_API_URL
+# Keeps production awake and checks each environment's readiness probe (API + database).
+# Render's free plan sleeps a service after 15 minutes without traffic, so production
+# is pinged every 10 minutes; one service running all month (~744 h) fits the free
+# 750 instance-hours. Staging is only checked hourly so it doesn't use up those hours.
+# A failed run emails the repo's watchers via GitHub's normal notifications.
+# Set the URLs as repository variables: PRODUCTION_API_URL and STAGING_API_URL
 # (no trailing slash). An environment without a URL is skipped.
+# Note: GitHub runs schedules only from the default branch, can delay them by a few
+# minutes, and pauses them after 60 days without repo activity — so also add an
+# external monitor (docs/DEPLOYMENT.md §Monitoring).
 
 on:
   schedule:
-    # Hourly, not more: every ping wakes a sleeping free Render instance, and the
-    # free plan's 750 instance-hours a month are shared by staging and production.
-    - cron: "7 * * * *"
+    - cron: "*/10 * * * *" # production keep-alive
+    - cron: "7 * * * *" # staging check
   workflow_dispatch:
 
 permissions: {}
@@ -23,12 +27,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - env: staging
-            url_var: STAGING_API_URL
           - env: production
             url_var: PRODUCTION_API_URL
+            schedule: "*/10 * * * *"
+          - env: staging
+            url_var: STAGING_API_URL
+            schedule: "7 * * * *"
     steps:
       - name: GET /health/ready
+        # Each schedule pings its own environment; a manual run pings both.
+        if: github.event_name != 'schedule' || github.event.schedule == matrix.schedule
         env:
           BASE_URL: ${{ vars[matrix.url_var] }}
         run: |
@@ -36,7 +44,7 @@ jobs:
             echo "No ${{ matrix.url_var }} set; skipping ${{ matrix.env }}."
             exit 0
           fi
-          # Free instances sleep when idle, so allow a slow first response and retry.
+          # A sleeping instance takes up to a minute to wake, so allow a slow response and retry.
           curl --fail --silent --show-error --max-time 60 \
             --retry 3 --retry-delay 20 --retry-all-errors \
             "$BASE_URL/health/ready"

@@ -2580,6 +2580,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/questions/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import interview questions
+         * @description Bulk add for seeding (up to 500 rows; body up to 5 MB). Rows follow the single add's rules and name their skill by `skill` slug or `skill_id`. Blank optional cells are ignored and company, role and difficulty match the lists ignoring case. Each row is checked on its own: a bad row (or a repeat of an earlier row's skill and title) goes in `errors` with its 1-based row number, the rest still import. A live question with the same skill and title is skipped, not overwritten; a deleted one is restored with the row's content. Writes happen in one transaction. `dry_run: true` reports the same counts and saves nothing. Limited to 10 imports a minute.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminQuestionImportRequest"];
+                };
+            };
+            responses: {
+                /** @description What was (or would be) created, restored and skipped. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminQuestionImportResult"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `QUESTION_EXISTS` — a question was added with one of these titles mid-import; try again. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `PAYLOAD_TOO_LARGE` — split the file. */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/questions/{id}": {
         parameters: {
             query?: never;
@@ -5971,6 +6079,36 @@ export interface components {
             role?: ("SDE" | "Frontend Developer" | "Backend Developer" | "Full Stack Developer" | "Data Analyst" | "Data Scientist" | "ML Engineer" | "DevOps Engineer" | "QA Engineer" | "Business Analyst") | null;
             is_active?: boolean;
         };
+        AdminQuestionImportRequest: {
+            /** @description Each row is checked on its own; bad rows come back in `errors`. */
+            questions: components["schemas"]["AdminQuestionImportRow"][];
+            /**
+             * @description `true` checks the rows and reports what would happen; saves nothing.
+             * @default false
+             */
+            dry_run: boolean;
+        };
+        AdminQuestionImportRow: {
+            title: string;
+            body: string;
+            answer?: string | null;
+            topic: string;
+            /** @enum {string} */
+            difficulty: "easy" | "medium" | "hard";
+            company?: ("TCS" | "Infosys" | "Wipro" | "Accenture" | "Cognizant" | "Capgemini" | "HCLTech" | "Tech Mahindra" | "Deloitte" | "IBM" | "Zoho" | "Freshworks" | "Amazon" | "Microsoft" | "Google" | "Flipkart" | "Paytm" | "PhonePe" | "Swiggy" | "Zomato" | "Goldman Sachs" | "JP Morgan") | null;
+            role?: ("SDE" | "Frontend Developer" | "Backend Developer" | "Full Stack Developer" | "Data Analyst" | "Data Scientist" | "ML Engineer" | "DevOps Engineer" | "QA Engineer" | "Business Analyst") | null;
+            is_active?: boolean;
+            /**
+             * @description Skill slug (easier in files).
+             * @example sql
+             */
+            skill?: string;
+            /**
+             * Format: uuid
+             * @description Or the skill's id. Give at least one.
+             */
+            skill_id?: string;
+        };
         AdminQuestionPatch: {
             /** Format: uuid */
             skill_id?: string;
@@ -6432,6 +6570,19 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        AdminQuestionImportResult: {
+            created: number;
+            /** @description Deleted questions with the same skill and title, brought back. */
+            restored: number;
+            /** @description A live question in that skill already has the title (left as is). */
+            skipped: number;
+            errors: {
+                /** @description 1-based position in `questions`. */
+                row: number;
+                title?: string;
+                message: string;
+            }[];
         };
         QuestionTaxonomy: {
             companies: string[];

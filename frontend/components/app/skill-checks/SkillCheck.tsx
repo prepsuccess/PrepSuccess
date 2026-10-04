@@ -410,7 +410,8 @@ function ResultStep({ state }: { state: AssessmentState }) {
               Hand-picked material for {state.skill.name}.{" "}
               <Link
                 href={`/learn/${state.skill.slug}`}
-                className="text-foreground underline underline-offset-4"
+                // A bigger tap area on touch screens, without changing the line.
+                className="text-foreground relative underline underline-offset-4 pointer-coarse:after:absolute pointer-coarse:after:-inset-x-1 pointer-coarse:after:-inset-y-1.5"
               >
                 See everything, plus practical tasks
               </Link>

@@ -7,6 +7,8 @@ import {
   adminPrepPdfInputSchema,
   adminPrepPdfPatchSchema,
   adminPrepPdfSchema,
+  adminQuestionImportRequestSchema,
+  adminQuestionImportResultSchema,
   adminQuestionInputSchema,
   adminQuestionPatchSchema,
   adminQuestionSchema,
@@ -220,6 +222,25 @@ export const questionsPaths: ZodOpenApiPathsObject = {
           ...adminAuth,
           404: "`SKILL_NOT_FOUND`.",
           409: "`QUESTION_EXISTS` — a live question in this skill has that title.",
+          ...VALIDATION_422,
+        }),
+      },
+    }),
+  },
+  "/api/v1/admin/questions/import": {
+    post: admin("Import interview questions", {
+      description:
+        "Bulk add for seeding (up to 500 rows; body up to 5 MB). Rows follow the single add's rules and name their skill by `skill` slug or `skill_id`. Blank optional cells are ignored and company, role and difficulty match the lists ignoring case. Each row is checked on its own: a bad row (or a repeat of an earlier row's skill and title) goes in `errors` with its 1-based row number, the rest still import. A live question with the same skill and title is skipped, not overwritten; a deleted one is restored with the row's content. Writes happen in one transaction. `dry_run: true` reports the same counts and saves nothing. Limited to 10 imports a minute.",
+      requestBody: json(adminQuestionImportRequestSchema),
+      responses: {
+        ...ok(
+          adminQuestionImportResultSchema,
+          "What was (or would be) created, restored and skipped.",
+        ),
+        ...errors({
+          ...adminAuth,
+          409: "`QUESTION_EXISTS` — a question was added with one of these titles mid-import; try again.",
+          413: "`PAYLOAD_TOO_LARGE` — split the file.",
           ...VALIDATION_422,
         }),
       },

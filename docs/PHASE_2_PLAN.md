@@ -280,14 +280,14 @@ Each step ends with lint, types, tests and docs green, and can be its own PR.
 
 ## 10. Acceptance criteria (definition of done)
 
-- [ ] Only admins can create, edit or delete questions and PDFs; students get **403** on every write.
-- [ ] Company, role, topic, skill and difficulty filters **combine correctly**, with correct pagination totals.
-- [ ] Bookmarking or solving the same question twice **never creates a duplicate row**.
-- [ ] The progress chart renders sensibly with **one** data point and with **many**.
-- [ ] Filtered views are shareable by URL.
-- [ ] Each weak skill on the dashboard links to matching questions.
-- [ ] All new routes documented in OpenAPI; frontend types regenerated; CI green (lint, types, tests, migrations, e2e).
-- [ ] Works in light and dark mode and at phone width; meets the accessibility rules in §6.
+- [x] Only admins can create, edit or delete questions and PDFs; students get **403** on every write.
+- [x] Company, role, topic, skill and difficulty filters **combine correctly**, with correct pagination totals.
+- [x] Bookmarking or solving the same question twice **never creates a duplicate row**.
+- [x] The progress chart renders sensibly with **one** data point and with **many**.
+- [x] Filtered views are shareable by URL.
+- [x] Each weak skill on the dashboard links to matching questions.
+- [x] All new routes documented in OpenAPI; frontend types regenerated; CI green (lint, types, tests, migrations, e2e).
+- [x] Works in light and dark mode and at phone width; meets the accessibility rules in §6.
 
 ## 11. Ticket mapping (to confirm in Jira)
 
@@ -301,3 +301,19 @@ Each step ends with lint, types, tests and docs green, and can be its own PR.
 
 This mapping is inferred from the ticket ranges in PRD-02 §7; confirm the
 exact ticket per item in Jira before starting.
+
+## 12. Built beyond the plan
+
+Added after a student walkthrough showed where practice stalled:
+
+| Feature | Where | Notes |
+|---|---|---|
+| Filters toggle | `/questions` | The filter panel opens from a **Filters** button (with a count of active filters); search stays outside it. |
+| My skills | `/questions?mine=1`, `GET /questions/mine` | Questions for the profile's skills, plus skills named in goals ("get better at DSA") and questions tagged with the target role. Per-skill chips show solved / total and filter by skill. |
+| Practise your answer | `/questions/[id]`, `POST /questions/{id}/attempt` | The student writes an answer; the AI scores it 0–10 and lists what they covered, what to add and one tip. Counts toward the daily AI limit, rate-limited per user, latest attempt saved (migration `20261011000000_question_attempts`). Never marks the question solved. |
+| Coach on a question | `/questions/[id]`, `POST /ai/coach/messages` `context.question_id` | "Ask coach about this question" opens the coach with that question attached for the reply. |
+| Check result → questions | Skill-check result page | Links to that skill's interview questions when it has any. |
+| Bulk import | Admin → Questions, `POST /admin/questions/import` | CSV or JSON, with a dry run that reports what would be created, restored, skipped or rejected before anything is written. |
+
+This is a step towards PRD-02's "AI-curated practice" only in feedback on the
+student's own answer; questions are still the curated bank, not generated.

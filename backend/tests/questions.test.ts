@@ -166,6 +166,13 @@ const db = vi.hoisted(() => {
           state.questions.push(row);
           return row;
         }),
+        createMany: vi.fn(async ({ data }) => {
+          for (const row of data) {
+            const id = `new-${state.questions.length}`;
+            state.questions.push({ ...question(id, row.title, row.difficulty), ...row, skill });
+          }
+          return { count: data.length };
+        }),
         updateMany: vi.fn(async ({ where, data }) => {
           const q = state.questions.find((x) => x.id === where.id && !x.isDeleted);
           if (!q) return { count: 0 };
@@ -234,10 +241,15 @@ const db = vi.hoisted(() => {
       },
       skill: {
         findFirst: vi.fn(async ({ where }) => (where.id === skill.id ? skill : null)),
-        findMany: vi.fn(async ({ where }) =>
-          [skill, dsa].filter((s) => (where.slug.in as string[]).includes(s.slug)),
-        ),
+        // By slug, or (bulk import) `OR: [{ slug: { in } }, { id: { in } }]`.
+        findMany: vi.fn(async ({ where }) => {
+          const slugs: string[] = where.slug?.in ?? where.OR?.[0]?.slug.in ?? [];
+          const ids: string[] = where.OR?.[1]?.id.in ?? [];
+          return [skill, dsa].filter((s) => slugs.includes(s.slug) || ids.includes(s.id));
+        }),
       },
+      // Array form: the operations have already run by the time it's called.
+      $transaction: vi.fn(async (operations: Promise<unknown>[]) => Promise.all(operations)),
     },
   };
 });
@@ -489,6 +501,7 @@ describe("who can do what", () => {
       request(app).post("/api/v1/admin/prep-pdfs").send({}),
       request(app).patch(`/api/v1/admin/prep-pdfs/${PDF}`).send({ title: "Changed" }),
       request(app).delete(`/api/v1/admin/prep-pdfs/${PDF}`),
+      request(app).post("/api/v1/admin/questions/import").send({ questions: [] }),
     ];
     for (const call of calls) expect((await call.set(student)).status).toBe(403);
   });
@@ -843,5 +856,109 @@ describe("writing an answer", () => {
       "strong",
     ]);
     expect(practice.parseFeedback({ score: "7" })).toBeNull();
+  });
+});
+
+describe("bulk import", () => {
+  const DSA_ID = "6d9c5e3a-4b2f-4c8d-9e0a-3f4b5c6d7e8f";
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    skill: "sql",
+    title,
+    body: "Explain it with an example.",
+    topic: "Basics",
+    difficulty: "easy",
+    ...extra,
+  });
+  // One of each case, in file order.
+  const file = () => [
+    row("Explain normalisation", { difficulty: "Medium", company: "infosys", answer: "" }),
+    row("Hi", { company: "Acme", difficulty: undefined }),
+    row("Explain normalisation"),
+    row("Window functions"),
+    row("WHERE vs HAVING", { body: "Rewritten: when do you use each?" }),
+    row("COBOL file handling", { skill: "cobol" }),
+    { skill_id: DSA_ID, ...row("Reverse a linked list"), skill: undefined },
+    "not a row",
+  ];
+  const importFile = (body: Record<string, unknown>) =>
+    request(app).post("/api/v1/admin/questions/import").set(admin).send(body);
+
+  beforeEach(() => {
+    Object.assign(
+      db.state.questions.find((q) => q.id === Q1)!,
+      {
+        isDeleted: true,
+        isActive: false,
+      },
+    );
+  });
+
+  it("needs an admin", async () => {
+    const body = { questions: [row("Explain normalisation")] };
+    const url = "/api/v1/admin/questions/import";
+    expect((await request(app).post(url).send(body)).status).toBe(401);
+    expect((await request(app).post(url).set(student).send(body)).status).toBe(403);
+  });
+
+  it("creates, restores and skips per row, and reports bad rows by number", async () => {
+    const res = await importFile({ questions: file() });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ created: 2, restored: 1, skipped: 1 });
+    expect(res.body.data.errors).toEqual([
+      {
+        row: 2,
+        title: "Hi",
+        message: expect.stringMatching(
+          /title: Use at least 5.*difficulty: required.*company: "Acme" isn't on the list/,
+        ),
+      },
+      { row: 3, title: "Explain normalisation", message: expect.stringContaining("earlier row") },
+      { row: 6, title: "COBOL file handling", message: 'skill: no skill "cobol".' },
+      { row: 8, message: "Each question must be an object." },
+    ]);
+
+    // One read of skills and titles, one transaction for the writes.
+    expect(db.prisma.skill.findMany).toHaveBeenCalledTimes(1);
+    expect(db.prisma.questionBank.findMany).toHaveBeenCalledTimes(1);
+    expect(db.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(db.prisma.questionBank.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          title: "Explain normalisation",
+          difficulty: "MEDIUM",
+          company: "Infosys",
+          answer: null,
+          createdById: ADMIN_ID,
+        }),
+        expect.objectContaining({ title: "Reverse a linked list", skillId: DSA_ID }),
+      ],
+    });
+    expect(db.state.questions.find((q) => q.id === Q1)).toMatchObject({
+      isDeleted: false,
+      isActive: true,
+      body: "Rewritten: when do you use each?",
+    });
+    // The live question is left alone.
+    expect(db.state.questions.find((q) => q.id === Q2)?.body).toBe("Explain it.");
+  });
+
+  it("dry_run reports the same counts and writes nothing", async () => {
+    const before = structuredClone(db.state.questions);
+    const res = await importFile({ questions: file(), dry_run: true });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ created: 2, restored: 1, skipped: 1 });
+    expect(res.body.data.errors.map((e: { row: number }) => e.row)).toEqual([2, 3, 6, 8]);
+    expect(db.prisma.$transaction).not.toHaveBeenCalled();
+    expect(db.prisma.questionBank.createMany).not.toHaveBeenCalled();
+    expect(db.prisma.questionBank.update).not.toHaveBeenCalled();
+    expect(db.state.questions).toEqual(before);
+  });
+
+  it("rejects an empty file or more than 500 rows", async () => {
+    const many = Array.from({ length: 501 }, (_, i) => row(`Question number ${i}`));
+    const tooMany = await importFile({ questions: many });
+    expect(tooMany.status).toBe(422);
+    expect((await importFile({ questions: [] })).status).toBe(422);
+    expect(db.prisma.questionBank.createMany).not.toHaveBeenCalled();
   });
 });

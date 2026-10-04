@@ -136,8 +136,9 @@ function AnswerPractice({ question }: { question: QuestionWithAttempt }) {
     const answer = draft.trim();
     if (!answer || checking) return;
     try {
-      await attempt({ id: question.id, answer }).unwrap();
+      const result = await attempt({ id: question.id, answer }).unwrap();
       setEditing(false);
+      track("question_feedback_requested", { score: result.feedback.score });
     } catch {
       // Shown under the box; the answer stays so it can be sent again.
     }
@@ -162,6 +163,8 @@ function AnswerPractice({ question }: { question: QuestionWithAttempt }) {
           readOnly={!editing || checking}
           maxLength={ANSWER_MAX_CHARS}
           rows={6}
+          // Locked while feedback shows: tint it so it doesn't look editable.
+          className="read-only:bg-muted/50 dark:read-only:bg-muted/50"
         />
         {problem ? (
           <p role="alert" className="text-destructive flex items-start gap-2 text-sm">
@@ -218,11 +221,12 @@ function Body({ question }: { question: QuestionWithAttempt }) {
     : null;
 
   return (
+    // Bottom room on phones so the coach button doesn't cover the last link.
     <article className="mx-auto max-w-3xl space-y-6">
       <div className="space-y-3">
         <Link
           href={`/questions?skill=${question.skill.slug}`}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded text-sm outline-none focus-visible:ring-3"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded text-sm outline-none focus-visible:ring-3 pointer-coarse:min-h-11"
         >
           <ArrowLeft className="size-4" aria-hidden /> {question.skill.name} questions
         </Link>
@@ -264,6 +268,7 @@ function Body({ question }: { question: QuestionWithAttempt }) {
               // Brings the question back if it was dropped from the chat.
               coach.setContext({ questionId: question.id, label: question.title });
               coach.openCoach();
+              track("coach_asked_about_question", {});
             }}
             className="pointer-coarse:h-11"
           >
@@ -314,7 +319,7 @@ function Body({ question }: { question: QuestionWithAttempt }) {
 
       <Link
         href={`/questions?skill=${question.skill.slug}&status=unsolved`}
-        className="text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-3"
+        className="text-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-3 pointer-coarse:min-h-11"
       >
         More {question.skill.name} questions you haven&apos;t solved
         <ArrowRight className="size-4" aria-hidden />

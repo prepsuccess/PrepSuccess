@@ -240,6 +240,72 @@ export const adminQuestionPatchSchema = adminQuestionInputSchema
   .refine((value) => Object.keys(value).length > 0, "Send at least one field to change.")
   .meta({ id: "AdminQuestionPatch" });
 
+export const IMPORT_MAX_ROWS = 500;
+
+/** One row of a bulk import: AdminQuestionInput, but the skill can be a slug. */
+export const adminQuestionImportRowSchema = adminQuestionInputSchema
+  .omit({ skill_id: true })
+  .extend({
+    skill: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(1)
+      .max(120)
+      .optional()
+      .meta({ description: "Skill slug (easier in files).", example: "sql" }),
+    skill_id: z.uuid().optional().meta({ description: "Or the skill's id. Give at least one." }),
+  })
+  .refine((row) => row.skill !== undefined || row.skill_id !== undefined, {
+    message: "Give the skill's slug.",
+    path: ["skill"],
+  })
+  .meta({ id: "AdminQuestionImportRow" });
+
+/** Parsed request: rows stay unknown here so one bad row doesn't reject the whole file. */
+export const adminQuestionImportInputSchema = z.object({
+  questions: z
+    .array(z.unknown())
+    .min(1, "The file has no questions.")
+    .max(IMPORT_MAX_ROWS, `Import up to ${IMPORT_MAX_ROWS} questions at a time.`),
+  dry_run: z.boolean().default(false),
+});
+
+/** The same request, with the row shape spelled out for the docs. */
+export const adminQuestionImportRequestSchema = adminQuestionImportInputSchema
+  .extend({
+    questions: z
+      .array(adminQuestionImportRowSchema)
+      .min(1)
+      .max(IMPORT_MAX_ROWS)
+      .meta({ description: "Each row is checked on its own; bad rows come back in `errors`." }),
+    dry_run: z.boolean().default(false).meta({
+      description: "`true` checks the rows and reports what would happen; saves nothing.",
+    }),
+  })
+  .meta({ id: "AdminQuestionImportRequest" });
+
+export const adminQuestionImportResultSchema = z
+  .object({
+    created: z.number().int(),
+    restored: z
+      .number()
+      .int()
+      .meta({ description: "Deleted questions with the same skill and title, brought back." }),
+    skipped: z
+      .number()
+      .int()
+      .meta({ description: "A live question in that skill already has the title (left as is)." }),
+    errors: z.array(
+      z.object({
+        row: z.number().int().meta({ description: "1-based position in `questions`." }),
+        title: z.string().optional(),
+        message: z.string(),
+      }),
+    ),
+  })
+  .meta({ id: "AdminQuestionImportResult" });
+
 export const adminListQuestionsQuerySchema = z
   .object({
     skill: z.string().trim().max(120).optional(),
@@ -298,4 +364,5 @@ export type QuestionSummary = z.infer<typeof questionSummarySchema>;
 export type QuestionDetail = z.infer<typeof questionDetailSchema>;
 export type QuestionAttempt = z.infer<typeof questionAttemptSchema>;
 export type AdminQuestionInput = z.infer<typeof adminQuestionInputSchema>;
+export type AdminQuestionImportResult = z.infer<typeof adminQuestionImportResultSchema>;
 export type AdminPrepPdfInput = z.infer<typeof adminPrepPdfInputSchema>;

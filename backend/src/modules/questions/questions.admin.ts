@@ -1,7 +1,14 @@
+import type { z } from "zod";
+
 import { prisma } from "../../db/prisma.js";
 import type { PrepPdf, Prisma, QuestionBank, Skill } from "../../generated/prisma/client.js";
 import { AppError } from "../../lib/http.js";
-import type { AdminPrepPdfInput, AdminQuestionInput } from "./questions.schemas.js";
+import {
+  adminQuestionImportRowSchema,
+  type AdminPrepPdfInput,
+  type AdminQuestionImportResult,
+  type AdminQuestionInput,
+} from "./questions.schemas.js";
 import { toPrepPdf, upper } from "./questions.service.js";
 import { COMPANIES, ROLES } from "./taxonomy.js";
 
@@ -81,14 +88,9 @@ function findDeleted(skillId: string, title: string) {
   return prisma.questionBank.findFirst({ where: { skillId, title, isDeleted: true } });
 }
 
-/**
- * Adds a question. If a deleted question already has this skill and title,
- * it's brought back with the new content instead of failing with a 409
- * (students' progress on it comes back too).
- */
-export async function createQuestion(adminId: string, input: AdminQuestionInput) {
-  await assertSkill(input.skill_id);
-  const data = {
+/** Database fields for a new (or restored) question. */
+function questionData(adminId: string, input: AdminQuestionInput) {
+  return {
     skillId: input.skill_id,
     title: input.title,
     body: input.body,
@@ -100,6 +102,16 @@ export async function createQuestion(adminId: string, input: AdminQuestionInput)
     isActive: input.is_active ?? true,
     createdById: adminId,
   };
+}
+
+/**
+ * Adds a question. If a deleted question already has this skill and title,
+ * it's brought back with the new content instead of failing with a 409
+ * (students' progress on it comes back too).
+ */
+export async function createQuestion(adminId: string, input: AdminQuestionInput) {
+  await assertSkill(input.skill_id);
+  const data = questionData(adminId, input);
   const deleted = await findDeleted(input.skill_id, input.title);
   const row = deleted
     ? await prisma.questionBank.update({
@@ -160,6 +172,151 @@ export async function deleteQuestion(id: string) {
   });
   if (!count) throw new AppError(404, "QUESTION_NOT_FOUND", "That question doesn't exist.");
   return { id, deleted: true };
+}
+
+// ---- Bulk import -------------------------------------------------------------
+
+type ImportError = AdminQuestionImportResult["errors"][number];
+
+const unique = <T>(values: T[]) => [...new Set(values)];
+const asRecord = (raw: unknown) =>
+  (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+
+/** Spelling from the fixed list, ignoring case ("tcs" → "TCS"). Other values pass through. */
+function listed(list: readonly string[], value: unknown) {
+  if (typeof value !== "string") return value;
+  const wanted = value.trim().toLowerCase();
+  return list.find((item) => item.toLowerCase() === wanted) ?? value;
+}
+
+/** Evens out what files tend to contain: blank cells, "Medium", "tcs". */
+function tidyRow(raw: unknown): unknown {
+  if (raw !== asRecord(raw)) return raw;
+  const row = { ...asRecord(raw) };
+  for (const key of ["skill", "skill_id", "answer", "company", "role"]) {
+    if (typeof row[key] === "string" && !row[key].trim()) delete row[key];
+  }
+  if (row.company !== undefined) row.company = listed(COMPANIES, row.company);
+  if (row.role !== undefined) row.role = listed(ROLES, row.role);
+  if (typeof row.difficulty === "string") row.difficulty = row.difficulty.trim().toLowerCase();
+  return row;
+}
+
+function titleOf(row: unknown) {
+  const { title } = asRecord(row);
+  return typeof title === "string" && title.trim() ? { title: title.trim().slice(0, 200) } : {};
+}
+
+/** "title: Use at least 5 characters. company: "Acme" isn't on the list." */
+function rowMessage(error: z.ZodError, row: unknown) {
+  const values = asRecord(row);
+  if (row !== values) return "Each question must be an object.";
+  return error.issues
+    .map((issue) => {
+      const field = String(issue.path[0] ?? "row");
+      if (values[field] == null && field !== "row") return `${field}: required.`;
+      if (issue.code === "invalid_value" && (field === "company" || field === "role")) {
+        return `${field}: "${String(values[field])}" isn't on the list.`;
+      }
+      return `${field}: ${issue.message.replace(/[^.]$/, "$&.")}`;
+    })
+    .join(" ");
+}
+
+/**
+ * Bulk import for seeding (Phase 2 plan §5.2). Each row follows the single
+ * add's rules; a bad row is reported, not fatal. Live same-skill titles are
+ * skipped, deleted ones restored with the new content. Skills and existing
+ * titles are read once and all writes go in one transaction. `dryRun` reports
+ * the same counts without writing.
+ */
+export async function importQuestions(
+  adminId: string,
+  rows: unknown[],
+  dryRun: boolean,
+): Promise<AdminQuestionImportResult> {
+  const errors: ImportError[] = [];
+  const parsed: { row: number; input: z.infer<typeof adminQuestionImportRowSchema> }[] = [];
+  rows.forEach((raw, index) => {
+    const row = tidyRow(raw);
+    const result = adminQuestionImportRowSchema.safeParse(row);
+    if (result.success) parsed.push({ row: index + 1, input: result.data });
+    else errors.push({ row: index + 1, ...titleOf(row), message: rowMessage(result.error, row) });
+  });
+
+  const slugs = unique(parsed.flatMap(({ input }) => (input.skill ? [input.skill] : [])));
+  const ids = unique(parsed.flatMap(({ input }) => (input.skill_id ? [input.skill_id] : [])));
+  const skills = parsed.length
+    ? await prisma.skill.findMany({
+        where: { ...notDeleted, OR: [{ slug: { in: slugs } }, { id: { in: ids } }] },
+        select: { id: true, slug: true },
+      })
+    : [];
+  const bySlug = new Map(skills.map((skill) => [skill.slug, skill.id]));
+  const knownIds = new Set(skills.map((skill) => skill.id));
+
+  const ready: { row: number; input: AdminQuestionInput }[] = [];
+  for (const { row, input } of parsed) {
+    const fromSlug = input.skill === undefined ? undefined : bySlug.get(input.skill);
+    const fromId = input.skill_id && knownIds.has(input.skill_id) ? input.skill_id : undefined;
+    let message: string | undefined;
+    if (input.skill !== undefined && !fromSlug) message = `skill: no skill "${input.skill}".`;
+    else if (input.skill_id !== undefined && !fromId)
+      message = "skill_id: that skill doesn't exist.";
+    else if (fromSlug && fromId && fromSlug !== fromId) {
+      message = "skill and skill_id are different skills.";
+    }
+    if (message) errors.push({ row, title: input.title, message });
+    else ready.push({ row, input: { ...input, skill_id: (fromSlug ?? fromId)! } });
+  }
+
+  const existing = ready.length
+    ? await prisma.questionBank.findMany({
+        where: {
+          skillId: { in: unique(ready.map(({ input }) => input.skill_id)) },
+          title: { in: unique(ready.map(({ input }) => input.title)) },
+        },
+        select: { id: true, skillId: true, title: true, isDeleted: true },
+      })
+    : [];
+  const key = (skillId: string, title: string) => `${skillId}:${title}`;
+  const found = new Map(existing.map((q) => [key(q.skillId, q.title), q]));
+
+  const seen = new Set<string>();
+  const toCreate: ReturnType<typeof questionData>[] = [];
+  const toRestore: { id: string; data: ReturnType<typeof questionData> }[] = [];
+  let skipped = 0;
+  for (const { row, input } of ready) {
+    const k = key(input.skill_id, input.title);
+    if (seen.has(k)) {
+      errors.push({
+        row,
+        title: input.title,
+        message: "Same title as an earlier row in this skill.",
+      });
+      continue;
+    }
+    seen.add(k);
+    const match = found.get(k);
+    const data = questionData(adminId, input);
+    if (!match) toCreate.push(data);
+    else if (match.isDeleted) toRestore.push({ id: match.id, data });
+    else skipped += 1;
+  }
+
+  if (!dryRun && (toCreate.length || toRestore.length)) {
+    await prisma
+      .$transaction([
+        ...(toCreate.length ? [prisma.questionBank.createMany({ data: toCreate })] : []),
+        ...toRestore.map(({ id, data }) =>
+          prisma.questionBank.update({ where: { id }, data: { ...data, isDeleted: false } }),
+        ),
+      ])
+      .catch(duplicateTitle);
+  }
+
+  errors.sort((a, b) => a.row - b.row);
+  return { created: toCreate.length, restored: toRestore.length, skipped, errors };
 }
 
 // ---- Prep PDFs ---------------------------------------------------------------

@@ -308,6 +308,9 @@ export function AppShell({
             className={cn(
               "mx-auto w-full flex-1 px-4 py-6 sm:px-6 lg:px-8",
               workspace ? "max-w-screen-2xl lg:py-6" : "max-w-6xl lg:py-8",
+              // On phones the coach button floats over the bottom of the page;
+              // leave room so it never covers the last card or link.
+              student && "max-sm:pb-24",
             )}
           >
             {mentorInStudentArea ? <MentorComingSoon /> : children}

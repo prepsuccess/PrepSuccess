@@ -1,8 +1,10 @@
 import type { Page, Route } from "@playwright/test";
+import type { MyQuestionScope, QuestionAttempt } from "@/lib/api/endpoints/questions";
 import type {
   AiStatus,
   AssessmentState,
   AuthUser,
+  CoachMessage,
   Dashboard,
   MySkills,
   OnboardingState,
@@ -87,6 +89,30 @@ const question: QuestionDetail = {
   solved_at: null,
   my_attempt: null,
 };
+
+/** What POST /questions/:id/attempt answers with (the AI's feedback on a written answer). */
+export const FEEDBACK = {
+  score: 6,
+  verdict: "partial",
+  strengths: ["Clear that WHERE filters rows"],
+  missing: ["HAVING runs after GROUP BY, on the groups"],
+  tip: "Close with a one-line example query.",
+} as const satisfies QuestionAttempt["feedback"];
+
+/** GET /questions/mine: what "My skills" covers for the student. */
+export const myScope: MyQuestionScope = {
+  skills: [{ slug: "sql", name: "SQL" }],
+  goal_skills: [{ slug: "dsa", name: "DSA" }],
+  role: "Data Analyst",
+  unmatched: [],
+  progress: [
+    { slug: "sql", name: "SQL", total: 20, solved: 1 },
+    { slug: "dsa", name: "DSA", total: 12, solved: 0 },
+  ],
+};
+
+/** The coach's reply to the nth message the student sends (1-based). */
+export const coachReply = (n: number) => `Coach reply ${n}: start with the rows, then the groups.`;
 
 const aiStatus: AiStatus = {
   available: true,
@@ -254,12 +280,29 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
   let me = options.user;
   let taskSubmissions: TaskSubmission[] = [];
   // The interview question's progress, so bookmark/solve show up across pages.
-  const progress = { bookmarked: false, solvedAt: null as string | null };
+  const progress = {
+    bookmarked: false,
+    solvedAt: null as string | null,
+    attempt: null as QuestionAttempt | null,
+  };
   const current = (): QuestionDetail => ({
     ...question,
     bookmarked: progress.bookmarked,
     solved: Boolean(progress.solvedAt),
     solved_at: progress.solvedAt,
+    my_attempt: progress.attempt,
+  });
+  // The coach chat, so a reply shows up in the conversation.
+  const coachMessages: CoachMessage[] = [];
+  const coachState = () => ({
+    messages: coachMessages,
+    usage: {
+      used: coachMessages.length / 2,
+      limit: 20,
+      remaining: 20 - coachMessages.length / 2,
+      resets_at: now,
+    },
+    suggestions: ["What should I work on next?"],
   });
   const summary = (): QuestionSummary => {
     const q = current();
@@ -367,6 +410,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
           roles: [{ name: "Data Analyst", count: 1 }],
           topics: [{ name: "Aggregation", count: 1 }],
         });
+      case "GET /api/v1/questions/mine":
+        return reply(route, myScope);
       case "GET /api/v1/questions/bookmarks":
         return paged(route, progress.bookmarked ? [summary()] : []);
       case `GET /api/v1/questions/${QUESTION_ID}`:
@@ -387,6 +432,20 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
           solved: Boolean(progress.solvedAt),
           solved_at: progress.solvedAt,
         });
+      case `POST /api/v1/questions/${QUESTION_ID}/attempt`: {
+        const { answer } = request.postDataJSON() as { answer: string };
+        progress.attempt = {
+          answer,
+          feedback: {
+            ...FEEDBACK,
+            strengths: [...FEEDBACK.strengths],
+            missing: [...FEEDBACK.missing],
+          },
+          attempted_at: now,
+          attempts: (progress.attempt?.attempts ?? 0) + 1,
+        };
+        return reply(route, progress.attempt);
+      }
       case "GET /api/v1/progress":
         return reply(route, progressReply());
       case "GET /api/v1/prep-pdfs":
@@ -395,11 +454,15 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
       case "POST /api/v1/ai/coach/ping":
         return reply(route, { nudged: false });
       case "GET /api/v1/ai/coach":
-        return reply(route, {
-          messages: [],
-          usage: { used: 0, limit: 20, remaining: 20, resets_at: now },
-          suggestions: ["What should I work on next?"],
-        });
+        return reply(route, coachState());
+      case "POST /api/v1/ai/coach/messages": {
+        const { content } = request.postDataJSON() as { content: string };
+        coachMessages.push(
+          { role: "user", content, created_at: now },
+          { role: "assistant", content: coachReply(coachMessages.length / 2 + 1), created_at: now },
+        );
+        return reply(route, coachState());
+      }
       case "GET /api/v1/dashboard":
         return reply(route, emptyDashboard);
       case "GET /api/v1/skills/mine":

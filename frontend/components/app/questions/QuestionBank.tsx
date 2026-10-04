@@ -30,6 +30,7 @@ import {
   type QuestionsQuery,
 } from "@/lib/api/endpoints/questions";
 import type { QuestionSummary } from "@/lib/api/types";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils/cn";
 
 export const PAGE_SIZE = 20;
@@ -212,7 +213,11 @@ function MyScope({
         {notes.map((note) => (
           <span key={note}>{note} · </span>
         ))}
-        <Link href="/profile" className="text-foreground underline underline-offset-4">
+        <Link
+          href="/profile"
+          // A bigger tap area on touch screens, without changing the line.
+          className="text-foreground relative underline underline-offset-4 pointer-coarse:after:absolute pointer-coarse:after:-inset-x-3 pointer-coarse:after:-inset-y-3.5"
+        >
           Edit
         </Link>
       </p>
@@ -305,8 +310,10 @@ export function QuestionBank() {
     list.map((o) => ({ value: o.name, label: `${o.name} (${o.count})` }));
 
   return (
+    // Bottom room on phones so the coach button doesn't cover the last card.
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
+      {/* Two by two on phones rather than three and a straggler. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Button asChild variant="outline" size="sm" className="pointer-coarse:h-11">
           <Link href="/questions/bookmarks">
             <Bookmark />
@@ -323,7 +330,10 @@ export function QuestionBank() {
           variant={mine ? "default" : "outline"}
           size="sm"
           aria-pressed={mine}
-          onClick={() => filters.set({ mine: mine ? "" : "1" })}
+          onClick={() => {
+            filters.set({ mine: mine ? "" : "1" });
+            track("my_skills_toggled", { on: !mine });
+          }}
           className="pointer-coarse:h-11"
         >
           <UserRoundCheck />

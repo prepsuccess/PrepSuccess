@@ -178,7 +178,7 @@ function CoachPanel({
                       type="button"
                       onClick={() => void ask(question)}
                       disabled={outOfMessages}
-                      className="hover:bg-muted focus-visible:ring-ring/50 rounded-full border px-3 py-1.5 text-left text-sm outline-none focus-visible:ring-3 disabled:opacity-50"
+                      className="hover:bg-muted focus-visible:ring-ring/50 rounded-full border px-3 py-1.5 text-left text-sm outline-none focus-visible:ring-3 disabled:opacity-50 pointer-coarse:min-h-11"
                     >
                       {question}
                     </button>
@@ -220,13 +220,16 @@ function CoachPanel({
         {context ? (
           <div className="mb-2 flex">
             <span className="bg-muted text-foreground inline-flex max-w-full items-center gap-1 rounded-full py-0.5 pr-0.5 pl-2.5 text-xs">
-              <span className="truncate">About: {context.label}</span>
+              {/* Long titles are cut short; the full one is in the tooltip. */}
+              <span className="truncate" title={context.label}>
+                About: {context.label}
+              </span>
               <button
                 type="button"
                 onClick={onDropContext}
                 aria-label="Stop asking about this question"
                 title="Stop asking about this question"
-                className="hover:bg-background focus-visible:ring-ring/50 flex size-6 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-3"
+                className="hover:bg-background focus-visible:ring-ring/50 flex size-6 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-3 pointer-coarse:size-11"
               >
                 <X className="size-3.5" aria-hidden />
               </button>
@@ -252,7 +255,7 @@ function CoachPanel({
             maxLength={MAX_CHARS}
             disabled={outOfMessages}
             placeholder="Ask anything about your prep…"
-            className="border-input bg-background focus-visible:border-ring field-sizing-content max-h-32 min-h-10 flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none disabled:opacity-50"
+            className="border-input bg-background focus-visible:border-ring field-sizing-content max-h-32 min-h-10 flex-1 resize-none rounded-xl border px-3 py-2 text-base outline-none disabled:opacity-50 md:text-sm"
           />
           <Button
             type="submit"

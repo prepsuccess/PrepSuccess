@@ -3267,6 +3267,128 @@
         }
       }
     },
+    "/api/v1/admin/questions/import": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Import interview questions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Bulk add for seeding (up to 500 rows; body up to 5 MB). Rows follow the single add's rules and name their skill by `skill` slug or `skill_id`. Blank optional cells are ignored and company, role and difficulty match the lists ignoring case. Each row is checked on its own: a bad row (or a repeat of an earlier row's skill and title) goes in `errors` with its 1-based row number, the rest still import. A live question with the same skill and title is skipped, not overwritten; a deleted one is restored with the row's content. Writes happen in one transaction. `dry_run: true` reports the same counts and saves nothing. Limited to 10 imports a minute.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminQuestionImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "What was (or would be) created, restored and skipped.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminQuestionImportResult"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "description": "Echoes the X-Request-ID response header."
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "request_id",
+                    "timestamp"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHORIZED` or `INVALID_TOKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`FORBIDDEN` — not an admin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`QUESTION_EXISTS` — a question was added with one of these titles mid-import; try again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`PAYLOAD_TOO_LARGE` — split the file.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_ERROR` — request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`TOO_MANY_REQUESTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/questions/{id}": {
       "patch": {
         "tags": [
@@ -7825,6 +7947,145 @@
           "difficulty"
         ]
       },
+      "AdminQuestionImportRequest": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "minItems": 1,
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminQuestionImportRow"
+            },
+            "description": "Each row is checked on its own; bad rows come back in `errors`."
+          },
+          "dry_run": {
+            "default": false,
+            "description": "`true` checks the rows and reports what would happen; saves nothing.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questions"
+        ]
+      },
+      "AdminQuestionImportRow": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 10000
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "topic": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ]
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "TCS",
+                  "Infosys",
+                  "Wipro",
+                  "Accenture",
+                  "Cognizant",
+                  "Capgemini",
+                  "HCLTech",
+                  "Tech Mahindra",
+                  "Deloitte",
+                  "IBM",
+                  "Zoho",
+                  "Freshworks",
+                  "Amazon",
+                  "Microsoft",
+                  "Google",
+                  "Flipkart",
+                  "Paytm",
+                  "PhonePe",
+                  "Swiggy",
+                  "Zomato",
+                  "Goldman Sachs",
+                  "JP Morgan"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SDE",
+                  "Frontend Developer",
+                  "Backend Developer",
+                  "Full Stack Developer",
+                  "Data Analyst",
+                  "Data Scientist",
+                  "ML Engineer",
+                  "DevOps Engineer",
+                  "QA Engineer",
+                  "Business Analyst"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "skill": {
+            "description": "Skill slug (easier in files).",
+            "example": "sql",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "skill_id": {
+            "description": "Or the skill's id. Give at least one.",
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "title",
+          "body",
+          "topic",
+          "difficulty"
+        ]
+      },
       "AdminQuestionPatch": {
         "type": "object",
         "properties": {
@@ -9811,6 +10072,60 @@
           "is_active",
           "created_at",
           "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "AdminQuestionImportResult": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "restored": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Deleted questions with the same skill and title, brought back."
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "A live question in that skill already has the title (left as is)."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "row": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "1-based position in `questions`."
+                },
+                "title": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "row",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "created",
+          "restored",
+          "skipped",
+          "errors"
         ],
         "additionalProperties": false
       },

@@ -6,6 +6,7 @@ import {
   adminListQuestionsQuerySchema,
   adminPrepPdfInputSchema,
   adminPrepPdfPatchSchema,
+  adminQuestionImportInputSchema,
   adminQuestionInputSchema,
   adminQuestionPatchSchema,
   filtersQuerySchema,
@@ -94,6 +95,11 @@ export async function adminList(req: Request, res: Response) {
 export async function adminCreate(req: Request, res: Response) {
   const input = adminQuestionInputSchema.parse(req.body);
   sendSuccess(req, res, await admin.createQuestion(req.user!.id, input), { status: 201 });
+}
+
+export async function adminImport(req: Request, res: Response) {
+  const { questions: rows, dry_run } = adminQuestionImportInputSchema.parse(req.body);
+  sendSuccess(req, res, await admin.importQuestions(req.user!.id, rows, dry_run));
 }
 
 export async function adminUpdate(req: Request, res: Response) {

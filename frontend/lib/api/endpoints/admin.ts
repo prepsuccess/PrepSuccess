@@ -31,6 +31,22 @@ export interface AdminQuestionsQuery {
   limit: number;
 }
 
+// POST /admin/questions/import. Local types until schema.d.ts is regenerated.
+export interface AdminQuestionImportRequest {
+  /** Rows as read from the file; the server checks each one on its own. */
+  questions: Record<string, unknown>[];
+  /** true: report what would happen, save nothing. */
+  dry_run?: boolean;
+}
+
+export interface AdminQuestionImportResult {
+  created: number;
+  restored: number;
+  skipped: number;
+  /** `row` is 1-based, in file order. */
+  errors: { row: number; title?: string; message: string }[];
+}
+
 /** /api/v1/admin — admins only; the backend enforces the role on every route. */
 export const adminApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -112,6 +128,13 @@ export const adminApi = baseApi.injectEndpoints({
       query: ({ id, ...body }) => ({ url: `/api/v1/admin/questions/${id}`, method: "PATCH", body }),
       invalidatesTags: (result) => (result ? ["AdminQuestions", "Questions"] : []),
     }),
+    importAdminQuestions: build.mutation<AdminQuestionImportResult, AdminQuestionImportRequest>({
+      query: (body) => ({ url: "/api/v1/admin/questions/import", method: "POST", body }),
+      invalidatesTags: (result, _error, { dry_run }) =>
+        result && !dry_run && result.created + result.restored > 0
+          ? ["AdminQuestions", "Questions"]
+          : [],
+    }),
     deleteAdminQuestion: build.mutation<{ id: string; deleted: true }, string>({
       query: (id) => ({ url: `/api/v1/admin/questions/${id}`, method: "DELETE" }),
       invalidatesTags: (result) => (result ? ["AdminQuestions", "Questions"] : []),
@@ -143,6 +166,7 @@ export const {
   useCreateAdminQuestionMutation,
   useUpdateAdminQuestionMutation,
   useDeleteAdminQuestionMutation,
+  useImportAdminQuestionsMutation,
   useGetQuestionTaxonomyQuery,
   useGetAdminPrepPdfsQuery,
   useCreateAdminPrepPdfMutation,

@@ -7,6 +7,7 @@ import { renderWithStore, testUser } from "@/test/render";
 import type { QuestionAttempt } from "@/lib/api/endpoints/questions";
 import { CoachProvider } from "@/components/app/coach/CoachProvider";
 import { CoachWidget } from "@/components/app/coach/CoachWidget";
+import { track } from "@/lib/analytics";
 import { Bookmarks } from "./Bookmarks";
 import { PrepGuides, safeGuideUrl } from "./PrepGuides";
 import { QuestionBank } from "./QuestionBank";
@@ -21,6 +22,8 @@ const setUrl = (query: string) => {
   search = new URLSearchParams(query);
   window.history.replaceState(null, "", query ? `/questions?${query}` : "/questions");
 };
+// Analytics: the events each action sends (never the answer text).
+vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useSearchParams: () => search,
   usePathname: () => "/questions",
@@ -57,6 +60,7 @@ const filters = {
 beforeEach(() => {
   setUrl("");
   replace.mockClear();
+  vi.mocked(track).mockClear();
 });
 
 describe("QuestionBank", () => {
@@ -181,6 +185,8 @@ describe("QuestionBank", () => {
 
     await userEvent.click(toggle);
     expect(replace).toHaveBeenLastCalledWith("/questions", { scroll: false });
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith("my_skills_toggled", { on: false });
   });
 
   it("My skills shows progress per skill, and a chip filters to that skill", async () => {
@@ -421,6 +427,9 @@ describe("QuestionView: your answer and the coach", () => {
     expect(screen.getByRole("button", { name: "Mark solved" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show answer" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Get feedback" })).not.toBeInTheDocument();
+    // One event, with the score only.
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith("question_feedback_requested", { score: 7 });
   });
 
   it("shows the last answer and its feedback, and Try again opens the box", async () => {
@@ -451,6 +460,7 @@ describe("QuestionView: your answer and the coach", () => {
     await userEvent.click(screen.getByRole("button", { name: "Get feedback" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("You've reached today's AI limit.");
     expect(box).toHaveValue(ANSWER);
+    expect(track).not.toHaveBeenCalled();
   });
 
   it("opens the coach about this question", async () => {
@@ -478,6 +488,8 @@ describe("QuestionView: your answer and the coach", () => {
     );
     const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
     expect(within(chat).getByText(`About: ${summary.title}`)).toBeInTheDocument();
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith("coach_asked_about_question", {});
   });
 
   it("has no coach button outside the student app", async () => {

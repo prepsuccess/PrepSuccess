@@ -8,6 +8,7 @@ import {
   Loader2,
   MessageSquareText,
   Plus,
+  Upload,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { EmptyPanel } from "@/components/app/EmptyPanel";
@@ -45,6 +46,7 @@ import {
 import { errorMessage, fieldErrors } from "@/lib/api/errors";
 import type { AdminQuestion, AdminQuestionInput, AdminSkill } from "@/lib/api/types";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { QuestionImportDialog } from "./QuestionImportDialog";
 
 const PAGE_SIZE = 20;
 // Radix Select can't hold "", so "no company / role / skill filter" needs a stand-in value.
@@ -277,6 +279,7 @@ export function QuestionsManager() {
   // null = dialog closed, "new" = adding, otherwise the question being edited.
   const [editing, setEditing] = useState<AdminQuestion | "new" | null>(null);
   const [deleting, setDeleting] = useState<AdminQuestion | null>(null);
+  const [importing, setImporting] = useState(false);
   const query = useGetAdminQuestionsQuery({ ...filters, limit: PAGE_SIZE });
   const skills = useGetAdminSkillsQuery();
   const [remove] = useDeleteAdminQuestionMutation();
@@ -328,6 +331,10 @@ export function QuestionsManager() {
               {total.toLocaleString()} {total === 1 ? "question" : "questions"}
             </p>
           ) : null}
+          <Button variant="outline" onClick={() => setImporting(true)}>
+            <Upload aria-hidden />
+            Import
+          </Button>
           <Button onClick={() => setEditing("new")} disabled={!skills.data}>
             <Plus aria-hidden />
             Add question
@@ -465,6 +472,8 @@ export function QuestionsManager() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <QuestionImportDialog open={importing} onOpenChange={setImporting} />
 
       <ConfirmDeleteDialog
         open={deleting !== null}

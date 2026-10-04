@@ -35,6 +35,7 @@ adminRouter.delete("/tasks/:id", admin.deleteTask);
 // Phase 2: interview question bank and prep PDFs.
 adminRouter.get("/questions", questions.adminList);
 adminRouter.post("/questions", questions.adminCreate);
+adminRouter.post("/questions/import", rateLimitPerMinute(10), questions.adminImport);
 adminRouter.patch("/questions/:id", questions.adminUpdate);
 adminRouter.delete("/questions/:id", questions.adminDelete);
 adminRouter.get("/question-taxonomy", questions.adminTaxonomy);

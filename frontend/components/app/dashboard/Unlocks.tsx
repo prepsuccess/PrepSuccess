@@ -1,18 +1,20 @@
 import { Lock } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 import { DashCard } from "./DashCard";
 
 export type Unlock = { title: string; need: string };
 
 /**
  * Stands in for the charts that have nothing to show yet, so a new student
- * sees one card saying what's coming instead of a page of empty boxes.
+ * sees one card saying what's coming instead of a page of empty boxes. Sized
+ * to its list, never stretched to a taller card beside it.
  */
 export function Unlocks({ items, className }: { items: Unlock[]; className?: string }) {
   return (
     <DashCard
       title="More insights on the way"
       description="These unlock as you take skill checks"
-      className={className}
+      className={cn("self-start", className)}
     >
       <ul className="grid gap-2.5 sm:grid-cols-2">
         {items.map((item) => (

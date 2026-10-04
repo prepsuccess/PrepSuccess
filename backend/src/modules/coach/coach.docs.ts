@@ -40,7 +40,9 @@ export const coachPaths: ZodOpenApiPathsObject = {
       description:
         `One AI call. The coach sees the student's profile, readiness, skill results, recent tasks and next ` +
         `steps, plus what PrepSuccess offers. ${COACH_DAILY_LIMIT} messages a day (midnight IST); a failed ` +
-        "call doesn't count and nothing is saved.",
+        "call doesn't count and nothing is saved. With `context.question_id`, the coach also sees that " +
+        "interview question and its model answer, for this reply only (only the student's text is " +
+        "saved); an unknown or removed question is ignored.",
       security: bearerAuth,
       requestBody: { content: { "application/json": { schema: coachMessageSchema } } },
       responses: {

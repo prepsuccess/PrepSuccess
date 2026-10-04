@@ -1317,7 +1317,7 @@
           "AI"
         ],
         "summary": "Ask the coach",
-        "description": "One AI call. The coach sees the student's profile, readiness, skill results, recent tasks and next steps, plus what PrepSuccess offers. 20 messages a day (midnight IST); a failed call doesn't count and nothing is saved.",
+        "description": "One AI call. The coach sees the student's profile, readiness, skill results, recent tasks and next steps, plus what PrepSuccess offers. 20 messages a day (midnight IST); a failed call doesn't count and nothing is saved. With `context.question_id`, the coach also sees that interview question and its model answer, for this reply only (only the student's text is saved); an unknown or removed question is ignored.",
         "security": [
           {
             "bearerAuth": []
@@ -1629,7 +1629,7 @@
             "in": "query",
             "name": "mine",
             "schema": {
-              "description": "`true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty.",
+              "description": "`true` keeps only questions for you: the skills on your profile (matched to the catalogue, stacks expanded), skills named in your goals, or your target role. See GET /questions/mine. With none matched, the list is empty.",
               "default": "false",
               "type": "string",
               "enum": [
@@ -1637,7 +1637,7 @@
                 "false"
               ]
             },
-            "description": "`true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty."
+            "description": "`true` keeps only questions for you: the skills on your profile (matched to the catalogue, stacks expanded), skills named in your goals, or your target role. See GET /questions/mine. With none matched, the list is empty."
           },
           {
             "in": "query",
@@ -1799,6 +1799,79 @@
                     },
                     "data": {
                       "$ref": "#/components/schemas/QuestionFilters"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "description": "Echoes the X-Request-ID response header."
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "request_id",
+                    "timestamp"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHORIZED` or `INVALID_TOKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`FORBIDDEN` — students only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/questions/mine": {
+      "get": {
+        "tags": [
+          "Interview prep"
+        ],
+        "summary": "What My skills covers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "The skills on your profile, skills named in your goals, and your target role (matched to a known role) that `mine=true` uses, with question counts and your solves per skill.",
+        "responses": {
+          "200": {
+            "description": "Your question scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MyQuestionScope"
                     },
                     "request_id": {
                       "type": "string",
@@ -2490,6 +2563,150 @@
           },
           "422": {
             "description": "`VALIDATION_ERROR` — request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/questions/{id}/attempt": {
+      "post": {
+        "tags": [
+          "Interview prep"
+        ],
+        "summary": "Get AI feedback on my answer",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "One AI call. Compares the student's written answer with the question's model answer and returns a 0-10 score, a verdict (8+ strong, 5-7 partial, 0-4 weak), what they covered, what to add and one tip. The answer is treated strictly as the answer to judge — instructions inside it are ignored. Only the latest attempt is kept (it comes back as `my_attempt` on the question). Doesn't mark the question solved. Nothing is saved if the AI call fails.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionAttemptInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The answer and its feedback.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QuestionAttempt"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "description": "Echoes the X-Request-ID response header."
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "request_id",
+                    "timestamp"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHORIZED` or `INVALID_TOKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`FORBIDDEN` — students only, or `AI_TRIAL_ENDED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`QUESTION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_ERROR` — request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "`AI_BAD_RESPONSE` — try again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`AI_UNAVAILABLE` or `AI_NOT_CONFIGURED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7464,10 +7681,38 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 1000
+          },
+          "context": {
+            "description": "What the student is looking at. Used for this reply only and not saved; an unknown or removed question is ignored.",
+            "type": "object",
+            "properties": {
+              "question_id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "description": "The interview question open on the page."
+              }
+            },
+            "required": [
+              "question_id"
+            ]
           }
         },
         "required": [
           "content"
+        ]
+      },
+      "QuestionAttemptInput": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "answer"
         ]
       },
       "AdminQuestionInput": {
@@ -8924,6 +9169,121 @@
         "additionalProperties": false,
         "description": "Values that have at least one question, with counts."
       },
+      "MyQuestionScope": {
+        "type": "object",
+        "properties": {
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Skills on your profile."
+          },
+          "goal_skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Skills named in your goals or interests (not already above)."
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SDE",
+                  "Frontend Developer",
+                  "Backend Developer",
+                  "Full Stack Developer",
+                  "Data Analyst",
+                  "Data Scientist",
+                  "ML Engineer",
+                  "DevOps Engineer",
+                  "QA Engineer",
+                  "Business Analyst"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Your target role, if it matches a known role."
+          },
+          "unmatched": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Profile skills that aren't in the catalogue."
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "solved": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "slug",
+                "name",
+                "total",
+                "solved"
+              ],
+              "additionalProperties": false
+            },
+            "description": "For each skill above (profile first, then goals): live questions and how many you solved."
+          }
+        },
+        "required": [
+          "skills",
+          "goal_skills",
+          "role",
+          "unmatched",
+          "progress"
+        ],
+        "additionalProperties": false
+      },
       "QuestionDetail": {
         "type": "object",
         "properties": {
@@ -9010,6 +9370,17 @@
                 "type": "null"
               }
             ]
+          },
+          "my_attempt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAttempt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Your latest written answer and its feedback; null before the first."
           }
         },
         "required": [
@@ -9024,7 +9395,84 @@
           "solved",
           "body",
           "answer",
-          "solved_at"
+          "solved_at",
+          "my_attempt"
+        ],
+        "additionalProperties": false
+      },
+      "QuestionAttempt": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "The student's latest written answer."
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/QuestionFeedback"
+          },
+          "attempted_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Times they asked for feedback on it."
+          }
+        },
+        "required": [
+          "answer",
+          "feedback",
+          "attempted_at",
+          "attempts"
+        ],
+        "additionalProperties": false
+      },
+      "QuestionFeedback": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "example": 7
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "strong",
+              "partial",
+              "weak"
+            ],
+            "description": "Follows the score: 8+ strong, 5-7 partial, 0-4 weak."
+          },
+          "strengths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the answer covered (up to 3)."
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key points left out, most important first (up to 4)."
+          },
+          "tip": {
+            "type": "string",
+            "description": "One sentence on how to say it better in an interview."
+          }
+        },
+        "required": [
+          "score",
+          "verdict",
+          "strengths",
+          "missing",
+          "tip"
         ],
         "additionalProperties": false
       },

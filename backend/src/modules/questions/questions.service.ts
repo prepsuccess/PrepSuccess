@@ -2,16 +2,29 @@ import { prisma } from "../../db/prisma.js";
 import type {
   Difficulty,
   PrepPdf,
+  Prisma,
   QuestionBank,
   Skill,
   UserQuestionProgress,
 } from "../../generated/prisma/client.js";
 import { AppError } from "../../lib/http.js";
 import { startOfIndianDay } from "../../lib/time.js";
+import { generateJson } from "../../services/ai-agent/ai.service.js";
 import { getDashboard } from "../dashboard/dashboard.service.js";
-import { matchClaims } from "../skills/skills.logic.js";
-import { buildWhere, solvedByWeek } from "./questions.logic.js";
-import type { ListQuestionsQuery, QuestionDetail, QuestionSummary } from "./questions.schemas.js";
+import { buildWhere, mineScope, solvedByWeek } from "./questions.logic.js";
+import {
+  buildFeedbackPrompt,
+  parseFeedback,
+  questionReviewSchema,
+  toFeedback,
+  wrapAnswer,
+} from "./questions.practice.js";
+import type {
+  ListQuestionsQuery,
+  QuestionAttempt,
+  QuestionDetail,
+  QuestionSummary,
+} from "./questions.schemas.js";
 
 const live = { isActive: true, isDeleted: false } as const;
 const lower = (d: Difficulty) => d.toLowerCase() as Lowercase<Difficulty>;
@@ -42,6 +55,19 @@ function toDetail(row: Row): QuestionDetail {
     body: row.body,
     answer: row.answer,
     solved_at: row.progress[0]?.solvedAt?.toISOString() ?? null,
+    my_attempt: toAttempt(row.progress[0]),
+  };
+}
+
+/** The student's latest written answer and its feedback, or null before the first. */
+function toAttempt(row: UserQuestionProgress | undefined): QuestionAttempt | null {
+  const feedback = parseFeedback(row?.lastFeedback);
+  if (!row?.lastAnswer || !row.attemptedAt || !feedback) return null;
+  return {
+    answer: row.lastAnswer,
+    feedback,
+    attempted_at: row.attemptedAt.toISOString(),
+    attempts: row.attempts,
   };
 }
 
@@ -51,27 +77,67 @@ const withMine = (userId: string) => ({
   progress: { where: { userId } },
 });
 
-/** Catalogue slugs for the skills on the student's profile (same matching as the dashboard). */
-async function profileSkillSlugs(userId: string) {
+/** What "My skills" covers for this student (see mineScope). */
+async function profileScope(userId: string) {
   const profile = await prisma.userProfile.findUnique({
     where: { userId },
     select: { profileData: true },
   });
-  const data = (profile?.profileData ?? {}) as Record<string, unknown>;
-  const claims = Array.isArray(data.skills)
-    ? data.skills.filter((s): s is string => typeof s === "string")
-    : [];
-  return matchClaims(claims).slugs;
+  return mineScope(profile?.profileData);
+}
+
+/**
+ * GET /questions/mine — the skills, goal skills and role "My skills" uses,
+ * with live and solved question counts per skill (two grouped counts, not
+ * one query per skill).
+ */
+export async function getMyScope(userId: string) {
+  const scope = await profileScope(userId);
+  const slugs = [...scope.skillSlugs, ...scope.goalSlugs];
+  const where = { ...live, skill: { ...live, slug: { in: slugs } } };
+  const [skills, totals, solved] = await Promise.all([
+    prisma.skill.findMany({ where: { ...live, slug: { in: slugs } } }),
+    prisma.questionBank.groupBy({ by: ["skillId"], where, _count: { _all: true } }),
+    prisma.questionBank.groupBy({
+      by: ["skillId"],
+      where: { ...where, progress: { some: { userId, solvedAt: { not: null } } } },
+      _count: { _all: true },
+    }),
+  ]);
+  const bySlug = new Map(skills.map((s) => [s.slug, s]));
+  const countFor = (groups: typeof totals, id: string) =>
+    groups.find((g) => g.skillId === id)?._count._all ?? 0;
+  const named = (list: string[]) =>
+    list.flatMap((slug) => {
+      const skill = bySlug.get(slug);
+      return skill ? [{ slug, name: skill.name, id: skill.id }] : [];
+    });
+  const strip = ({ slug, name }: { slug: string; name: string }) => ({ slug, name });
+  const mine = named(scope.skillSlugs);
+  const goals = named(scope.goalSlugs);
+  return {
+    skills: mine.map(strip),
+    goal_skills: goals.map(strip),
+    role: scope.role,
+    unmatched: scope.unmatched,
+    progress: [...mine, ...goals].map((s) => ({
+      ...strip(s),
+      total: countFor(totals, s.id),
+      solved: countFor(solved, s.id),
+    })),
+  };
 }
 
 /** GET /questions — filtered, paginated, easiest first within each skill. */
 export async function listQuestions(userId: string, query: ListQuestionsQuery) {
   const { mine, ...filters } = query;
+  const scope = mine ? await profileScope(userId) : null;
   const where = buildWhere(
     {
       ...filters,
       difficulty: filters.difficulty ? upper(filters.difficulty) : undefined,
-      skills: mine ? await profileSkillSlugs(userId) : undefined,
+      skills: scope ? [...scope.skillSlugs, ...scope.goalSlugs] : undefined,
+      mineRole: scope?.role,
     },
     userId,
   );
@@ -188,6 +254,42 @@ export async function setSolved(userId: string, id: string, solved: boolean) {
     update: { solvedAt },
   });
   return toProgress(row);
+}
+
+/**
+ * POST /questions/:id/attempt — one AI call compares the student's written
+ * answer with the model answer. Only the latest attempt is kept. Nothing is
+ * saved if the AI call fails. Never marks the question solved.
+ */
+export async function attemptQuestion(userId: string, id: string, answer: string) {
+  const question = await loadQuestion(userId, id);
+  const { data: review } = await generateJson(
+    {
+      userId,
+      feature: "question_feedback",
+      system: buildFeedbackPrompt({
+        skillName: question.skill.name,
+        title: question.title,
+        body: question.body,
+        answer: question.answer,
+      }),
+      messages: [{ role: "user", content: wrapAnswer(answer) }],
+      temperature: 0.2,
+      maxOutputTokens: 1500,
+      timeoutMs: 30_000,
+    },
+    questionReviewSchema,
+  );
+
+  const feedback = toFeedback(review);
+  const lastFeedback = feedback as unknown as Prisma.InputJsonObject;
+  const attemptedAt = new Date();
+  const row = await prisma.userQuestionProgress.upsert({
+    where: { userId_questionId: { userId, questionId: id } },
+    create: { userId, questionId: id, lastAnswer: answer, lastFeedback, attemptedAt, attempts: 1 },
+    update: { lastAnswer: answer, lastFeedback, attemptedAt, attempts: { increment: 1 } },
+  });
+  return toAttempt(row)!;
 }
 
 /** GET /questions/bookmarks — the student's bookmarks, most recently bookmarked first. */

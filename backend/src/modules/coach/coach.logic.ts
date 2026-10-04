@@ -130,7 +130,37 @@ export function describeStudent(context: CoachContext) {
   return lines.join("\n");
 }
 
-export function buildCoachPrompt(context: CoachContext, now = new Date()) {
+/** The interview question the student has open while chatting (used for one reply only). */
+export interface CoachQuestion {
+  skill: string;
+  title: string;
+  body: string;
+  answer: string | null;
+}
+
+/** Long questions or answers are cut, so one page can't crowd out the rest of the prompt. */
+export const MAX_QUESTION_CHARS = 3000;
+const clip = (value: string) =>
+  value.length > MAX_QUESTION_CHARS ? `${value.slice(0, MAX_QUESTION_CHARS)}…` : value;
+
+/** Prompt lines about the question on the student's screen. */
+export function describeQuestion(question: CoachQuestion) {
+  return [
+    `The student is looking at this ${question.skill} interview question on PrepSuccess right now. "This question" means this one:`,
+    `Question: ${question.title}`,
+    clip(question.body),
+    question.answer
+      ? `Model answer (they can open it on the page):\n${clip(question.answer)}`
+      : "This question has no model answer.",
+    "Explain it in simple words, give hints, or quiz them on it, whichever they ask for. Don't ask them to paste it.",
+  ].join("\n");
+}
+
+export function buildCoachPrompt(
+  context: CoachContext,
+  question: CoachQuestion | null = null,
+  now = new Date(),
+) {
   return [
     "You are the PrepSuccess coach: a friendly, practical placement-preparation mentor for an Indian college student.",
     `Today is ${now.toLocaleDateString("en-IN", { dateStyle: "long", timeZone: "Asia/Kolkata" })}.`,
@@ -140,6 +170,7 @@ export function buildCoachPrompt(context: CoachContext, now = new Date()) {
     "",
     APP_GUIDE,
     "",
+    ...(question ? [describeQuestion(question), ""] : []),
     "How to answer:",
     "- Be specific to this student's data. Point them to the right page (by name and path) when it helps.",
     "- Keep replies short: under 150 words unless they ask for detail. Simple English. Use short lists when listing steps.",

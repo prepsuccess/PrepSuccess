@@ -23,12 +23,14 @@ import { EmptyPanel } from "@/components/app/EmptyPanel";
 import { SelectField } from "@/components/app/form-fields";
 import { QueryState } from "@/components/ui/QueryState";
 import {
+  useGetMyQuestionScopeQuery,
   useGetQuestionFiltersQuery,
   useGetQuestionsQuery,
+  type MyQuestionScope,
   type QuestionsQuery,
 } from "@/lib/api/endpoints/questions";
-import { useGetMySkillsQuery } from "@/lib/api/endpoints/skills";
 import type { QuestionSummary } from "@/lib/api/types";
+import { cn } from "@/lib/utils/cn";
 
 export const PAGE_SIZE = 20;
 const ALL = "all";
@@ -126,6 +128,98 @@ function QuestionCard({ question }: { question: QuestionSummary }) {
   );
 }
 
+function ScopeChip({
+  label,
+  progress,
+  active,
+  onClick,
+}: {
+  label: string;
+  progress?: { solved: number; total: number };
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      aria-label={progress ? `${label}, ${progress.solved} of ${progress.total} solved` : label}
+      onClick={onClick}
+      className={cn(
+        "focus-visible:ring-ring/50 flex min-h-9 flex-col justify-center gap-1 rounded-lg border px-3 py-1.5 text-sm outline-none focus-visible:ring-3 pointer-coarse:min-h-11",
+        active
+          ? "border-foreground bg-foreground text-background"
+          : "bg-card hover:border-foreground/20",
+      )}
+    >
+      <span className="flex items-baseline gap-1.5">
+        <span className="font-medium">{label}</span>
+        {progress ? (
+          <span className="text-xs tabular-nums opacity-70">
+            {progress.solved}/{progress.total}
+          </span>
+        ) : null}
+      </span>
+      {progress ? (
+        <span aria-hidden className="block h-0.5 w-full overflow-hidden rounded-full bg-current/15">
+          <span
+            className="block h-full rounded-full bg-current"
+            style={{ width: `${(progress.solved / progress.total) * 100}%` }}
+          />
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+/**
+ * With My skills on: a chip per skill with questions (solved/total; picking
+ * one filters to it), and where the rest of the list comes from.
+ */
+function MyScope({
+  scope,
+  skill,
+  onSkill,
+}: {
+  scope: MyQuestionScope;
+  skill: string;
+  onSkill: (slug: string) => void;
+}) {
+  const withQuestions = scope.progress.filter((s) => s.total > 0);
+  const notes = [
+    scope.goal_skills.length
+      ? `From your goals: ${scope.goal_skills.map((s) => s.name).join(", ")}`
+      : "",
+    scope.role ? `Role: ${scope.role}` : "",
+  ].filter(Boolean);
+  return (
+    <div className="space-y-2">
+      {withQuestions.length ? (
+        <div role="group" aria-label="Your skills" className="flex flex-wrap gap-2">
+          <ScopeChip label="All" active={!skill} onClick={() => onSkill("")} />
+          {withQuestions.map((s) => (
+            <ScopeChip
+              key={s.slug}
+              label={s.name}
+              progress={s}
+              active={skill === s.slug}
+              onClick={() => onSkill(s.slug)}
+            />
+          ))}
+        </div>
+      ) : null}
+      <p className="text-muted-foreground text-sm">
+        {notes.map((note) => (
+          <span key={note}>{note} · </span>
+        ))}
+        <Link href="/profile" className="text-foreground underline underline-offset-4">
+          Edit
+        </Link>
+      </p>
+    </div>
+  );
+}
+
 function ListSkeleton() {
   return (
     <div className="grid gap-3 md:grid-cols-2" aria-hidden>
@@ -146,12 +240,12 @@ export function QuestionBank() {
   // Closed by default; open when the page arrives already filtered (a shared link).
   const [showFilters, setShowFilters] = useState(() => filters.picked > 0);
 
-  // "My skills": the skills on the student's profile, matched to the catalogue
-  // the same way the server matches them for ?mine=1.
+  // "My skills": profile skills, skills named in goals, and the target role,
+  // exactly as the server reads them for ?mine=1.
   const mine = filters.value("mine") === "1";
-  const { data: mySkills } = useGetMySkillsQuery();
-  const claimed = mySkills?.skills.filter((s) => s.claimed) ?? [];
-  const noProfileSkills = mine && !!mySkills && claimed.length === 0;
+  const { data: scope } = useGetMyQuestionScopeQuery(undefined, { skip: !mine });
+  const scopeEmpty = !!scope && !scope.skills.length && !scope.goal_skills.length && !scope.role;
+  const noProfileSkills = mine && scopeEmpty;
 
   // Search updates the URL a moment after typing stops.
   const urlSearch = filters.value("q");
@@ -283,15 +377,16 @@ export function QuestionBank() {
             </button>
           ) : null}
         </div>
-        {mine && claimed.length ? (
-          <p className="text-muted-foreground text-sm">
-            Showing your skills: {claimed.map((s) => s.name).join(", ")} ·{" "}
-            <Link href="/profile" className="text-foreground underline underline-offset-4">
-              Edit
-            </Link>
-          </p>
-        ) : null}
       </div>
+
+      {mine && scope && !scopeEmpty ? (
+        <MyScope
+          scope={scope}
+          skill={skill}
+          // A new skill has its own topics, so the topic filter resets.
+          onSkill={(slug) => filters.set({ skill: slug, topic: "" })}
+        />
+      ) : null}
 
       <section
         id={panelId}

@@ -1156,7 +1156,7 @@ export interface paths {
         put?: never;
         /**
          * Ask the coach
-         * @description One AI call. The coach sees the student's profile, readiness, skill results, recent tasks and next steps, plus what PrepSuccess offers. 20 messages a day (midnight IST); a failed call doesn't count and nothing is saved.
+         * @description One AI call. The coach sees the student's profile, readiness, skill results, recent tasks and next steps, plus what PrepSuccess offers. 20 messages a day (midnight IST); a failed call doesn't count and nothing is saved. With `context.question_id`, the coach also sees that interview question and its model answer, for this reply only (only the student's text is saved); an unknown or removed question is ignored.
          */
         post: {
             parameters: {
@@ -1345,7 +1345,7 @@ export interface paths {
                     q?: string;
                     /** @description Your own progress on the question. */
                     status?: "bookmarked" | "solved" | "unsolved";
-                    /** @description `true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty. */
+                    /** @description `true` keeps only questions for you: the skills on your profile (matched to the catalogue, stacks expanded), skills named in your goals, or your target role. See GET /questions/mine. With none matched, the list is empty. */
                     mine?: "true" | "false";
                     page?: number;
                     limit?: number;
@@ -1451,6 +1451,74 @@ export interface paths {
                             /** @constant */
                             success: true;
                             data: components["schemas"]["QuestionFilters"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — students only. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What My skills covers
+         * @description The skills on your profile, skills named in your goals, and your target role (matched to a known role) that `mine=true` uses, with question counts and your solves per skill.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your question scope. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["MyQuestionScope"];
                             /**
                              * Format: uuid
                              * @description Echoes the X-Request-ID response header.
@@ -1974,6 +2042,125 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{id}/attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get AI feedback on my answer
+         * @description One AI call. Compares the student's written answer with the question's model answer and returns a 0-10 score, a verdict (8+ strong, 5-7 partial, 0-4 weak), what they covered, what to add and one tip. The answer is treated strictly as the answer to judge — instructions inside it are ignored. Only the latest attempt is kept (it comes back as `my_attempt` on the question). Doesn't mark the question solved. Nothing is saved if the AI call fails.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuestionAttemptInput"];
+                };
+            };
+            responses: {
+                /** @description The answer and its feedback. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["QuestionAttempt"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — students only, or `AI_TRIAL_ENDED`. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `QUESTION_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_BAD_RESPONSE` — try again. */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `AI_UNAVAILABLE` or `AI_NOT_CONFIGURED`. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5759,6 +5946,17 @@ export interface components {
         };
         CoachMessageRequest: {
             content: string;
+            /** @description What the student is looking at. Used for this reply only and not saved; an unknown or removed question is ignored. */
+            context?: {
+                /**
+                 * Format: uuid
+                 * @description The interview question open on the page.
+                 */
+                question_id: string;
+            };
+        };
+        QuestionAttemptInput: {
+            answer: string;
         };
         AdminQuestionInput: {
             /** Format: uuid */
@@ -6075,6 +6273,29 @@ export interface components {
                 count: number;
             }[];
         };
+        MyQuestionScope: {
+            /** @description Skills on your profile. */
+            skills: {
+                slug: string;
+                name: string;
+            }[];
+            /** @description Skills named in your goals or interests (not already above). */
+            goal_skills: {
+                slug: string;
+                name: string;
+            }[];
+            /** @description Your target role, if it matches a known role. */
+            role: ("SDE" | "Frontend Developer" | "Backend Developer" | "Full Stack Developer" | "Data Analyst" | "Data Scientist" | "ML Engineer" | "DevOps Engineer" | "QA Engineer" | "Business Analyst") | null;
+            /** @description Profile skills that aren't in the catalogue. */
+            unmatched: string[];
+            /** @description For each skill above (profile first, then goals): live questions and how many you solved. */
+            progress: {
+                slug: string;
+                name: string;
+                total: number;
+                solved: number;
+            }[];
+        };
         QuestionDetail: {
             /** Format: uuid */
             id: string;
@@ -6099,6 +6320,32 @@ export interface components {
             /** @description Model answer / hints. The app hides it until the student asks. */
             answer: string | null;
             solved_at: string | null;
+            /** @description Your latest written answer and its feedback; null before the first. */
+            my_attempt: components["schemas"]["QuestionAttempt"] | null;
+        };
+        QuestionAttempt: {
+            /** @description The student's latest written answer. */
+            answer: string;
+            feedback: components["schemas"]["QuestionFeedback"];
+            /** Format: date-time */
+            attempted_at: string;
+            /** @description Times they asked for feedback on it. */
+            attempts: number;
+        };
+        QuestionFeedback: {
+            /** @example 7 */
+            score: number;
+            /**
+             * @description Follows the score: 8+ strong, 5-7 partial, 0-4 weak.
+             * @enum {string}
+             */
+            verdict: "strong" | "partial" | "weak";
+            /** @description What the answer covered (up to 3). */
+            strengths: string[];
+            /** @description Key points left out, most important first (up to 4). */
+            missing: string[];
+            /** @description One sentence on how to say it better in an interview. */
+            tip: string;
         };
         QuestionProgress: {
             bookmarked: boolean;

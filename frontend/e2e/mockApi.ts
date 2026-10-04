@@ -85,6 +85,7 @@ const question: QuestionDetail = {
   body: "Explain the difference, with an example query for each.",
   answer: "- WHERE filters rows before grouping\n- HAVING filters groups after GROUP BY",
   solved_at: null,
+  my_attempt: null,
 };
 
 const aiStatus: AiStatus = {

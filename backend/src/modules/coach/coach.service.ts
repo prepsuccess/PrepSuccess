@@ -16,6 +16,7 @@ import {
   suggestions,
   trackActivity,
   type CoachContext,
+  type CoachQuestion,
 } from "./coach.logic.js";
 import type { CoachChatMessage, CoachState } from "./coach.schemas.js";
 
@@ -139,20 +140,37 @@ const inFlight = new Set<string>();
  * POST /ai/coach/messages — one AI call with the student's live data in the
  * prompt. Nothing is saved if the AI fails, so the student can send again.
  */
-export async function sendCoachMessage(userId: string, content: string) {
+export async function sendCoachMessage(
+  userId: string,
+  content: string,
+  page: { questionId?: string } = {},
+) {
   // One message at a time per student: two in flight would both pass the daily count.
   if (inFlight.has(userId)) {
     throw new AppError(429, "COACH_BUSY", "Wait for the coach to answer your last message.");
   }
   inFlight.add(userId);
   try {
-    return await answer(userId, content);
+    return await answer(userId, content, page.questionId);
   } finally {
     inFlight.delete(userId);
   }
 }
 
-async function answer(userId: string, content: string) {
+/** The live interview question the student has open, or null (unknown or removed ids are ignored). */
+async function loadQuestion(questionId: string | undefined): Promise<CoachQuestion | null> {
+  if (!questionId) return null;
+  const live = { isActive: true, isDeleted: false } as const;
+  const row = await prisma.questionBank.findFirst({
+    where: { id: questionId, ...live, skill: live },
+    include: { skill: true },
+  });
+  return row
+    ? { skill: row.skill.name, title: row.title, body: row.body, answer: row.answer }
+    : null;
+}
+
+async function answer(userId: string, content: string, questionId?: string) {
   const today = await usage(userId);
   if (today.remaining <= 0) {
     throw new AppError(
@@ -162,7 +180,11 @@ async function answer(userId: string, content: string) {
     );
   }
 
-  const [context, conversation] = await Promise.all([loadContext(userId), getConversation(userId)]);
+  const [context, conversation, onPage] = await Promise.all([
+    loadContext(userId),
+    getConversation(userId),
+    loadQuestion(questionId),
+  ]);
   const messages = asMessages(conversation?.messages);
   const question: CoachChatMessage = {
     role: "user",
@@ -174,7 +196,8 @@ async function answer(userId: string, content: string) {
   const { data: reply } = await generateText({
     userId,
     feature: "coach",
-    system: buildCoachPrompt(context),
+    // The question is for this reply only; just the student's text is saved.
+    system: buildCoachPrompt(context, onPage),
     messages: history,
     temperature: 0.5,
     maxOutputTokens: 800,

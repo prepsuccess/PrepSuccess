@@ -49,7 +49,7 @@ import { LogoMark } from "@/components/ui/Logo";
 import { useSession, useSignOut } from "@/lib/auth/useSession";
 import { applyTheme, useAppTheme, type ThemePreference } from "@/lib/theme/appTheme";
 import { EmptyPanel } from "@/components/app/EmptyPanel";
-import { activeNavItem, navByArea, type NavArea } from "./nav";
+import { activeNavItem, navByArea, pageLabel, type NavArea } from "./nav";
 import { NotificationBell } from "./NotificationBell";
 import { CoachProvider } from "@/components/app/coach/CoachProvider";
 import { CoachWidget } from "@/components/app/coach/CoachWidget";
@@ -190,6 +190,8 @@ export function AppShell({
   const nav = navByArea[navArea];
   const current = activeNavItem(nav, pathname);
   const home = nav[0];
+  // The page's own name after the area, unless it's the area's home page.
+  const crumb = pageLabel(pathname) ?? (current && current !== home ? current.label : undefined);
   const { resolved } = useAppTheme();
 
   // Task pages (task + editor side by side) get their own sidebar state, closed on arrival.
@@ -277,7 +279,7 @@ export function AppShell({
             />
             <Breadcrumb>
               <BreadcrumbList>
-                {current && current !== home ? (
+                {crumb ? (
                   <>
                     <BreadcrumbItem className="hidden md:block">
                       <BreadcrumbLink asChild>
@@ -286,7 +288,7 @@ export function AppShell({
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      <BreadcrumbPage>{current.label}</BreadcrumbPage>
+                      <BreadcrumbPage>{crumb}</BreadcrumbPage>
                     </BreadcrumbItem>
                   </>
                 ) : (

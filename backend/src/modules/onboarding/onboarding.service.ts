@@ -11,6 +11,7 @@ import {
   aiTurnSchema,
   buildSystemPrompt,
   cleanPicks,
+  followUpReply,
   greeting,
   isComplete,
   mergeProfile,
@@ -176,8 +177,14 @@ export async function sendMessage(userId: string, content: string, picked: strin
       },
       aiTurnSchema,
     );
-    replyText = turn.reply;
     extracted = sanitizeExtracted(turn.extracted);
+    // The model may wrap up while a detail is still missing (say, it missed
+    // the role). Then its "you're all set" would leave the student stuck, so
+    // ask for the first missing detail instead.
+    const followUp = turn.done
+      ? followUpReply(user.firstName, mergeProfile(profile, extracted))
+      : null;
+    replyText = followUp ?? turn.reply;
   }
 
   const reply: ChatMessage = {

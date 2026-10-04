@@ -248,6 +248,22 @@ describe("OnboardingChat", () => {
     expect(screen.queryByLabelText("Your message")).not.toBeInTheDocument();
   });
 
+  it("includes the branch and college in the summary when they're known", async () => {
+    const profile = {
+      degree: "B.Tech",
+      branch: "CSE",
+      college: "IIT Delhi",
+      student_year: 3,
+      skills: ["React"],
+      target_role: "SDE",
+      goals: ["Get placed"],
+    };
+    server.use(http.get(`${API}/api/v1/ai/onboarding`, () => ok(state(profile, [greeting]))));
+    renderChat();
+
+    expect(await screen.findByText("B.Tech CSE, year 3, IIT Delhi")).toBeInTheDocument();
+  });
+
   it("shows an error with a retry when the chat can't load", async () => {
     server.use(
       http.get(`${API}/api/v1/ai/onboarding`, () => fail(500, "INTERNAL_SERVER_ERROR", "Boom.")),

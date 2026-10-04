@@ -489,6 +489,13 @@ model UserQuestionProgress {
   bookmarkedAt DateTime? @map("bookmarked_at") @db.Timestamptz(6)
   /// First time it was marked solved; null when not solved.
   solvedAt     DateTime? @map("solved_at") @db.Timestamptz(6)
+  /// The student's latest written answer and its AI feedback (Write your answer).
+  lastAnswer   String?   @map("last_answer") @db.Text
+  /// { score, verdict, strengths, missing, tip } — see questions.practice.ts.
+  lastFeedback Json?     @map("last_feedback")
+  attemptedAt  DateTime? @map("attempted_at") @db.Timestamptz(6)
+  /// How many times they asked for feedback on this question.
+  attempts     Int       @default(0)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

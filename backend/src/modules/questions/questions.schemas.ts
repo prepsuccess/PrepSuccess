@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { PAGE_LIMIT_DEFAULT, PAGE_LIMIT_MAX } from "./questions.logic.js";
+import { ANSWER_MAX_CHARS, ANSWER_MIN_CHARS } from "./questions.practice.js";
 import { COMPANIES, ROLES } from "./taxonomy.js";
 
 const difficulty = z.enum(["easy", "medium", "hard"]);
@@ -30,7 +31,7 @@ export const listQuestionsQuerySchema = z
       .transform((value) => value === "true")
       .meta({
         description:
-          "`true` keeps only the skills on your profile (matched to the catalogue, stacks expanded). With none matched, the list is empty.",
+          "`true` keeps only questions for you: the skills on your profile (matched to the catalogue, stacks expanded), skills named in your goals, or your target role. See GET /questions/mine. With none matched, the list is empty.",
       }),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(PAGE_LIMIT_MAX).default(PAGE_LIMIT_DEFAULT),
@@ -83,6 +84,39 @@ export const questionSummarySchema = z
   })
   .meta({ id: "QuestionSummary" });
 
+export const questionFeedbackSchema = z
+  .object({
+    score: z.number().int().min(0).max(10).meta({ example: 7 }),
+    verdict: z
+      .enum(["strong", "partial", "weak"])
+      .meta({ description: "Follows the score: 8+ strong, 5-7 partial, 0-4 weak." }),
+    strengths: z.array(z.string()).meta({ description: "What the answer covered (up to 3)." }),
+    missing: z
+      .array(z.string())
+      .meta({ description: "Key points left out, most important first (up to 4)." }),
+    tip: z.string().meta({ description: "One sentence on how to say it better in an interview." }),
+  })
+  .meta({ id: "QuestionFeedback" });
+
+export const questionAttemptSchema = z
+  .object({
+    answer: z.string().meta({ description: "The student's latest written answer." }),
+    feedback: questionFeedbackSchema,
+    attempted_at: z.iso.datetime(),
+    attempts: z.number().int().meta({ description: "Times they asked for feedback on it." }),
+  })
+  .meta({ id: "QuestionAttempt" });
+
+export const questionAttemptInputSchema = z
+  .object({
+    answer: z
+      .string()
+      .trim()
+      .min(ANSWER_MIN_CHARS, `Write at least ${ANSWER_MIN_CHARS} characters.`)
+      .max(ANSWER_MAX_CHARS, `Keep it under ${ANSWER_MAX_CHARS} characters.`),
+  })
+  .meta({ id: "QuestionAttemptInput" });
+
 export const questionDetailSchema = questionSummarySchema
   .extend({
     body: z.string().meta({
@@ -94,6 +128,9 @@ export const questionDetailSchema = questionSummarySchema
       .nullable()
       .meta({ description: "Model answer / hints. The app hides it until the student asks." }),
     solved_at: z.iso.datetime().nullable(),
+    my_attempt: questionAttemptSchema
+      .nullable()
+      .meta({ description: "Your latest written answer and its feedback; null before the first." }),
   })
   .meta({ id: "QuestionDetail" });
 
@@ -111,6 +148,27 @@ export const questionFiltersSchema = z
     id: "QuestionFilters",
     description: "Values that have at least one question, with counts.",
   });
+
+const namedSkill = z.object({ slug: z.string(), name: z.string() });
+
+export const mineScopeSchema = z
+  .object({
+    skills: z.array(namedSkill).meta({ description: "Skills on your profile." }),
+    goal_skills: z
+      .array(namedSkill)
+      .meta({ description: "Skills named in your goals or interests (not already above)." }),
+    role: role.nullable().meta({ description: "Your target role, if it matches a known role." }),
+    unmatched: z
+      .array(z.string())
+      .meta({ description: "Profile skills that aren't in the catalogue." }),
+    progress: z
+      .array(namedSkill.extend({ total: z.number().int(), solved: z.number().int() }))
+      .meta({
+        description:
+          "For each skill above (profile first, then goals): live questions and how many you solved.",
+      }),
+  })
+  .meta({ id: "MyQuestionScope" });
 
 export const progressSchema = z
   .object({
@@ -197,7 +255,7 @@ export const adminListQuestionsQuerySchema = z
   .meta({ id: "AdminListQuestionsQuery" });
 
 export const adminQuestionSchema = questionDetailSchema
-  .omit({ bookmarked: true, solved: true, solved_at: true })
+  .omit({ bookmarked: true, solved: true, solved_at: true, my_attempt: true })
   .extend({ is_active: z.boolean(), created_at: z.iso.datetime(), updated_at: z.iso.datetime() })
   .meta({ id: "AdminQuestion" });
 
@@ -238,5 +296,6 @@ export const taxonomySchema = z
 export type ListQuestionsQuery = z.infer<typeof listQuestionsQuerySchema>;
 export type QuestionSummary = z.infer<typeof questionSummarySchema>;
 export type QuestionDetail = z.infer<typeof questionDetailSchema>;
+export type QuestionAttempt = z.infer<typeof questionAttemptSchema>;
 export type AdminQuestionInput = z.infer<typeof adminQuestionInputSchema>;
 export type AdminPrepPdfInput = z.infer<typeof adminPrepPdfInputSchema>;

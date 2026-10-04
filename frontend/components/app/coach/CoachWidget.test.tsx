@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CoachState } from "@/lib/api/types";
 import { API, fail, http, ok, server } from "@/test/server";
 import { renderWithStore, testUser } from "@/test/render";
-import { CoachProvider } from "./CoachProvider";
+import { CoachProvider, useCoach } from "./CoachProvider";
 import { CoachWidget, coachHiddenOn } from "./CoachWidget";
 
 let pathname = "/dashboard";
@@ -117,6 +118,55 @@ describe("CoachWidget", () => {
     const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
     expect(await within(chat).findByText(/used today's 20 messages/)).toBeInTheDocument();
     expect(within(chat).getByLabelText("Ask your coach")).toBeDisabled();
+  });
+
+  it("sends the page's question with each message, until the student drops it", async () => {
+    const QUESTION_ID = "11111111-1111-4111-8111-111111111111";
+    // Stands in for the question page, which sets the context on mount.
+    function QuestionPage() {
+      const coach = useCoach();
+      const setContext = coach?.setContext;
+      useEffect(() => {
+        setContext?.({ questionId: QUESTION_ID, label: "WHERE vs HAVING" });
+        return () => setContext?.(null);
+      }, [setContext]);
+      return null;
+    }
+    const bodies: unknown[] = [];
+    server.use(
+      http.get(`${API}/api/v1/ai/coach`, () => ok(empty)),
+      http.post(`${API}/api/v1/ai/coach/messages`, async ({ request }) => {
+        bodies.push(await request.json());
+        return ok({ ...empty, usage: usage(bodies.length) });
+      }),
+    );
+    renderWithStore(
+      <CoachProvider>
+        <QuestionPage />
+        <CoachWidget />
+      </CoachProvider>,
+      { signedInAs: testUser },
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Ask your AI coach" }));
+    const chat = screen.getByRole("dialog", { name: "PrepSuccess coach" });
+    expect(within(chat).getByText("About: WHERE vs HAVING")).toBeInTheDocument();
+
+    await userEvent.click(
+      await within(chat).findByRole("button", { name: "Explain this question in simple words" }),
+    );
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({
+      content: "Explain this question in simple words",
+      context: { question_id: QUESTION_ID },
+    });
+
+    await userEvent.click(
+      within(chat).getByRole("button", { name: "Stop asking about this question" }),
+    );
+    expect(within(chat).queryByText("About: WHERE vs HAVING")).not.toBeInTheDocument();
+    await userEvent.type(within(chat).getByLabelText("Ask your coach"), "And joins?{Enter}");
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ content: "And joins?" });
   });
 
   it("stays out of the onboarding chat and skill checks", async () => {

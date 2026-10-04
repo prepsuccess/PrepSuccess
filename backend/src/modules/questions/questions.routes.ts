@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { rateLimitPerMinute } from "../../middleware/rate-limit.js";
+import { rateLimitPerMinute, rateLimitPerUserPerMinute } from "../../middleware/rate-limit.js";
 import { requireAuth } from "../../middleware/require-auth.js";
 import * as questions from "./questions.controller.js";
 
@@ -11,11 +11,13 @@ const student = requireAuth("STUDENT");
 questionsRouter.get("/", student, questions.list);
 questionsRouter.get("/filters", student, questions.filters);
 questionsRouter.get("/bookmarks", student, questions.bookmarks);
+questionsRouter.get("/mine", student, questions.mine);
 questionsRouter.get("/:id", student, questions.get);
 questionsRouter.post("/:id/bookmark", student, rateLimitPerMinute(60), questions.bookmark);
 questionsRouter.delete("/:id/bookmark", student, rateLimitPerMinute(60), questions.unbookmark);
 questionsRouter.post("/:id/solve", student, rateLimitPerMinute(60), questions.solve);
 questionsRouter.delete("/:id/solve", student, rateLimitPerMinute(60), questions.unsolve);
+questionsRouter.post("/:id/attempt", student, rateLimitPerUserPerMinute(6), questions.attempt);
 
 /** /api/v1/progress — readiness and questions solved over time. */
 export const progressRouter = Router();

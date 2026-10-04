@@ -15,11 +15,13 @@ import { errorMessage } from "@/lib/api/errors";
 import type { CoachMessage } from "@/lib/api/types";
 import { useSession } from "@/lib/auth/useSession";
 import { cn } from "@/lib/utils/cn";
-import { coachHiddenOn, useCoach } from "./CoachProvider";
+import { coachHiddenOn, useCoach, type CoachPageContext } from "./CoachProvider";
 
 export { coachHiddenOn };
 
 const MAX_CHARS = 1000;
+/** Starter question offered while the chat is about a question on the page. */
+const EXPLAIN_QUESTION = "Explain this question in simple words";
 
 function Bubble({ message }: { message: CoachMessage }) {
   const mine = message.role === "user";
@@ -48,7 +50,16 @@ function Bubble({ message }: { message: CoachMessage }) {
 }
 
 /** The chat panel: conversation, starter questions, and the message box. */
-function CoachPanel({ onClose }: { onClose: () => void }) {
+function CoachPanel({
+  onClose,
+  context,
+  onDropContext,
+}: {
+  onClose: () => void;
+  /** The question on the page; sent with each message while set. */
+  context: CoachPageContext | null;
+  onDropContext: () => void;
+}) {
   const session = useSession();
   const firstName = session.status === "authenticated" ? session.user.first_name : "";
   const { data, isLoading, isError, refetch } = useGetCoachQuery();
@@ -63,6 +74,9 @@ function CoachPanel({ onClose }: { onClose: () => void }) {
   const messages = data?.messages ?? [];
   const remaining = data?.usage.remaining ?? 0;
   const outOfMessages = Boolean(data) && remaining <= 0;
+  const starters = context
+    ? [EXPLAIN_QUESTION, ...(data?.suggestions ?? [])].slice(0, 4)
+    : (data?.suggestions ?? []);
 
   useEffect(() => input.current?.focus(), []);
   // Keep the newest message in view.
@@ -77,7 +91,7 @@ function CoachPanel({ onClose }: { onClose: () => void }) {
     setPending(content);
     setDraft("");
     try {
-      await send(content).unwrap();
+      await send({ content, questionId: context?.questionId }).unwrap();
     } catch {
       setDraft(content); // keep the question so it can be sent again
     } finally {
@@ -158,7 +172,7 @@ function CoachPanel({ onClose }: { onClose: () => void }) {
                   study next, for a hint, or how anything on PrepSuccess works.
                 </p>
                 <div className="flex flex-col items-start gap-2">
-                  {data?.suggestions.map((question) => (
+                  {starters.map((question) => (
                     <button
                       key={question}
                       type="button"
@@ -203,6 +217,22 @@ function CoachPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <form onSubmit={onSubmit} className="border-t p-3">
+        {context ? (
+          <div className="mb-2 flex">
+            <span className="bg-muted text-foreground inline-flex max-w-full items-center gap-1 rounded-full py-0.5 pr-0.5 pl-2.5 text-xs">
+              <span className="truncate">About: {context.label}</span>
+              <button
+                type="button"
+                onClick={onDropContext}
+                aria-label="Stop asking about this question"
+                title="Stop asking about this question"
+                className="hover:bg-background focus-visible:ring-ring/50 flex size-6 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-3"
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </span>
+          </div>
+        ) : null}
         {outOfMessages ? (
           <p className="text-muted-foreground px-1 pb-2 text-xs">
             You&apos;ve used today&apos;s {data?.usage.limit} messages. More at midnight.
@@ -247,13 +277,19 @@ export function CoachWidget() {
   const coach = useCoach();
   const pathname = usePathname() ?? "/";
   if (!coach || coachHiddenOn(pathname)) return null;
-  const { open, setOpen } = coach;
+  const { open, setOpen, context, setContext } = coach;
   // The task editor's Submit button sits in that corner; the chat still opens from a notification.
   const launcher = !pathname.startsWith("/tasks/");
 
   return (
     <>
-      {open ? <CoachPanel onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <CoachPanel
+          onClose={() => setOpen(false)}
+          context={context}
+          onDropContext={() => setContext(null)}
+        />
+      ) : null}
       {launcher ? (
         <Button
           onClick={() => setOpen(!open)}

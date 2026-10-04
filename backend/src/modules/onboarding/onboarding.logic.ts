@@ -38,6 +38,26 @@ export const FIELD_LABELS: Record<(typeof REQUIRED_FIELDS)[number], string> = {
   goals: "Your goals",
 };
 
+/** A fixed question per required field, for when the model wraps up too early. */
+export const FIELD_QUESTIONS: Record<(typeof REQUIRED_FIELDS)[number], string> = {
+  degree: "what are you studying, like BCA or B.Tech?",
+  student_year: "which year of your course are you in?",
+  skills: "which skills do you know, like HTML, Java or SQL?",
+  target_role: "what role are you aiming for, like Frontend developer or SDE?",
+  goals: "what are your goals for placements, like getting into a product company?",
+};
+
+/**
+ * Said instead of the model's "you're all set" when a required detail is
+ * still missing: asks for the first one, in REQUIRED_FIELDS order. Null when
+ * nothing is missing.
+ */
+export function followUpReply(firstName: string, profile: ProfileData) {
+  const [next] = missingFields(profile);
+  if (!next) return null;
+  return `Thanks, ${firstName}! One more thing: ${FIELD_QUESTIONS[next]}`;
+}
+
 /**
  * Fields that accumulate across answers instead of being replaced, and the
  * most items each keeps — the same caps as a profile edit (users.schemas
@@ -65,7 +85,7 @@ export function isComplete(profile: ProfileData) {
 
 /**
  * What the model returns each turn. Every field optional: it only fills in
- * what the student actually said in their latest message.
+ * what the student actually said in the chat.
  */
 export const aiTurnSchema = z.object({
   reply: z.string().min(1).max(800),
@@ -185,7 +205,9 @@ export function buildSystemPrompt(firstName: string, profile: ProfileData) {
     `Optional, only if it comes up naturally: ${OPTIONAL_FIELDS.join(", ")}.`,
     "",
     "Extraction rules for `extracted`:",
-    "- Take facts ONLY from the student's latest message. Never guess, assume or invent.",
+    "- Take facts from any of the student's messages in this chat, including earlier ones, if a still-needed detail was said but not saved yet.",
+    "- Never guess, assume or invent. Only what the student clearly said counts.",
+    "- Don't extract fields that are already known again.",
     '- degree: e.g. "BCA", "B.Tech". student_year: a number 1-6. target_role: e.g. "Frontend developer", "SDE".',
     '- skills: concrete technologies or subjects, each a short name ("HTML", "SQL", "Data structures"). Only skills they say they know. Keep a stack name as one item ("MERN stack") rather than splitting it.',
     "- The student may pick skills from a list instead of typing; those are already saved, so just acknowledge them and move on.",

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LIST_LIMITS,
   buildSystemPrompt,
+  followUpReply,
   isComplete,
   mergeProfile,
   missingFields,
@@ -165,6 +166,37 @@ describe("onboarding rules", () => {
     expect(prompt).toContain('"degree":"BCA"');
     expect(prompt).toContain("Never guess");
   });
+
+  it("lets the model pick up facts from earlier messages, without re-extracting known ones", () => {
+    const prompt = buildSystemPrompt("Asha", {});
+    expect(prompt).toContain("any of the student's messages in this chat");
+    expect(prompt).not.toContain("ONLY from the student's latest message");
+    expect(prompt).toContain("Don't extract fields that are already known again");
+  });
+
+  it("follows up on the first missing detail, in order", () => {
+    expect(followUpReply("Asha", {})).toContain("what are you studying");
+    expect(followUpReply("Asha", { degree: "BCA", student_year: 3, goals: ["Get placed"] })).toBe(
+      "Thanks, Asha! One more thing: which skills do you know, like HTML, Java or SQL?",
+    );
+    expect(
+      followUpReply("Asha", {
+        degree: "BCA",
+        student_year: 3,
+        skills: ["JS"],
+        goals: ["Get placed"],
+      }),
+    ).toContain("what role are you aiming for");
+    expect(
+      followUpReply("Asha", {
+        degree: "BCA",
+        student_year: 3,
+        skills: ["JS"],
+        target_role: "SDE",
+        goals: ["Get placed"],
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("GET /api/v1/ai/onboarding", () => {
@@ -291,6 +323,29 @@ describe("POST /api/v1/ai/onboarding/messages", () => {
     fakeAi.reply({ reply: "All set!", extracted: { degree: "BCA" }, done: true });
     const res = await send("BCA");
     expect(res.body.data.onboarding.completed).toBe(false);
+  });
+
+  it("asks for the missing role instead of saying 'all set' when the model wraps up early", async () => {
+    db.state.user!.profile = {
+      profileData: { degree: "B.Tech", student_year: 3, skills: ["JavaScript", "React"] },
+      onboardingCompletedAt: null,
+    };
+    // The model saved the goals but missed the role said in an earlier message.
+    fakeAi.reply({
+      reply: "Thank you, Asha! Your skill checks are ready to begin now!",
+      extracted: { goals: ["Get placed"] },
+      done: true,
+    });
+
+    const res = await send("I want to get placed");
+
+    const { onboarding } = res.body.data;
+    expect(onboarding.messages.at(-1).content).toBe(
+      "Thanks, Asha! One more thing: what role are you aiming for, like Frontend developer or SDE?",
+    );
+    expect(onboarding.profile.goals).toEqual(["Get placed"]);
+    expect(onboarding.progress.collected).toBe(4);
+    expect(onboarding.completed).toBe(false);
   });
 
   it("saves nothing when the AI fails, so the student can just send again", async () => {

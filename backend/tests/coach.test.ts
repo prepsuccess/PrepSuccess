@@ -74,6 +74,15 @@ const db = vi.hoisted(() => {
     createdAt: new Date("2026-10-01T00:00:00.000Z"),
     profile: { profileData: { target_role: "Data Analyst", college: "Christ University" } },
   };
+  const question = {
+    id: "7e0d6f4b-5c3a-4d9e-8f1b-4a5b6c7d8e9f",
+    title: "WHERE vs HAVING",
+    body: "What is the difference between WHERE and HAVING?",
+    answer: "WHERE filters rows before grouping; HAVING filters groups.",
+    isActive: true,
+    isDeleted: false,
+    skill: { name: "SQL" },
+  };
   const prisma = {
     // Raw SQL used by the coach: the row-locked conversation read and the advisory lock.
     $queryRaw: vi.fn(async (strings: TemplateStringsArray): Promise<unknown[]> => {
@@ -129,8 +138,16 @@ const db = vi.hoisted(() => {
     notification: {
       create: vi.fn(async ({ data }) => state.notifications.push(data)),
     },
+    // The interview question the student has open (context for one reply).
+    questionBank: {
+      findFirst: vi.fn(async ({ where }) =>
+        where.id === question.id && !question.isDeleted && where.isDeleted === false
+          ? question
+          : null,
+      ),
+    },
   };
-  return { state, user, prisma };
+  return { state, user, question, prisma };
 });
 
 vi.mock("../src/db/prisma.js", () => ({ prisma: db.prisma }));
@@ -320,6 +337,53 @@ describe("coach chat", () => {
     expect(db.prisma.aIConversation.create).not.toHaveBeenCalled();
     expect(db.state.conversation!.id).toBe("c0");
     expect(db.state.conversation!.messages).toHaveLength(3);
+  });
+
+  it("knows which interview question the student has open, for that reply only", async () => {
+    fakeAi.reply("It's about when the filter runs.");
+    const res = await request(app)
+      .post("/api/v1/ai/coach/messages")
+      .set(auth)
+      .send({
+        content: "Can you explain this question to me in simple words?",
+        context: { question_id: db.question.id },
+      });
+    expect(res.status).toBe(200);
+    const system = fakeAi.calls[0]!.system;
+    expect(system).toContain("SQL interview question");
+    expect(system).toContain("Question: WHERE vs HAVING");
+    expect(system).toContain("What is the difference between WHERE and HAVING?");
+    expect(system).toContain("Model answer (they can open it on the page)");
+    expect(system).toContain("HAVING filters groups.");
+    // Only the student's own words are saved.
+    expect(db.state.conversation!.messages[0]).toEqual({
+      role: "user",
+      content: "Can you explain this question to me in simple words?",
+      created_at: expect.any(String),
+    });
+
+    // The next message without context doesn't carry the question over.
+    await ask("Thanks!");
+    expect(fakeAi.calls[1]!.system).not.toContain("WHERE vs HAVING");
+  });
+
+  it("ignores an unknown or removed question", async () => {
+    const send = (question_id: string) =>
+      request(app)
+        .post("/api/v1/ai/coach/messages")
+        .set(auth)
+        .send({ content: "Explain this question?", context: { question_id } });
+    const unknown = await send("00000000-0000-4000-8000-000000000000");
+    expect(unknown.status).toBe(200);
+    expect(fakeAi.calls[0]!.system).not.toContain("interview question on PrepSuccess right now");
+
+    db.question.isDeleted = true;
+    const removed = await send(db.question.id);
+    db.question.isDeleted = false;
+    expect(removed.status).toBe(200);
+    expect(fakeAi.calls[1]!.system).not.toContain("WHERE vs HAVING");
+
+    expect((await send("not-a-uuid")).status).toBe(422);
   });
 
   it("is for students only", async () => {

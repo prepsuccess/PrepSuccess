@@ -44,6 +44,16 @@ const NAV_PARENTS: [prefix: string, href: string][] = [
   ["/onboarding", "/dashboard"],
 ];
 
+// Pages that highlight a parent in the sidebar but name themselves in the breadcrumb.
+const PAGE_LABELS: [prefix: string, label: string][] = [["/onboarding", "Getting started"]];
+
+/** The breadcrumb name for a page that has its own, or undefined to use its nav item's label. */
+export function pageLabel(pathname: string): string | undefined {
+  return PAGE_LABELS.find(
+    ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )?.[1];
+}
+
 /** The nav item a path belongs to; the first item (the area's home) only matches exactly. */
 export function activeNavItem(items: ShellNavItem[], pathname: string): ShellNavItem | undefined {
   const parent = NAV_PARENTS.find(

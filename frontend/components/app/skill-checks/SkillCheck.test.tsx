@@ -53,6 +53,12 @@ const base: AssessmentState = {
 
 const renderCheck = () => renderWithStore(<SkillCheck id={ID} />, { signedInAs: testUser });
 
+/** GET /questions/filters with these skills (the result links to a skill's interview questions). */
+const questionFilters = (skills: { slug: string; name: string; count: number }[]) =>
+  http.get(`${API}/api/v1/questions/filters`, () =>
+    ok({ skills, companies: [], roles: [], topics: [] }),
+  );
+
 describe("SkillCheck", () => {
   it("shows the question with its code, and sends the chosen option", async () => {
     let body: unknown;
@@ -133,6 +139,7 @@ describe("SkillCheck", () => {
         ok({ ...base, answered: 4, current_question: lastQuestion }),
       ),
       http.post(`${API}/api/v1/ai/assessment/${ID}/answer`, () => ok(done)),
+      questionFilters([]),
     );
     renderCheck();
 
@@ -152,6 +159,29 @@ describe("SkillCheck", () => {
       "/assessment",
     );
     expect(screen.getAllByText(/^Question \d · (Right|Wrong)$/)).toHaveLength(5);
+    // JavaScript has no interview questions here, so there's no link to them.
+    expect(screen.queryByRole("link", { name: /interview questions/ })).not.toBeInTheDocument();
+  });
+
+  it("links the result to the skill's interview questions when there are some", async () => {
+    const done: AssessmentState = {
+      ...base,
+      status: "completed",
+      answered: 5,
+      current_question: null,
+      answers: [answered(q(1, "medium"), 0)],
+      result: { score: 12, max_score: 14, percent: 86, threshold: 40, mastery: "mastered" },
+      completed_at: "2026-10-03T10:05:00.000Z",
+    };
+    server.use(
+      http.get(`${API}/api/v1/ai/assessment/${ID}`, () => ok(done)),
+      questionFilters([{ slug: "javascript", name: "JavaScript", count: 18 }]),
+    );
+    renderCheck();
+
+    expect(
+      await screen.findByRole("link", { name: "Practise JavaScript interview questions" }),
+    ).toHaveAttribute("href", "/questions?skill=javascript");
   });
 
   it("offers a reload when the question was already answered elsewhere", async () => {

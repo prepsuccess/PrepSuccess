@@ -6,6 +6,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   ListChecks,
+  MessageSquareText,
   ShieldCheck,
   UserRound,
   Users,
@@ -29,6 +30,7 @@ export const adminNav: ShellNavItem[] = [
   { href: "/admin/mentors", label: "Mentor approvals", icon: ShieldCheck },
   { href: "/admin/content", label: "Skills & content", icon: BookOpen },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquareText },
 ];
 
 /**
@@ -42,10 +44,15 @@ export type NavArea = keyof typeof navByArea;
 const NAV_PARENTS: [prefix: string, href: string][] = [
   ["/tasks", "/learn"],
   ["/onboarding", "/dashboard"],
+  // Reached from the dashboard's feedback card (and the notification bell).
+  ["/feedback", "/dashboard"],
 ];
 
 // Pages that highlight a parent in the sidebar but name themselves in the breadcrumb.
-const PAGE_LABELS: [prefix: string, label: string][] = [["/onboarding", "Getting started"]];
+const PAGE_LABELS: [prefix: string, label: string][] = [
+  ["/onboarding", "Getting started"],
+  ["/feedback", "Feedback"],
+];
 
 /** The breadcrumb name for a page that has its own, or undefined to use its nav item's label. */
 export function pageLabel(pathname: string): string | undefined {

@@ -17,6 +17,7 @@
 //   check_questions    the reusable question bank behind skill checks (100 per skill)
 //   ai_usage           one row per AI call — the free-trial meter (SCRUM-129)
 //   notifications      in-app notifications (SCRUM-48)
+//   feedback / feedback_images  student bug reports and ideas, with screenshots
 
 generator client {
   provider = "prisma-client"
@@ -90,6 +91,19 @@ enum ResourceType {
   PRACTICE
 }
 
+enum FeedbackCategory {
+  BUG
+  IDEA
+  CONTENT
+  OTHER
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  SOLVED
+}
+
 // ---------------------------------------------------------------------------
 // Identity & auth
 // ---------------------------------------------------------------------------
@@ -125,6 +139,8 @@ model User {
   activity          UserActivity?
   questionsAuthored QuestionBank[]         @relation("QuestionAuthor")
   questionProgress  UserQuestionProgress[]
+  feedback          Feedback[]             @relation("FeedbackAuthor")
+  feedbackRemarks   Feedback[]             @relation("FeedbackRemarker")
 
   @@map("users")
 }
@@ -527,4 +543,52 @@ model PrepPdf {
   skill Skill? @relation(fields: [skillId], references: [id], onDelete: SetNull)
 
   @@map("prep_pdfs")
+}
+
+// ---------------------------------------------------------------------------
+// Student feedback
+// ---------------------------------------------------------------------------
+
+/// A bug report, idea or content issue sent from the app. Admins triage it
+/// (status + a remark the student sees); the team also gets an email.
+model Feedback {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  category     FeedbackCategory
+  message      String           @db.Text
+  /// App path the student was on, e.g. /questions/<id>.
+  page         String?          @db.VarChar(300)
+  status       FeedbackStatus   @default(OPEN)
+  /// The admin's reply, shown to the student.
+  adminRemark  String?          @map("admin_remark") @db.Text
+  /// The admin who last changed the remark.
+  remarkedById String?          @map("remarked_by") @db.Uuid
+  /// Set when it becomes SOLVED; cleared if it's reopened.
+  resolvedAt   DateTime?        @map("resolved_at") @db.Timestamptz(6)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User            @relation("FeedbackAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  remarkedBy User?           @relation("FeedbackRemarker", fields: [remarkedById], references: [id], onDelete: SetNull)
+  images     FeedbackImage[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("feedback")
+}
+
+/// Screenshots attached to feedback (up to 3, 2 MB each). Stored in the
+/// database for now; the type is detected from the bytes, never trusted.
+model FeedbackImage {
+  id         String   @id @default(uuid()) @db.Uuid
+  feedbackId String   @map("feedback_id") @db.Uuid
+  mime       String   @db.VarChar(50)
+  size       Int
+  data       Bytes
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+  @@map("feedback_images")
 }

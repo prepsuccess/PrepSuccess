@@ -1,7 +1,9 @@
 import type { Page, Route } from "@playwright/test";
 import type { MyQuestionScope, QuestionAttempt } from "@/lib/api/endpoints/questions";
 import type {
+  AdminFeedback,
   AiStatus,
+  Feedback,
   AssessmentState,
   AuthUser,
   CoachMessage,
@@ -51,6 +53,40 @@ export const student: AuthUser = {
   profile: { student_year: 3, skills: ["SQL"] },
   created_at: "2026-10-01T00:00:00.000Z",
 };
+
+export const admin: AuthUser = {
+  ...student,
+  id: "2c4e6a8b-0d1f-4a3c-9e5b-7d9f1b3d5f7a",
+  first_name: "Meera",
+  last_name: "Iyer",
+  email: "meera@prepsuccess.in",
+  role: "admin",
+};
+
+/** A 1×1 PNG: what a screenshot upload and the image route use. */
+export const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
+/** Feedback the mock API keeps; share one between pages to see a student's report as the admin. */
+export interface FeedbackStore {
+  items: AdminFeedback[];
+}
+
+/** What the student sees of an item: no account or admin details. */
+const ownView = (item: AdminFeedback): Feedback => ({
+  id: item.id,
+  category: item.category,
+  message: item.message,
+  page: item.page,
+  status: item.status,
+  admin_remark: item.admin_remark,
+  resolved_at: item.resolved_at,
+  created_at: item.created_at,
+  updated_at: item.updated_at,
+  images: item.images,
+});
 
 export const tokens = (user: AuthUser) => ({
   access_token: "e2e-access",
@@ -265,6 +301,8 @@ export interface MockOptions {
   user?: AuthUser;
   /** Account that /auth/login accepts, with this password. */
   login?: { user: AuthUser; password: string };
+  /** Where sent feedback is kept (a fresh, empty one by default). */
+  feedback?: FeedbackStore;
 }
 
 export interface MockApi {
@@ -278,6 +316,7 @@ export interface MockApi {
 export async function mockApi(page: Page, options: MockOptions = {}): Promise<MockApi> {
   const state: MockApi = { unhandled: [], sent: {} };
   let me = options.user;
+  const feedback: FeedbackStore = options.feedback ?? { items: [] };
   let taskSubmissions: TaskSubmission[] = [];
   // The interview question's progress, so bookmark/solve show up across pages.
   const progress = {
@@ -346,6 +385,36 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
     const key = `${request.method()} ${url.pathname}`;
     if (request.method() !== "GET") {
       (state.sent[key] ??= []).push(request.postDataJSON());
+    }
+
+    // Feedback: screenshots and single items have ids in the path.
+    if (
+      request.method() === "GET" &&
+      /^\/api\/v1\/feedback\/[^/]+\/images\/[^/]+$/.test(url.pathname)
+    ) {
+      return route.fulfill({ status: 200, contentType: "image/png", body: TINY_PNG });
+    }
+    const adminItem = url.pathname.match(/^\/api\/v1\/admin\/feedback\/([0-9a-f-]{36})$/);
+    if (adminItem) {
+      const found = feedback.items.find((item) => item.id === adminItem[1]);
+      if (!found) return fail(route, 404, "NOT_FOUND", "Feedback not found.");
+      if (request.method() === "GET") return reply(route, found);
+      if (request.method() === "PATCH") {
+        const body = request.postDataJSON() as {
+          status?: AdminFeedback["status"];
+          admin_remark?: string | null;
+        };
+        if (body.status) {
+          found.status = body.status;
+          found.resolved_at = body.status === "solved" ? now : null;
+        }
+        if ("admin_remark" in body) {
+          found.admin_remark = body.admin_remark || null;
+          found.remarked_by = { id: admin.id, first_name: admin.first_name };
+        }
+        found.updated_at = now;
+        return reply(route, found);
+      }
     }
 
     switch (key) {
@@ -465,6 +534,68 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
       }
       case "GET /api/v1/dashboard":
         return reply(route, emptyDashboard);
+      // Student feedback, and the admin's view of it.
+      case "GET /api/v1/feedback/mine":
+        return route.fulfill({
+          contentType: "application/json",
+          json: {
+            ...envelope(feedback.items.map(ownView)),
+            meta: { page: 1, limit: 10, total: feedback.items.length },
+          },
+        });
+      case "POST /api/v1/feedback": {
+        const body = request.postDataJSON() as {
+          category: AdminFeedback["category"];
+          message: string;
+          page?: string;
+          images?: { name?: string; data: string }[];
+        };
+        const id = `0f9a7c2e-1b3d-4e5f-8a9b-${String(feedback.items.length + 1).padStart(12, "0")}`;
+        const author = me ?? student;
+        const item: AdminFeedback = {
+          id,
+          category: body.category,
+          message: body.message,
+          page: body.page ?? null,
+          status: "open",
+          admin_remark: null,
+          resolved_at: null,
+          created_at: now,
+          updated_at: now,
+          images: (body.images ?? []).map((image, i) => {
+            const imageId = `9d8c7b6a-5f4e-4d3c-8b2a-${String(i + 1).padStart(12, "0")}`;
+            return {
+              id: imageId,
+              mime: "image/jpeg",
+              size: Math.floor(((image.data.length - image.data.indexOf(",") - 1) * 3) / 4),
+              url: `/api/v1/feedback/${id}/images/${imageId}`,
+            };
+          }),
+          user: {
+            id: author.id,
+            first_name: author.first_name,
+            last_name: author.last_name,
+            email: author.email,
+          },
+          remarked_by: null,
+        };
+        feedback.items.unshift(item);
+        return reply(route, ownView(item), 201);
+      }
+      case "GET /api/v1/admin/feedback": {
+        const status = url.searchParams.get("status");
+        const rows = feedback.items.filter((item) => !status || item.status === status);
+        return route.fulfill({
+          contentType: "application/json",
+          json: { ...envelope(rows), meta: { page: 1, limit: 20, total: rows.length } },
+        });
+      }
+      case "GET /api/v1/admin/feedback/summary":
+        return reply(route, {
+          open: feedback.items.filter((item) => item.status === "open").length,
+          in_progress: feedback.items.filter((item) => item.status === "in_progress").length,
+          solved: feedback.items.filter((item) => item.status === "solved").length,
+        });
       case "GET /api/v1/skills/mine":
         return reply(route, mySkills);
       case `GET /api/v1/ai/assessment/${ASSESSMENT_ID}`:
@@ -514,10 +645,14 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
 }
 
 /** Starts the page signed in as `user`, the way a returning visitor would be. */
-export async function signIn(page: Page, user: AuthUser = student) {
+export async function signIn(
+  page: Page,
+  user: AuthUser = student,
+  options: Omit<MockOptions, "user"> = {},
+) {
   await page.addInitScript(() => {
     localStorage.setItem("ps-access-token", "e2e-access");
     localStorage.setItem("ps-refresh-token", "e2e-refresh");
   });
-  return mockApi(page, { user });
+  return mockApi(page, { ...options, user });
 }

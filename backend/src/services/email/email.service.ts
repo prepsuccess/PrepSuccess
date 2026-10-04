@@ -25,10 +25,13 @@ interface Mail {
   subject: string;
   text: string;
   html: string;
+  replyTo?: string;
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
 }
 
 async function send(mail: Mail) {
   if (!transporter) {
+    // Attachments are left out of the log: they can be megabytes.
     logger.warn(
       { to: mail.to, subject: mail.subject, text: mail.text },
       "SMTP not configured — email logged, not sent",
@@ -69,5 +72,79 @@ export async function sendOtpEmail(
         <p style="font-size:32px;font-weight:bold;letter-spacing:8px;margin:0 0 16px">${code}</p>
         <p style="margin:0;color:#6b7280;font-size:14px">It expires in ${ttlMinutes} minutes. If you didn't request this, you can ignore this email.</p>
       </div>`,
+  });
+}
+
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!,
+  );
+
+const istFormat = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+export interface FeedbackMail {
+  /** The team inbox: FEEDBACK_EMAIL, else SMTP_USER. */
+  to: string;
+  id: string;
+  /** Display label, e.g. "Bug". */
+  category: string;
+  message: string;
+  page: string | null;
+  student: { name: string; email: string };
+  submittedAt: Date;
+  images: { filename: string; mime: string; data: Uint8Array }[];
+}
+
+/** Tells the team about new student feedback. Replying goes straight to the student. */
+export async function sendFeedbackEmail(mail: FeedbackMail) {
+  const link = `${env.FRONTEND_URL}/admin/feedback?id=${mail.id}`;
+  const rows: [string, string][] = [
+    ["Category", mail.category],
+    ["From", `${mail.student.name} <${mail.student.email}>`],
+    ["Page", mail.page ?? "—"],
+    ["Submitted", `${istFormat.format(mail.submittedAt)} IST`],
+    ["Feedback ID", mail.id],
+  ];
+  const text = [
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    "",
+    mail.message,
+    "",
+    `Open in the admin panel: ${link}`,
+    ...(mail.images.length ? [`${mail.images.length} screenshot(s) attached.`] : []),
+  ].join("\n");
+  const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1f2937">
+        <h2 style="margin:0 0 16px">New ${escapeHtml(mail.category.toLowerCase())} feedback</h2>
+        <table style="border-collapse:collapse;margin:0 0 16px;font-size:14px">
+          ${rows
+            .map(
+              ([label, value]) =>
+                `<tr><td style="padding:2px 12px 2px 0;color:#6b7280">${label}</td><td>${escapeHtml(value)}</td></tr>`,
+            )
+            .join("")}
+        </table>
+        <p style="margin:0 0 16px;white-space:pre-wrap">${escapeHtml(mail.message)}</p>
+        <p style="margin:0"><a href="${escapeHtml(link)}">Open in the admin panel</a></p>
+      </div>`;
+  await send({
+    to: mail.to,
+    replyTo: mail.student.email,
+    subject: `[PrepSuccess feedback] ${mail.category} from ${mail.student.name}`.replace(
+      /[\r\n]+/g,
+      " ",
+    ),
+    text,
+    html,
+    attachments: mail.images.map((image) => ({
+      filename: image.filename,
+      content: Buffer.from(image.data),
+      contentType: image.mime,
+    })),
   });
 }

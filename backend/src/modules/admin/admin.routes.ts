@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { rateLimitPerMinute } from "../../middleware/rate-limit.js";
 import { requireAuth } from "../../middleware/require-auth.js";
+import * as feedback from "../feedback/feedback.controller.js";
 import * as questions from "../questions/questions.controller.js";
 import * as admin from "./admin.controller.js";
 
@@ -43,3 +44,9 @@ adminRouter.get("/prep-pdfs", questions.adminPdfList);
 adminRouter.post("/prep-pdfs", questions.adminPdfCreate);
 adminRouter.patch("/prep-pdfs/:id", questions.adminPdfUpdate);
 adminRouter.delete("/prep-pdfs/:id", questions.adminPdfDelete);
+
+// Student feedback: triage, reply and resolve.
+adminRouter.get("/feedback", feedback.adminList);
+adminRouter.get("/feedback/summary", feedback.adminSummary);
+adminRouter.get("/feedback/:id", feedback.adminGet);
+adminRouter.patch("/feedback/:id", feedback.adminUpdate);

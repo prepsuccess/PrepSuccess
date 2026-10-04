@@ -32,6 +32,8 @@ const envSchema = z
     GOOGLE_CLIENT_SECRET: z.string().optional(),
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
+    /** Inbox for student feedback emails. Defaults to SMTP_USER. */
+    FEEDBACK_EMAIL: z.string().email().optional(),
     // ---- AI (services/ai-agent) ----
     /** "fake" returns scripted replies (tests); "gemini" calls Google. */
     AI_PROVIDER: z.enum(["gemini", "fake"]).default("gemini"),

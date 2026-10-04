@@ -4,6 +4,7 @@ import { adminRouter } from "../modules/admin/admin.routes.js";
 import { aiRouter } from "../modules/ai/ai.routes.js";
 import { authRouter } from "../modules/auth/auth.routes.js";
 import { dashboardRouter } from "../modules/dashboard/dashboard.routes.js";
+import { feedbackRouter } from "../modules/feedback/feedback.routes.js";
 import { notificationsRouter } from "../modules/notifications/notifications.routes.js";
 import {
   prepPdfsRouter,
@@ -33,4 +34,5 @@ apiV1.use("/questions", questionsRouter);
 apiV1.use("/progress", progressRouter);
 apiV1.use("/prep-pdfs", prepPdfsRouter);
 apiV1.use("/notifications", notificationsRouter);
+apiV1.use("/feedback", feedbackRouter);
 apiV1.use("/admin", adminRouter);

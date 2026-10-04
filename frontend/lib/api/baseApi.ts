@@ -194,6 +194,8 @@ export const baseApi = createApi({
     "AdminSkills",
     "AdminResources",
     "AdminTasks",
+    "Feedback",
+    "AdminFeedback",
   ],
   endpoints: () => ({}),
 });

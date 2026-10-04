@@ -7,6 +7,11 @@ describe("nav", () => {
     expect(pageLabel("/onboarding")).toBe("Getting started");
   });
 
+  it("names the feedback page and keeps it under Dashboard", () => {
+    expect(pageLabel("/feedback")).toBe("Feedback");
+    expect(activeNavItem(studentNav, "/feedback")?.label).toBe("Dashboard");
+  });
+
   it("leaves other pages to their nav item's label", () => {
     expect(pageLabel("/dashboard")).toBeUndefined();
     expect(pageLabel("/onboardingx")).toBeUndefined();

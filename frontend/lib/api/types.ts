@@ -88,3 +88,13 @@ export type AdminQuestionInput = Schemas["AdminQuestionInput"];
 export type AdminPrepPdf = Schemas["AdminPrepPdf"];
 export type AdminPrepPdfInput = Schemas["AdminPrepPdfInput"];
 export type QuestionTaxonomy = Schemas["QuestionTaxonomy"];
+
+// Student feedback (bug reports, ideas, content issues) and the admin's replies.
+export type Feedback = Schemas["Feedback"];
+export type FeedbackImage = Schemas["FeedbackImage"];
+export type FeedbackCategory = Feedback["category"];
+export type FeedbackStatus = Feedback["status"];
+export type FeedbackInput = Schemas["FeedbackInput"];
+export type AdminFeedback = Schemas["AdminFeedback"];
+export type AdminFeedbackPatch = Schemas["AdminFeedbackPatch"];
+export type FeedbackSummary = Schemas["FeedbackSummary"];

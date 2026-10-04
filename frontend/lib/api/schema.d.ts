@@ -4640,6 +4640,621 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send feedback
+         * @description A bug report, idea or content issue, with up to 3 screenshots as base64 data URLs (PNG, JPEG or WebP, 2 MB each; the type is checked from the bytes). A bad image fails with a validation issue at `images.N`. The body may be up to 10 MB. Up to 5 reports per hour. The team is emailed in the background; the submit never waits on it.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["FeedbackInput"];
+                };
+            };
+            responses: {
+                /** @description The saved feedback. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["Feedback"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — students only. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `PAYLOAD_TOO_LARGE` — over 10 MB. */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS` — 5 reports in the last hour. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feedback/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My feedback
+         * @description Your feedback, newest first, with the team's status and reply.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One page of your feedback. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["Feedback"][];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            meta: {
+                                page: number;
+                                limit: number;
+                                total: number;
+                            };
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — students only. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feedback/{id}/images/{imageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A feedback screenshot
+         * @description The raw image bytes (not the JSON envelope), for the student who sent it or any admin. Anyone else gets 404. Sent with `Cache-Control: private, max-age=3600`, `X-Content-Type-Options: nosniff` and `Content-Disposition: inline`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    imageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The image. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/png": string;
+                        "image/jpeg": string;
+                        "image/webp": string;
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not a student or admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `IMAGE_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List student feedback
+         * @description Newest first. Filter by status and category; `q` searches the text and student.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "open" | "in_progress" | "solved";
+                    category?: "bug" | "idea" | "content" | "other";
+                    /** @description Searches the message and the student's name and email. */
+                    q?: string;
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One page of feedback. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminFeedback"][];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            meta: {
+                                page: number;
+                                limit: number;
+                                total: number;
+                            };
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/feedback/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feedback counts by status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Counts. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["FeedbackSummary"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/feedback/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One piece of feedback */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The feedback. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminFeedback"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FEEDBACK_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update status or reply
+         * @description Send `status`, `admin_remark` or both. Solving stamps `resolved_at`; reopening clears it. A changed remark records who wrote it. When the status changes or a remark is added, the student gets an in-app notification (no email).
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdminFeedbackPatch"];
+                };
+            };
+            responses: {
+                /** @description The updated feedback. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            success: true;
+                            data: components["schemas"]["AdminFeedback"];
+                            /**
+                             * Format: uuid
+                             * @description Echoes the X-Request-ID response header.
+                             */
+                            request_id: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                        };
+                    };
+                };
+                /** @description `UNAUTHORIZED` or `INVALID_TOKEN`. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FORBIDDEN` — not an admin. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `FEEDBACK_NOT_FOUND`. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `VALIDATION_ERROR` — request body failed validation. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TOO_MANY_REQUESTS`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -6176,6 +6791,26 @@ export interface components {
             /** @description The student's code or written answer. */
             content: string;
         };
+        FeedbackInput: {
+            /** @enum {string} */
+            category: "bug" | "idea" | "content" | "other";
+            message: string;
+            /** @description App path the student was on, e.g. /questions. Dropped unless it starts with "/" (max 300). */
+            page?: string | null;
+            /** @description Up to 3 screenshots. */
+            images?: {
+                /** @example checkout-error.png */
+                name?: string;
+                /** @description `data:image/png|jpeg|webp;base64,...`, at most 2 MB decoded. The type is checked from the file's bytes. */
+                data: string;
+            }[];
+        };
+        AdminFeedbackPatch: {
+            /** @enum {string} */
+            status?: "open" | "in_progress" | "solved";
+            /** @description Shown to the student. Null or blank clears it. */
+            admin_remark?: string | null;
+        };
         AdminUpdateUserRequest: {
             is_active?: boolean;
             /** @enum {string} */
@@ -7048,6 +7683,73 @@ export interface components {
             read: boolean;
             /** Format: date-time */
             created_at: string;
+        };
+        Feedback: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            category: "bug" | "idea" | "content" | "other";
+            message: string;
+            page: string | null;
+            /** @enum {string} */
+            status: "open" | "in_progress" | "solved";
+            /** @description The team's reply. */
+            admin_remark: string | null;
+            resolved_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            images: components["schemas"]["FeedbackImage"][];
+        };
+        FeedbackImage: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            mime: "image/png" | "image/jpeg" | "image/webp";
+            /** @description Bytes. */
+            size: number;
+            /**
+             * @description Relative API path to the image bytes. Needs the bearer token (fetch it, don't <img src>).
+             * @example /api/v1/feedback/…/images/…
+             */
+            url: string;
+        };
+        AdminFeedback: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            category: "bug" | "idea" | "content" | "other";
+            message: string;
+            page: string | null;
+            /** @enum {string} */
+            status: "open" | "in_progress" | "solved";
+            /** @description The team's reply. */
+            admin_remark: string | null;
+            resolved_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            images: components["schemas"]["FeedbackImage"][];
+            user: {
+                /** Format: uuid */
+                id: string;
+                first_name: string;
+                last_name: string | null;
+                email: string;
+            };
+            /** @description The admin who last changed the remark. */
+            remarked_by: {
+                /** Format: uuid */
+                id: string;
+                first_name: string;
+            } | null;
+        };
+        FeedbackSummary: {
+            open: number;
+            in_progress: number;
+            solved: number;
         };
         AdminUserList: components["schemas"]["AdminUser"][];
         AdminUser: {

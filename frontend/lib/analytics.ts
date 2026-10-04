@@ -25,7 +25,9 @@ export type AnalyticsEvent =
   /** "My skills" switched on or off on the question bank. */
   | { name: "my_skills_toggled"; props: { on: boolean } }
   /** "Ask coach about this question" on a question page. */
-  | { name: "coach_asked_about_question"; props?: Record<string, never> };
+  | { name: "coach_asked_about_question"; props?: Record<string, never> }
+  /** Feedback sent from the "Send feedback" dialog: its category and how many screenshots. */
+  | { name: "feedback_sent"; props: { category: string; images: number } };
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";

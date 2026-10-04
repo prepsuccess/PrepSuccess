@@ -12,6 +12,7 @@ import { CategoryBars, CoverageBar } from "./Bars";
 import { RetakeBars, SkillScores, TrendChart } from "./Charts";
 import { CoachInsight, CoachInsightPlaceholder, CoachInsightSkeleton } from "./CoachInsight";
 import { CARD_SURFACE, DashCard } from "./DashCard";
+import { FeedbackCard } from "./FeedbackCard";
 import { InterviewPractice } from "./InterviewPractice";
 import { NextSteps } from "./NextSteps";
 import { PracticeCalendar } from "./PracticeCalendar";
@@ -92,6 +93,7 @@ function DashboardSkeleton() {
         <Block body="h-[254px]" />
         <Block className={LAST_OF_THREE} body="h-[254px]" />
       </div>
+      <Block body="h-[68px]" />
     </Rows>
   );
 }
@@ -198,6 +200,9 @@ export function DashboardView() {
           {detail.map((card, i) => card(detail.length === 3 && i === 2 ? LAST_OF_THREE : ""))}
         </div>
       ) : null}
+
+      {/* Last, on a row of its own: tell us what to fix or add. */}
+      <FeedbackCard />
     </Rows>
   );
 }

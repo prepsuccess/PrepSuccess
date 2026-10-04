@@ -34,6 +34,7 @@ const db = vi.hoisted(() => {
     conversation: null as null | { id: string; messages: unknown },
     tasks: [] as { id: string; title: string; skillId: string }[],
     submissions: [] as { taskId: string; passed: boolean }[],
+    role: "STUDENT",
   };
   return {
     state,
@@ -42,6 +43,7 @@ const db = vi.hoisted(() => {
         findUnique: vi.fn(async () => ({
           id: "4b7a3c1e-2f0d-4a6b-9c8e-1d2f3a4b5c6d",
           firstName: "Asha",
+          role: state.role,
           isActive: true,
           isDeleted: false,
           createdAt: new Date("2026-10-01T00:00:00.000Z"),
@@ -80,7 +82,12 @@ const auth = (role: "STUDENT" | "ADMIN" = "STUDENT") => ({
 
 let seq = 100;
 /** A finished check on `skill` scoring `score` of 14 points, `minutesAgo`. */
-function finished(skill: (typeof SKILLS)[keyof typeof SKILLS], score: number, minutesAgo: number) {
+function finished(
+  skill: (typeof SKILLS)[keyof typeof SKILLS],
+  score: number,
+  minutesAgo: number,
+  threshold = 40,
+) {
   const at = new Date(Date.now() - minutesAgo * 60_000);
   return {
     id: uuid(++seq),
@@ -91,8 +98,8 @@ function finished(skill: (typeof SKILLS)[keyof typeof SKILLS], score: number, mi
     result: {
       score,
       maxScore: 14,
-      threshold: 40,
-      masteryStatus: (score / 14) * 100 >= 40 ? "MASTERED" : "NEEDS_REVISION",
+      threshold,
+      masteryStatus: (score / 14) * 100 >= threshold ? "MASTERED" : "NEEDS_REVISION",
     },
   };
 }
@@ -114,6 +121,7 @@ beforeEach(() => {
   db.state.conversation = null;
   db.state.tasks = [];
   db.state.submissions = [];
+  db.state.role = "STUDENT";
   db.prisma.skill.findMany.mockResolvedValue(
     Object.values(SKILLS).map((s) => ({ ...s, isActive: true })) as never,
   );
@@ -129,6 +137,7 @@ describe("readiness rules", () => {
     assessmentId: `${skillId}-${minutesAgo}`,
     skill: { id: skillId, slug: skillId, name: skillId, category },
     percent,
+    threshold: 40,
     mastered: percent >= 40,
     completedAt: new Date(Date.now() - minutesAgo * 60_000),
   });
@@ -237,6 +246,32 @@ describe("readiness rules", () => {
     expect(grounded.summary).toBe("Good start.");
     expect(grounded.gaps).toEqual([{ skillId: "dsa", name: "dsa", why: "w", how: "h" }]);
   });
+
+  it("drops plan steps that name a skill the student wasn't checked on and didn't claim", () => {
+    const results = latestPerSkill([check("sql", "technical", 29, 1)]);
+    const grounded = groundInsight(
+      {
+        summary: "s",
+        gaps: [],
+        plan: [
+          { title: "Revise SQL joins", detail: "Redo the questions you missed." },
+          { title: "Learn Kotlin", detail: "Not in the catalogue, so not checkable here." },
+          { title: "Start Java", detail: "Java is everywhere." }, // claimed: kept
+          { title: "Pick up React", detail: "Build a small app." }, // never mentioned: dropped
+          { title: "Try JavaScript", detail: "Not Java." }, // "Java" isn't in "JavaScript"
+          { title: "Practise daily", detail: "Little and often." },
+        ],
+      },
+      results,
+      ["java"],
+    );
+    expect(grounded.plan.map((p) => p.title)).toEqual([
+      "Revise SQL joins",
+      "Learn Kotlin",
+      "Start Java",
+      "Practise daily",
+    ]);
+  });
 });
 
 describe("GET /api/v1/dashboard", () => {
@@ -311,7 +346,28 @@ describe("GET /api/v1/dashboard", () => {
     ]);
   });
 
+  it("shows each result's own pass mark, as scored", async () => {
+    db.state.assessments = [finished(SKILLS.sql, 7, 10, 60)]; // 50% against a 60% pass mark
+    const data = (await request(app).get("/api/v1/dashboard").set(auth())).body.data;
+    expect(data.skills[0]).toMatchObject({ slug: "sql", percent: 50, threshold: 60 });
+    expect(data.skills[0].mastery).toBe("needs_revision");
+    expect(data.gaps[0].threshold).toBe(60);
+  });
+
+  it("lists every check date of the last year for the calendar, not just the last 20", async () => {
+    db.state.assessments = [
+      ...Array.from({ length: 30 }, (_, i) => finished(SKILLS.sql, 7, i * 24 * 60 + 5)),
+      finished(SKILLS.dsa, 7, 400 * 24 * 60), // over a year ago
+    ];
+    const data = (await request(app).get("/api/v1/dashboard").set(auth())).body.data;
+    expect(data.readiness.history).toHaveLength(20);
+    expect(data.check_dates).toHaveLength(30);
+    expect(data.check_dates[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect([...data.check_dates].sort()).toEqual(data.check_dates);
+  });
+
   it("is for students only", async () => {
+    db.state.role = "ADMIN";
     expect((await request(app).get("/api/v1/dashboard").set(auth("ADMIN"))).status).toBe(403);
     expect((await request(app).get("/api/v1/dashboard")).status).toBe(401);
   });
@@ -343,6 +399,8 @@ describe("GET /api/v1/ai/insight", () => {
     });
     // Grounded: the prompt carries the real scores and the target role.
     expect(fakeAi.calls[0]!.system).toContain('"score_percent":29');
+    expect(fakeAi.calls[0]!.system).toContain('"pass_mark_percent":40');
+    expect(fakeAi.calls[0]!.system).not.toContain("Pass mark is 40%");
     expect(fakeAi.calls[0]!.system).toContain("Backend developer");
 
     const again = await request(app).get("/api/v1/ai/insight").set(auth());
@@ -361,6 +419,20 @@ describe("GET /api/v1/ai/insight", () => {
 
     expect(res.body.data.summary).toBe("DSA is now mastered.");
     expect(fakeAi.calls).toHaveLength(2);
+  });
+
+  it("keeps showing the previous take, marked stale, when a refresh fails", async () => {
+    db.state.assessments = [finished(SKILLS.dsa, 4, 40)];
+    fakeAi.reply(insight);
+    await request(app).get("/api/v1/ai/insight").set(auth());
+
+    db.state.assessments = [finished(SKILLS.dsa, 10, 1), ...db.state.assessments];
+    fakeAi.fail();
+    fakeAi.fail();
+    fakeAi.fail();
+    const res = await request(app).get("/api/v1/ai/insight").set(auth());
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ status: "ready", summary: insight.summary, stale: true });
   });
 
   it("reports an AI failure without caching anything", async () => {

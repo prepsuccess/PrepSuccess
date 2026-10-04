@@ -1,4 +1,6 @@
-import { googleSignInUrl } from "@/lib/auth/google";
+"use client";
+
+import { createGoogleNonce, googleSignInUrl } from "@/lib/auth/google";
 
 function GoogleLogo() {
   return (
@@ -24,8 +26,9 @@ function GoogleLogo() {
 }
 
 /**
- * "Continue with Google" plus an "or" divider. A plain link, not a fetch:
- * the browser leaves for the API, then Google, and comes back to /auth/callback.
+ * "Continue with Google" plus an "or" divider. A link, not a fetch: the
+ * browser leaves for the API, then Google, and comes back to /auth/callback.
+ * The click adds a fresh nonce (see createGoogleNonce) that the callback checks.
  */
 export function GoogleSignIn({
   next,
@@ -38,6 +41,10 @@ export function GoogleSignIn({
     <div className="flex flex-col gap-5">
       <a
         href={googleSignInUrl(next)}
+        onClick={(event) => {
+          event.preventDefault();
+          window.location.assign(googleSignInUrl(next, createGoogleNonce()));
+        }}
         className="border-border-strong bg-surface text-heading hover:border-heading hover:bg-surface-3 focus-visible:outline-heading inline-flex w-full items-center justify-center gap-3 rounded-full border px-6 py-3.5 text-[15px] font-medium outline-offset-4 transition-[border-color,background-color,scale] duration-500 focus-visible:outline-2 active:scale-[0.97]"
       >
         <GoogleLogo />

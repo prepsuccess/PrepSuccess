@@ -383,9 +383,19 @@ Enrolment(student_id, student_name, course_id, course_name, teacher_name, teache
 `,
     [
       c("anomalies", "Identifies update, insert and delete anomalies", 2),
-      c("tables", "Separate Student, Course, Teacher and Enrolment tables (or equivalent)", 4),
+      c(
+        "tables",
+        "Splits the data into well-chosen tables",
+        4,
+        "Separate Student, Course, Teacher and Enrolment tables (or equivalent)",
+      ),
       c("keys", "Correct primary keys and foreign keys", 2),
-      c("3nf", "No transitive dependencies remain (e.g. teacher_phone not in Course)", 2),
+      c(
+        "3nf",
+        "No transitive dependencies remain (3NF)",
+        2,
+        "No transitive dependencies remain (e.g. teacher_phone not in Course)",
+      ),
     ],
   ),
   task(
@@ -461,10 +471,25 @@ You committed two features to main by mistake, and your teammate has pushed new 
 - Update feature/login with the latest main and push it for a pull request.
 `,
     [
-      c("branch", "Creates the feature branch from the current commit before resetting main", 3),
-      c("reset", "Resets main to origin/main safely (fetch first)", 3),
-      c("update", "Rebases or merges main into the feature branch", 2),
-      c("push", "Pushes the branch with upstream set", 2),
+      c(
+        "branch",
+        "Keeps the new commits safe on a feature branch first",
+        3,
+        "Creates the feature branch from the current commit before resetting main",
+      ),
+      c(
+        "reset",
+        "Brings main back in line with the remote safely",
+        3,
+        "Resets main to origin/main safely (fetch first)",
+      ),
+      c(
+        "update",
+        "Brings the feature branch up to date with main",
+        2,
+        "Rebases or merges main into the feature branch",
+      ),
+      c("push", "Pushes the feature branch correctly", 2, "Pushes the branch with upstream set"),
     ],
   ),
   task(
@@ -572,9 +597,19 @@ Solve these and show your working:
 - A train 150 m long passes a pole in 10 seconds. How long does it take to cross a 250 m platform?
 `,
     [
-      c("work", "7.2 days, with correct working", 3),
-      c("profit", "5% profit, with correct working", 4),
-      c("train", "About 26.7 seconds (400 m at 15 m/s), with correct working", 3),
+      c("work", "Work problem: correct answer, with working", 3, "7.2 days, with correct working"),
+      c(
+        "profit",
+        "Profit and loss problem: correct answer, with working",
+        4,
+        "5% profit, with correct working",
+      ),
+      c(
+        "train",
+        "Train problem: correct answer, with working",
+        3,
+        "About 26.7 seconds (400 m at 15 m/s), with correct working",
+      ),
     ],
   ),
   task(
@@ -592,7 +627,7 @@ Five friends — A, B, C, D and E — sit in a row facing north.
 Work out the order from left to right and explain each step of your reasoning.
 `,
     [
-      c("answer", "Correct order: E A C D B", 5),
+      c("answer", "Correct order of the five friends", 5, "Correct order: E A C D B"),
       c("steps", "Each clue is applied in a logical order", 3),
       c("check", "Verifies the final arrangement against every clue", 2),
     ],
@@ -610,13 +645,29 @@ Correct each sentence and say what the error was:
 - "Please revert back to me with the details."
 `,
     [
-      c("agreement", "Each … has submitted (subject–verb agreement)", 3),
-      c("tense", "I have been working … since 2024 (present perfect continuous)", 3),
-      c("comparative", "smarter, not more smarter (double comparative)", 2),
+      c(
+        "agreement",
+        "Sentence 1 corrected, with the error named",
+        3,
+        "Each … has submitted (subject–verb agreement)",
+      ),
+      c(
+        "tense",
+        "Sentence 2 corrected, with the error named",
+        3,
+        "I have been working … since 2024 (present perfect continuous)",
+      ),
+      c(
+        "comparative",
+        "Sentence 3 corrected, with the error named",
+        2,
+        "smarter, not more smarter (double comparative)",
+      ),
       c(
         "redundancy",
-        "Please reply to me / get back to me (revert back is redundant/incorrect)",
+        "Sentence 4 corrected, with the error named",
         2,
+        "Please reply to me / get back to me (revert back is redundant/incorrect)",
       ),
     ],
   ),
@@ -634,9 +685,19 @@ A company's sales (in ₹ lakh) were: 2022 — 120, 2023 — 150, 2024 — 135, 
 Show your working.
 `,
     [
-      c("growth", "50% growth from 2022 to 2025", 3),
-      c("yoy", "2025, at about 33.3%", 4),
-      c("average", "Average of 146.25", 3),
+      c(
+        "growth",
+        "Percentage growth from 2022 to 2025, with working",
+        3,
+        "50% growth from 2022 to 2025",
+      ),
+      c(
+        "yoy",
+        "Year with the highest year-on-year growth, and the rate, with working",
+        4,
+        "2025, at about 33.3%",
+      ),
+      c("average", "Average sales over the four years, with working", 3, "Average of 146.25"),
     ],
   ),
 

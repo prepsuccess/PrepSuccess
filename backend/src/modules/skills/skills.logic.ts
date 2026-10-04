@@ -55,30 +55,45 @@ export function slugForClaim(claim: string): string | null {
   return ALIAS_INDEX.get(normalizeSkillName(claim)) ?? null;
 }
 
-/** normalised stack name or alias (with and without "stack") → the stack. */
+/**
+ * A normalised claim without a trailing "stack" / "developer" /
+ * "development" ("mern stack developer" → "mern"), so the ways students
+ * dress up a stack name all land on the same key.
+ */
+function stackCore(key: string) {
+  return key.replace(/(?: stack)?(?: (?:developer|development))?$/, "") || key;
+}
+
+/** normalised stack name or alias, and its core → the stack. */
 const STACK_INDEX = new Map<string, Stack>();
-/** Single-word stack names ("mern") that also count inside a longer claim ("MERN developer"). */
-const STACK_WORDS = new Map<string, Stack>();
 for (const stack of STACKS) {
   for (const name of [stack.name, ...stack.aliases]) {
     const key = normalizeSkillName(name);
     STACK_INDEX.set(key, stack);
-    STACK_INDEX.set(key.replace(/ stack$/, ""), stack);
-    STACK_INDEX.set(`${key.replace(/ stack$/, "")} stack`, stack);
+    if (!STACK_INDEX.has(stackCore(key))) STACK_INDEX.set(stackCore(key), stack);
   }
-  for (const alias of stack.aliases) if (!alias.includes(" ")) STACK_WORDS.set(alias, stack);
 }
 
-/** The stack a claim names ("MERN stack", "full stack developer"), if any. */
-export function stackForClaim(claim: string): Stack | null {
+/**
+ * Stack names distinctive enough to count inside a longer claim ("Built a
+ * MERN app"). Plain words like "mean", "backend" or "full stack" are not:
+ * "Statistics (mean, median)" must not claim the MEAN stack.
+ */
+const DISTINCTIVE = ["mern", "mevn", "pern", "mean stack"];
+
+/** The stack a whole claim names ("MERN stack", "Frontend developer"), if any. */
+function exactStack(claim: string): Stack | null {
   const key = normalizeSkillName(claim);
-  const exact = STACK_INDEX.get(key);
+  return STACK_INDEX.get(key) ?? STACK_INDEX.get(stackCore(key)) ?? null;
+}
+
+/** The stack a claim names ("MERN stack", "full stack developer", "MERN projects"), if any. */
+export function stackForClaim(claim: string): Stack | null {
+  const exact = exactStack(claim);
   if (exact) return exact;
-  for (const word of key.split(" ")) {
-    const stack = STACK_WORDS.get(word);
-    if (stack) return stack;
-  }
-  return null;
+  const padded = ` ${normalizeSkillName(claim)} `;
+  const phrase = DISTINCTIVE.find((p) => padded.includes(` ${p} `));
+  return phrase ? (STACK_INDEX.get(phrase) ?? null) : null;
 }
 
 /**
@@ -93,9 +108,9 @@ export function matchClaims(claims: string[]) {
     if (!slugs.includes(slug)) slugs.push(slug);
   };
   for (const claim of claims) {
-    const exactStack = STACK_INDEX.get(normalizeSkillName(claim));
-    const slug = exactStack ? null : slugForClaim(claim);
-    const stack = exactStack ?? (slug ? null : stackForClaim(claim));
+    const whole = exactStack(claim);
+    const slug = whole ? null : slugForClaim(claim);
+    const stack = whole ?? (slug ? null : stackForClaim(claim));
     if (stack) stack.skills.forEach(add);
     else if (slug) add(slug);
     else unmatched.push(claim);

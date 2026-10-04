@@ -5,17 +5,22 @@ import { AppError } from "../src/lib/http.js";
 
 // Google itself can't be called from tests: mock the code exchange and the
 // account logic, and test everything around them (redirects, PKCE, state, cookies).
-vi.mock("../src/modules/auth/google.client.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/modules/auth/google.client.js")>()),
-  exchangeGoogleCode: vi.fn(),
-}));
+vi.mock("../src/modules/auth/google.client.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../src/modules/auth/google.client.js")>();
+  return {
+    ...original,
+    exchangeGoogleCode: vi.fn(),
+    isGoogleConfigured: vi.fn(original.isGoogleConfigured),
+  };
+});
 vi.mock("../src/modules/auth/auth.service.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/modules/auth/auth.service.js")>()),
   loginWithGoogle: vi.fn(),
 }));
 
 const { createApp } = await import("../src/app.js");
-const { exchangeGoogleCode } = await import("../src/modules/auth/google.client.js");
+const { exchangeGoogleCode, isGoogleConfigured } =
+  await import("../src/modules/auth/google.client.js");
 const { loginWithGoogle } = await import("../src/modules/auth/auth.service.js");
 
 const app = createApp();
@@ -23,10 +28,10 @@ const START = "/api/v1/auth/google";
 const CALLBACK = "/api/v1/auth/google/callback";
 
 /** Runs /google and returns the state Google would echo back plus the flow cookie. */
-async function startFlow(next?: string) {
+async function startFlow(next?: string, nonce?: string) {
   const res = await request(app)
     .get(START)
-    .query(next ? { next } : {});
+    .query({ ...(next ? { next } : {}), ...(nonce ? { nonce } : {}) });
   const location = new URL(res.headers.location!);
   const cookie = (res.headers["set-cookie"] as unknown as string[]).find((c) =>
     c.startsWith("ps_google_oauth="),
@@ -40,6 +45,27 @@ async function startFlow(next?: string) {
 }
 
 afterEach(() => vi.mocked(exchangeGoogleCode).mockReset());
+
+const IDENTITY = {
+  googleId: "g-1",
+  email: "a@gmail.com",
+  emailVerified: true,
+  firstName: null,
+  lastName: null,
+  picture: null,
+};
+const SESSION = { access_token: "a", refresh_token: "r" } as Awaited<
+  ReturnType<typeof loginWithGoogle>
+>;
+
+/** Runs the whole flow and returns the fragment handed to the frontend. */
+async function signIn(next?: string, nonce?: string) {
+  vi.mocked(exchangeGoogleCode).mockResolvedValue(IDENTITY);
+  vi.mocked(loginWithGoogle).mockResolvedValue(SESSION);
+  const { state, cookie } = await startFlow(next, nonce);
+  const res = await request(app).get(CALLBACK).set("Cookie", cookie).query({ code: "c", state });
+  return new URLSearchParams(new URL(res.headers.location!).hash.slice(1));
+}
 
 describe("GET /auth/google", () => {
   it("redirects to Google with state and an S256 PKCE challenge", async () => {
@@ -65,6 +91,21 @@ describe("GET /auth/google", () => {
     expect(res.headers.location).not.toContain(
       JSON.parse(decodeURIComponent(cookie.split("=")[1]!)).verifier,
     );
+  });
+
+  it("sends the browser back to /login when Google isn't configured", async () => {
+    vi.mocked(isGoogleConfigured).mockReturnValueOnce(false);
+    const res = await request(app).get(START);
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe("http://localhost:3000/login?error=google_not_configured");
+  });
+
+  it("rejects a malformed nonce without starting the flow", async () => {
+    for (const nonce of ["short", "has spaces in it!!", "x".repeat(129)]) {
+      const res = await request(app).get(START).query({ nonce });
+      expect(res.headers.location).toBe("http://localhost:3000/login?error=google_failed");
+      expect(res.headers["set-cookie"]).toBeUndefined();
+    }
   });
 });
 
@@ -127,24 +168,29 @@ describe("GET /auth/google/callback", () => {
   });
 
   it("drops an unsafe next path", async () => {
-    vi.mocked(exchangeGoogleCode).mockResolvedValue({
-      googleId: "g-1",
-      email: "a@gmail.com",
-      emailVerified: true,
-      firstName: null,
-      lastName: null,
-      picture: null,
-    });
-    vi.mocked(loginWithGoogle).mockResolvedValue({
-      access_token: "a",
-      refresh_token: "r",
-    } as Awaited<ReturnType<typeof loginWithGoogle>>);
+    const dropped = [
+      "//evil.example.com",
+      "/\\evil.example.com",
+      "/\tevil",
+      "/\u0000x",
+      "https://evil.example.com/",
+      "dashboard",
+    ];
+    for (const next of dropped) {
+      expect((await signIn(next)).get("next"), JSON.stringify(next)).toBeNull();
+    }
+    // Encoded tricks stay an inert same-site path.
+    expect((await signIn("/%0a//evil.example.com")).get("next")).toBe("/%0a//evil.example.com");
+  });
 
-    const { state, cookie } = await startFlow("//evil.example.com");
-    const res = await request(app).get(CALLBACK).set("Cookie", cookie).query({ code: "c", state });
-    expect(
-      new URLSearchParams(new URL(res.headers.location!).hash.slice(1)).get("next"),
-    ).toBeNull();
+  it("keeps a safe next path with its query and hash", async () => {
+    expect((await signIn("/learn/sql?tab=tasks#t2")).get("next")).toBe("/learn/sql?tab=tasks#t2");
+  });
+
+  it("echoes the nonce back in the fragment", async () => {
+    const nonce = "k3J9xQ2mW7pL0aZ8vB4nR6tY";
+    expect((await signIn("/dashboard", nonce)).get("nonce")).toBe(nonce);
+    expect((await signIn("/dashboard")).get("nonce")).toBeNull();
   });
 
   it("maps account errors to a /login error code", async () => {

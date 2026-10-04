@@ -23,6 +23,11 @@ import { cn } from "@/lib/utils/cn";
 import { useCoach } from "@/components/app/coach/CoachProvider";
 
 const POLL_MS = 60_000;
+// How far the device clock may be off before a new notification goes untoasted.
+const CLOCK_SLACK_MS = 5 * 60_000;
+
+/** Only in-app paths: never "//other.site" or a full URL. */
+export const isAppPath = (href: string) => href.startsWith("/") && !/^\/[/\\]/.test(href);
 
 const timeAgo = (iso: string, now = Date.now()) => {
   const minutes = Math.round((now - new Date(iso).getTime()) / 60_000);
@@ -48,40 +53,54 @@ export function NotificationBell() {
   const [markAllRead, { isLoading: clearing }] = useMarkAllNotificationsReadMutation();
   const unread = data?.unread_count ?? 0;
 
-  // Toast notifications that arrive after the first load, once each.
+  // Toast notifications created after this tab first loaded them, once each.
+  // Older ones (e.g. already toasted in another tab) stay quiet in the list.
+  // "After" means newer than anything in the first load (server time) and not
+  // long before this tab opened, with slack for a device clock that's off.
   const seen = useRef<Set<string> | null>(null);
+  const newestAtLoad = useRef(Number.NEGATIVE_INFINITY);
+  const loadedAt = useRef(0);
   useEffect(() => {
     if (!data) return;
-    const ids = data.notifications.map((n) => n.id);
-    if (seen.current) {
+    if (!seen.current) {
+      seen.current = new Set(data.notifications.map((n) => n.id));
+      loadedAt.current = Date.now();
       for (const n of data.notifications) {
-        if (seen.current.has(n.id) || n.read) continue;
-        if (n.type === "COACH_NUDGE" && coach) {
-          // The coach's check-in: one tap opens the chat, where the tip is waiting.
-          showNotice({
-            title: n.title,
-            body: n.body,
-            duration: 15_000,
-            action: {
-              label: "Open chat",
-              onClick: () => {
-                void markRead(n.id);
-                coach.openCoach();
-              },
+        newestAtLoad.current = Math.max(newestAtLoad.current, new Date(n.created_at).getTime());
+      }
+      return;
+    }
+    for (const n of data.notifications) {
+      if (seen.current.has(n.id)) continue;
+      seen.current.add(n.id);
+      const created = new Date(n.created_at).getTime();
+      if (n.read || created <= newestAtLoad.current) continue;
+      if (created < loadedAt.current - CLOCK_SLACK_MS) continue;
+      if (n.type === "COACH_NUDGE" && coach && !coach.hidden) {
+        // The coach's check-in: one tap opens the chat, where the tip is waiting.
+        showNotice({
+          title: n.title,
+          body: n.body,
+          duration: 15_000,
+          action: {
+            label: "Open chat",
+            onClick: () => {
+              void markRead(n.id);
+              coach.openCoach();
             },
-          });
-        } else {
-          showNotice({ title: n.title, body: n.body });
-        }
+          },
+        });
+      } else {
+        // Also the coach's tip on a page where the coach is hidden: no chat button there.
+        showNotice({ title: n.title, body: n.body });
       }
     }
-    seen.current = new Set(ids);
   }, [data, coach, markRead]);
 
   function open(n: AppNotification) {
     if (!n.read) void markRead(n.id);
     if (n.type === "COACH_NUDGE" && coach) coach.openCoach();
-    else if (n.href) router.push(n.href);
+    else if (n.href && isAppPath(n.href)) router.push(n.href);
   }
 
   return (

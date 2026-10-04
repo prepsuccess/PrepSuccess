@@ -15,14 +15,11 @@ import { errorMessage } from "@/lib/api/errors";
 import type { CoachMessage } from "@/lib/api/types";
 import { useSession } from "@/lib/auth/useSession";
 import { cn } from "@/lib/utils/cn";
-import { useCoach } from "./CoachProvider";
+import { coachHiddenOn, useCoach } from "./CoachProvider";
+
+export { coachHiddenOn };
 
 const MAX_CHARS = 1000;
-
-/** Pages where the coach stays out of the way: the onboarding chat and a skill check in progress. */
-export function coachHiddenOn(pathname: string) {
-  return pathname.startsWith("/onboarding") || /^\/assessment\/[^/]+/.test(pathname);
-}
 
 function Bubble({ message }: { message: CoachMessage }) {
   const mine = message.role === "user";

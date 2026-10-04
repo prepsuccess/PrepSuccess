@@ -11,7 +11,7 @@ import {
 } from "@/components/shadcn/chart";
 import type { Dashboard, DashboardSkillResult } from "@/lib/api/types";
 import { DashCard } from "./DashCard";
-import { PALETTE, PASS_MARK, shortDate } from "./shared";
+import { PALETTE, passMarkOf, shortDate } from "./shared";
 
 /** Skill scores lists this many, weakest first, so the row it sits in stays short. */
 const SKILL_LIMIT = 6;
@@ -143,6 +143,8 @@ export function SkillScores({
   className?: string;
 }) {
   const shown = skills.slice(0, SKILL_LIMIT);
+  // One pass mark for all (the usual case) reads as a number; mixed ones don't.
+  const passMarks = [...new Set(shown.map(passMarkOf))];
   return (
     <DashCard
       title="Skill scores"
@@ -165,11 +167,12 @@ export function SkillScores({
           <ul className="space-y-3.5">
             {shown.map((s) => {
               const mastered = s.mastery === "mastered";
+              const passMark = passMarkOf(s);
               return (
                 <li key={s.skill_id}>
                   <Link
                     href={`/assessment/${s.assessment_id}`}
-                    aria-label={`${s.name}: ${s.percent}%, ${mastered ? "mastered" : "needs revision"}. Review answers`}
+                    aria-label={`${s.name}: ${s.percent}%, ${mastered ? "mastered" : "needs revision"} (pass mark ${passMark}%). Review answers`}
                     className="group block space-y-1.5 rounded-lg"
                   >
                     <span className="flex items-baseline justify-between gap-3 text-xs">
@@ -198,7 +201,7 @@ export function SkillScores({
                       <span
                         aria-hidden
                         className="bg-foreground/50 absolute -top-1 -bottom-1 w-0.5 rounded"
-                        style={{ left: `${PASS_MARK}%` }}
+                        style={{ left: `${passMark}%` }}
                       />
                     </span>
                   </Link>
@@ -217,7 +220,7 @@ export function SkillScores({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="bg-foreground/50 h-3 w-0.5 rounded" aria-hidden />
-              {PASS_MARK}% pass mark
+              {passMarks.length === 1 ? `${passMarks[0]}% pass mark` : "Pass mark"}
             </span>
           </p>
         </>

@@ -48,7 +48,7 @@ export const coachPaths: ZodOpenApiPathsObject = {
         ...errors({
           ...AUTH_401_403,
           ...VALIDATION_422,
-          429: "`COACH_DAILY_LIMIT`, `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
+          429: "`COACH_DAILY_LIMIT`, `COACH_BUSY` (a reply is still on its way), `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
           503: "`AI_UNAVAILABLE` or `AI_NOT_CONFIGURED`.",
         }),
       },

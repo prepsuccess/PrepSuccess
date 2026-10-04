@@ -73,7 +73,11 @@ export const skillTasksSchema = z
 export const rubricCriterionSchema = z
   .object({
     id: z.string().meta({ example: "join" }),
-    description: z.string(),
+    description: z.string().meta({
+      description:
+        "What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.",
+      example: "Correct JOIN between employees and departments",
+    }),
     points: z.number().int(),
   })
   .meta({ id: "RubricCriterion" });

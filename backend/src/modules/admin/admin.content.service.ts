@@ -75,18 +75,33 @@ export async function listSkills() {
   return skills.map((skill) => toAdminSkill(skill, counts(skill.id)));
 }
 
+/**
+ * A deleted skill keeps its slug (slugs are unique), so creating a skill with
+ * that slug brings the deleted one back with the new details instead of
+ * failing with a slug nobody can see. Its old resources and tasks stay as they
+ * were (deleted ones stay deleted).
+ */
 export async function createSkill(input: CreateSkillInput) {
+  const data = {
+    name: input.name,
+    category: upper(input.category) as SkillCategory,
+    topic: input.topic ?? null,
+    description: input.description ?? null,
+    masteryThreshold: input.mastery_threshold,
+  };
   try {
-    const skill = await prisma.skill.create({
-      data: {
-        name: input.name,
-        slug: input.slug,
-        category: upper(input.category) as SkillCategory,
-        topic: input.topic ?? null,
-        description: input.description ?? null,
-        masteryThreshold: input.mastery_threshold,
-      },
+    const deleted = await prisma.skill.findFirst({
+      where: { slug: input.slug, isDeleted: true },
+      select: { id: true },
     });
+    if (deleted) {
+      const skill = await prisma.skill.update({
+        where: { id: deleted.id },
+        data: { ...data, isDeleted: false, isActive: true },
+      });
+      return toAdminSkill(skill, (await skillCounts([skill.id]))(skill.id));
+    }
+    const skill = await prisma.skill.create({ data: { ...data, slug: input.slug } });
     return toAdminSkill(skill, { resources: 0, tasks: 0, checks: 0 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

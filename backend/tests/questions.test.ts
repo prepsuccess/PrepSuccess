@@ -42,6 +42,7 @@ const db = vi.hoisted(() => {
       userId: string;
       questionId: string;
       bookmarked: boolean;
+      bookmarkedAt?: Date | null;
       solvedAt: Date | null;
       updatedAt: Date;
     }[],
@@ -85,6 +86,14 @@ const db = vi.hoisted(() => {
       };
     },
     prisma: {
+      // requireAuth reads the account's role on every request.
+      user: {
+        findUnique: vi.fn(async ({ where }) => ({
+          role: where.id === "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d" ? "ADMIN" : "STUDENT",
+          isActive: true,
+          isDeleted: false,
+        })),
+      },
       questionBank: {
         findMany: vi.fn(async (args) => {
           state.lastWhere = args.where;
@@ -93,8 +102,25 @@ const db = vi.hoisted(() => {
         }),
         count: vi.fn(async () => state.questions.length),
         findFirst: vi.fn(async (args) => {
-          const q = state.questions.find((x) => x.id === args.where.id && !x.isDeleted);
+          const w = args.where;
+          const q = state.questions.find(
+            (x) =>
+              (w.id === undefined || x.id === w.id) &&
+              (w.skillId === undefined || x.skillId === w.skillId) &&
+              (w.title === undefined || x.title === w.title) &&
+              x.isDeleted === (w.isDeleted ?? false),
+          );
           return q ? withProgress(q, userOf(args)) : null;
+        }),
+        update: vi.fn(async ({ where, data }) => {
+          const q = state.questions.find((x) => x.id === where.id)!;
+          if (
+            data.title !== undefined &&
+            state.questions.some((x) => x.id !== q.id && x.title === data.title)
+          ) {
+            throw Object.assign(new Error("unique"), { code: "P2002" });
+          }
+          return Object.assign(q, data);
         }),
         create: vi.fn(async ({ data }) => {
           if (state.questions.some((q) => q.title === data.title)) {
@@ -130,9 +156,15 @@ const db = vi.hoisted(() => {
           state.progress.push(row);
           return row;
         }),
-        findMany: vi.fn(async ({ where }) =>
+        findMany: vi.fn(async ({ where, orderBy }) =>
           state.progress
             .filter((p) => p.userId === where.userId)
+            .filter((p) => where.bookmarked === undefined || p.bookmarked === where.bookmarked)
+            .sort((a, b) =>
+              orderBy?.[0]?.bookmarkedAt
+                ? (b.bookmarkedAt?.getTime() ?? 0) - (a.bookmarkedAt?.getTime() ?? 0)
+                : 0,
+            )
             .map((p) => ({
               ...p,
               question: withProgress(
@@ -144,6 +176,7 @@ const db = vi.hoisted(() => {
         count: vi.fn(async () => state.progress.filter((p) => p.bookmarked).length),
       },
       prepPdf: {
+        create: vi.fn(async ({ data }) => ({ ...state.pdf, ...data })),
         findMany: vi.fn(async () => (state.pdf ? [state.pdf] : [])),
         findFirst: vi.fn(async ({ where }) =>
           state.pdf && where.id === state.pdf.id ? state.pdf : null,
@@ -179,7 +212,10 @@ const app = createApp();
 const student = { Authorization: `Bearer ${signAccessToken(STUDENT_ID, "STUDENT")}` };
 const admin = { Authorization: `Bearer ${signAccessToken(ADMIN_ID, "ADMIN")}` };
 
-beforeEach(() => db.reset());
+beforeEach(() => {
+  vi.clearAllMocks();
+  db.reset();
+});
 
 describe("question bank rules", () => {
   it("combines every filter given with AND", () => {
@@ -327,6 +363,36 @@ describe("bookmarking and solving", () => {
     expect(res.body.data.bookmarked).toBe(false);
   });
 
+  it("orders My bookmarks by when they were bookmarked; solving doesn't reorder", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-03T10:00:00.000Z"));
+      await request(app).post(`/api/v1/questions/${Q1}/bookmark`).set(student);
+      vi.setSystemTime(new Date("2026-10-03T10:05:00.000Z"));
+      await request(app).post(`/api/v1/questions/${Q2}/bookmark`).set(student);
+      vi.setSystemTime(new Date("2026-10-03T10:10:00.000Z"));
+      await request(app).post(`/api/v1/questions/${Q1}/solve`).set(student);
+      // Bookmarking again keeps its place.
+      await request(app).post(`/api/v1/questions/${Q1}/bookmark`).set(student);
+    } finally {
+      vi.useRealTimers();
+    }
+    const res = await request(app).get("/api/v1/questions/bookmarks").set(student);
+    expect(res.body.data.map((q: { id: string }) => q.id)).toEqual([Q2, Q1]);
+    expect(db.prisma.userQuestionProgress.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        orderBy: [{ bookmarkedAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
+      }),
+    );
+
+    // Removing clears the date; bookmarking again puts it on top.
+    await request(app).delete(`/api/v1/questions/${Q1}/bookmark`).set(student);
+    expect(db.state.progress.find((p) => p.questionId === Q1)!.bookmarkedAt).toBeNull();
+    await request(app).post(`/api/v1/questions/${Q1}/bookmark`).set(student);
+    const again = await request(app).get("/api/v1/questions/bookmarks").set(student);
+    expect(again.body.data.map((q: { id: string }) => q.id)).toEqual([Q1, Q2]);
+  });
+
   it("404s progress on a missing question", async () => {
     const res = await request(app).post(`/api/v1/questions/${MISSING}/solve`).set(student);
     expect(res.status).toBe(404);
@@ -349,9 +415,12 @@ describe("progress and prep guides", () => {
     });
   });
 
-  it("counts a guide download and returns its link", async () => {
+  it("counts a guide download once a day per student and returns its link", async () => {
     const res = await request(app).post(`/api/v1/prep-pdfs/${PDF}/download`).set(student);
     expect(res.body.data).toEqual({ url: "https://example.com/sql-guide.pdf" });
+    expect(db.state.pdf!.downloads).toBe(1);
+    const again = await request(app).post(`/api/v1/prep-pdfs/${PDF}/download`).set(student);
+    expect(again.body.data.url).toBe("https://example.com/sql-guide.pdf");
     expect(db.state.pdf!.downloads).toBe(1);
     expect(
       (await request(app).post(`/api/v1/prep-pdfs/${MISSING}/download`).set(student)).status,
@@ -406,5 +475,73 @@ describe("who can do what", () => {
       isDeleted: true,
       isActive: false,
     });
+  });
+
+  it("brings back a deleted question when one with the same title is added", async () => {
+    const q1 = db.state.questions.find((q) => q.id === Q1)!;
+    Object.assign(q1, { isDeleted: true, isActive: false });
+    const res = await request(app).post("/api/v1/admin/questions").set(admin).send({
+      skill_id: "5c8b4d2f-3a1e-4b7c-8d9f-2e3a4b5c6d7e",
+      title: "WHERE vs HAVING",
+      body: "Rewritten: when do you use each?",
+      topic: "Aggregation",
+      difficulty: "medium",
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({ id: Q1, topic: "Aggregation", is_active: true });
+    expect(q1).toMatchObject({ isDeleted: false, body: "Rewritten: when do you use each?" });
+    expect(db.prisma.questionBank.create).not.toHaveBeenCalled();
+  });
+
+  it("moves a deleted question's title aside when another is renamed onto it", async () => {
+    const q1 = db.state.questions.find((q) => q.id === Q1)!;
+    Object.assign(q1, { isDeleted: true, isActive: false });
+    const res = await request(app)
+      .patch(`/api/v1/admin/questions/${Q2}`)
+      .set(admin)
+      .send({ title: "WHERE vs HAVING" });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ id: Q2, title: "WHERE vs HAVING" });
+    expect(q1.title).toBe("WHERE vs HAVING [deleted 11111111]");
+  });
+
+  it("reads include_inactive=false as false", async () => {
+    await request(app).get("/api/v1/admin/questions?include_inactive=false").set(admin);
+    expect(db.state.lastWhere).toMatchObject({ isActive: true });
+    await request(app).get("/api/v1/admin/questions").set(admin);
+    expect(db.state.lastWhere).not.toHaveProperty("isActive");
+    const bad = await request(app).get("/api/v1/admin/questions?include_inactive=yes").set(admin);
+    expect(bad.status).toBe(422);
+  });
+
+  it("pages questions with a stable order", async () => {
+    await request(app).get("/api/v1/questions").set(student);
+    expect(db.prisma.questionBank.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        orderBy: [{ difficulty: "asc" }, { title: "asc" }, { id: "asc" }],
+      }),
+    );
+  });
+
+  it("only accepts https links for prep guides", async () => {
+    const guide = { title: "Aptitude guide", file_url: "https://cdn.example.com/apt.pdf" };
+    const ok = await request(app).post("/api/v1/admin/prep-pdfs").set(admin).send(guide);
+    expect(ok.status).toBe(201);
+    for (const file_url of [
+      "javascript:alert(document.cookie)",
+      "http://example.com/apt.pdf",
+      "data:text/html,<script>alert(1)</script>",
+    ]) {
+      const created = await request(app)
+        .post("/api/v1/admin/prep-pdfs")
+        .set(admin)
+        .send({ ...guide, file_url });
+      expect(created.status).toBe(422);
+      const patched = await request(app)
+        .patch(`/api/v1/admin/prep-pdfs/${PDF}`)
+        .set(admin)
+        .send({ file_url });
+      expect(patched.status).toBe(422);
+    }
   });
 });

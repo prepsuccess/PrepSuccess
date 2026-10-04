@@ -15,6 +15,22 @@ export const HISTORY_WINDOW = 12;
 /** Turns kept in the conversation. */
 export const MAX_STORED_MESSAGES = 60;
 
+/**
+ * The last HISTORY_WINDOW turns sent to the model. Gemini wants the history to
+ * start with a user turn, so leading assistant turns (e.g. a check-in, or a
+ * window cut mid-exchange) are dropped.
+ */
+export function historyWindow<T extends { role: "user" | "assistant"; content: string }>(
+  messages: T[],
+) {
+  const window = messages.slice(-HISTORY_WINDOW);
+  const firstUser = window.findIndex((m) => m.role === "user");
+  return (firstUser === -1 ? [] : window.slice(firstUser)).map(({ role, content }) => ({
+    role,
+    content,
+  }));
+}
+
 /** A gap longer than this between pings starts a new session. */
 export const SESSION_GAP_MS = 10 * 60_000;
 /** Time on the site, in one session, before the coach checks in. */

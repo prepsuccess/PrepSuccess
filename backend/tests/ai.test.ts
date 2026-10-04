@@ -5,13 +5,28 @@ import { z } from "zod";
 // In-memory stand-ins for the two tables the AI layer touches.
 const db = vi.hoisted(() => ({
   signedUpAt: new Date(),
-  usage: [] as { success: boolean; model: string; errorCode: string | null; feature: string }[],
+  usage: [] as {
+    success: boolean;
+    model: string;
+    errorCode: string | null;
+    feature: string;
+    system: boolean;
+    inputTokens: number;
+    outputTokens: number;
+  }[],
   successfulToday: 0,
 }));
 
 vi.mock("../src/db/prisma.js", () => ({
   prisma: {
-    user: { findUnique: vi.fn(async () => ({ createdAt: db.signedUpAt })) },
+    user: {
+      findUnique: vi.fn(async () => ({
+        createdAt: db.signedUpAt,
+        role: "STUDENT",
+        isActive: true,
+        isDeleted: false,
+      })),
+    },
     aiUsage: {
       count: vi.fn(async () => db.successfulToday),
       create: vi.fn(async ({ data }) => {
@@ -22,6 +37,7 @@ vi.mock("../src/db/prisma.js", () => ({
   },
 }));
 
+const { prisma } = await import("../src/db/prisma.js");
 const { generateJson, generateText, resetModelCooldowns } =
   await import("../src/services/ai-agent/ai.service.js");
 const { fakeAi } = await import("../src/services/ai-agent/providers/fake.provider.js");
@@ -147,6 +163,14 @@ describe("generateJson", () => {
     fakeAi.reply("still not");
     fakeAi.reply("{}");
     expect(await codeOf(generateJson(base, schema))).toBe("AI_BAD_RESPONSE");
+    // The unusable replies still cost tokens, and are metered with them.
+    expect(db.usage).toHaveLength(3);
+    expect(db.usage[0]).toMatchObject({
+      success: false,
+      errorCode: "AI_BAD_RESPONSE",
+      inputTokens: 10,
+      outputTokens: 5,
+    });
   });
 });
 
@@ -155,6 +179,34 @@ describe("access", () => {
     db.successfulToday = 200;
     expect(await codeOf(generateText(base))).toBe("AI_DAILY_LIMIT");
     expect(fakeAi.calls).toHaveLength(0);
+  });
+
+  it("records system calls as system, skips the limit for them, and counts only student calls", async () => {
+    db.successfulToday = 200;
+    fakeAi.reply("bank filled");
+    expect((await generateText({ ...base, systemCall: true })).data).toBe("bank filled");
+    expect(db.usage).toEqual([expect.objectContaining({ success: true, system: true })]);
+
+    fakeAi.reply("hi");
+    db.successfulToday = 0;
+    await generateText(base);
+    expect(db.usage[1]).toMatchObject({ system: false });
+    expect(vi.mocked(prisma.aiUsage.count)).toHaveBeenLastCalledWith({
+      where: expect.objectContaining({ userId: USER, success: true, system: false }),
+    });
+  });
+
+  it("counts requests still running towards the limit, so a burst can't overshoot it", async () => {
+    db.successfulToday = 199; // one left today
+    fakeAi.reply("first");
+    fakeAi.reply("second");
+    const results = await Promise.all([codeOf(generateText(base)), codeOf(generateText(base))]);
+    expect(results.sort()).toEqual(["AI_DAILY_LIMIT", "resolved"]);
+    expect(fakeAi.calls).toHaveLength(1);
+
+    // Finished requests stop counting as running (they're in ai_usage instead).
+    fakeAi.reply("later");
+    expect(await codeOf(generateText(base))).toBe("resolved");
   });
 
   it("reports an ended trial but doesn't block while enforcement is off", async () => {

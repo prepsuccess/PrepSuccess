@@ -7,6 +7,7 @@ import {
   fingerprint,
   levelsToTopUp,
   maxScoreFor,
+  maxScoreForPool,
   nextDifficulty,
   pickQuestion,
   scoreOf,
@@ -47,6 +48,7 @@ const db = vi.hoisted(() => {
     profileData: {} as Record<string, unknown>,
     tick: 0,
     bank: [] as Record<string, unknown>[],
+    role: "STUDENT",
   };
   const full = () =>
     state.assessment ? { ...state.assessment, skill, result: state.result } : null;
@@ -59,10 +61,16 @@ const db = vi.hoisted(() => {
       state.profileData = { degree: "B.Tech", student_year: 3, skills: ["DSA basics", "Kotlin"] };
       state.tick = 0;
       state.bank = [];
+      state.role = "STUDENT";
     },
     prisma: {
       user: {
-        findUnique: vi.fn(async () => ({ createdAt: now })),
+        findUnique: vi.fn(async () => ({
+          createdAt: now,
+          role: state.role,
+          isActive: true,
+          isDeleted: false,
+        })),
       },
       userProfile: {
         findUnique: vi.fn(async () => ({ profileData: state.profileData })),
@@ -134,6 +142,7 @@ const db = vi.hoisted(() => {
       },
       aiUsage: { count: vi.fn(async () => 0), create: vi.fn(async () => ({})) },
       $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(db.prisma)),
+      $executeRaw: vi.fn(async () => 1),
     },
   };
 });
@@ -163,8 +172,8 @@ const batch = () => {
   return { easy: eight("easy"), medium: eight("medium"), hard: eight("hard") };
 };
 /** A full bank (34/33/33) for the skill, so a check needs no AI call. */
-function fillBank() {
-  for (const [level, n] of Object.entries(LEVEL_TARGET)) {
+function fillBank(counts: Record<string, number> = LEVEL_TARGET) {
+  for (const [level, n] of Object.entries(counts)) {
     for (let i = 0; i < n; i++) {
       const q = question(level.toLowerCase(), i);
       db.state.bank.push({
@@ -306,6 +315,32 @@ describe("adaptive rules", () => {
     expect(count("HARD")).toBe(3); // only 3 places left in the hard share
   });
 
+  it("counts deactivated questions as taking up their level's share", () => {
+    const bank = Array.from({ length: 4 }, (_, i) => bankQ(`e${i}`, "EASY"));
+    // Only 4 live easy questions, but 30 more are hidden by an admin: the
+    // easy share is full, so asking the AI for more would add nothing.
+    expect(levelsToTopUp(bank, new Set(), 10, { EASY: 34, MEDIUM: 33, HARD: 33 })).toEqual([]);
+    expect(levelsToTopUp(bank, new Set(), 10, { EASY: 4, MEDIUM: 33, HARD: 33 })).toEqual(["EASY"]);
+  });
+
+  it("scores a perfect run as 100% even when the pool is short of hard questions", () => {
+    const pool = (easy: number, medium: number, hard: number) =>
+      drawPool(
+        [
+          ...Array.from({ length: easy }, (_, i) => bankQ(`e${i}`, "EASY")),
+          ...Array.from({ length: medium }, (_, i) => bankQ(`m${i}`, "MEDIUM")),
+          ...Array.from({ length: hard }, (_, i) => bankQ(`h${i}`, "HARD")),
+        ],
+        new Set(),
+        10,
+      );
+    expect(maxScoreForPool(pool(10, 10, 10), 10)).toBe(maxScoreFor(10));
+    // medium, hard, hard, then the nearest level left: medium every time.
+    expect(maxScoreForPool(pool(10, 10, 2), 10)).toBe(2 + 3 + 3 + 7 * 2);
+    // No medium either: medium (1 left), hard ×2, then easy.
+    expect(maxScoreForPool(pool(10, 1, 2), 10)).toBe(2 + 3 + 3 + 7 * 1);
+  });
+
   it("falls back to the nearest level when one runs out", () => {
     const questions = drawPool([bankQ("m1", "MEDIUM"), bankQ("e1", "EASY")], new Set(), 5);
     expect(pickQuestion(questions, "HARD")!.difficulty).toBe("MEDIUM");
@@ -396,6 +431,61 @@ describe("POST /api/v1/ai/assessment/start", () => {
     expect(db.prisma.assessment.create).not.toHaveBeenCalled();
   });
 
+  it("starts from the bank when topping it up fails but the bank can fill the check", async () => {
+    fillBank({ EASY: 4, MEDIUM: 4, HARD: 4 }); // short of fresh questions: wants a top-up
+    fakeAi.fail();
+    fakeAi.fail();
+    fakeAi.fail();
+    const res = await start();
+    expect(res.status).toBe(200);
+    expect(fakeAi.calls.length).toBeGreaterThan(0);
+    expect(db.prisma.assessment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts from the bank when the student is at today's AI limit", async () => {
+    fillBank({ EASY: 4, MEDIUM: 4, HARD: 4 });
+    db.prisma.aiUsage.count.mockResolvedValueOnce(10_000);
+    const res = await start();
+    expect(res.status).toBe(200);
+    expect(fakeAi.calls).toHaveLength(0);
+  });
+
+  it("still returns the AI's error when the bank can't fill the check without it", async () => {
+    fillBank({ EASY: 2, MEDIUM: 2, HARD: 2 });
+    db.prisma.aiUsage.count.mockResolvedValueOnce(10_000);
+    const res = await start();
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("AI_DAILY_LIMIT");
+    expect(db.prisma.assessment.create).not.toHaveBeenCalled();
+  });
+
+  it("doesn't ask the AI to refill a level an admin has hidden questions in", async () => {
+    fillBank();
+    for (const q of db.state.bank.filter((row) => row.difficulty === "EASY").slice(4)) {
+      q.isActive = false;
+    }
+    const res = await start();
+    expect(res.status).toBe(200);
+    expect(fakeAi.calls).toHaveLength(0);
+    const stored = db.state.assessment!.questions as StoredQuestion[];
+    expect(stored.filter((q) => q.difficulty === "EASY")).toHaveLength(4);
+  });
+
+  it("resumes the other tab's check when two starts race", async () => {
+    fillBank();
+    const first = await start();
+    vi.clearAllMocks();
+    // The second request passed the first unfinished-check lookup before the
+    // first one saved; inside the lock it finds that check and resumes it.
+    db.prisma.assessment.findFirst.mockResolvedValueOnce(null);
+    const second = await start(20);
+    expect(second.status).toBe(200);
+    expect(second.body.data.id).toBe(first.body.data.id);
+    expect(second.body.data.total_questions).toBe(10);
+    expect(db.prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(db.prisma.assessment.create).not.toHaveBeenCalled();
+  });
+
   it("explains when there aren't enough questions to start", async () => {
     fakeAi.reply({ easy: [], medium: [], hard: [] });
     const res = await start();
@@ -412,6 +502,7 @@ describe("POST /api/v1/ai/assessment/start", () => {
     expect(unknown.status).toBe(404);
     expect(unknown.body.error.code).toBe("SKILL_NOT_FOUND");
 
+    db.state.role = "ADMIN";
     const admin = await request(app)
       .post("/api/v1/ai/assessment/start")
       .set(auth("ADMIN"))
@@ -480,6 +571,24 @@ describe("POST /api/v1/ai/assessment/:id/answer", () => {
     expect(state.result).toMatchObject({ score: 0, percent: 0, mastery: "needs_revision" });
   });
 
+  it("scores a perfect run out of what the pool allowed when hard questions ran short", async () => {
+    fillBank({ EASY: 10, MEDIUM: 10, HARD: 2 });
+    fakeAi.fail("AI_HTTP_400", false); // the hard top-up fails; the bank still fills 10
+    let state = (await start()).body.data;
+    expect(state.status).toBe("in_progress");
+    for (let i = 0; i < 10; i++) {
+      const q = state.current_question;
+      state = (await answer(q.id, rightAnswer(q.id))).body.data;
+    }
+    // medium, hard, hard, then medium ×7: 22 is the best this pool could give.
+    expect(state.result).toMatchObject({
+      score: 22,
+      max_score: 22,
+      percent: 100,
+      mastery: "mastered",
+    });
+  });
+
   it("refuses a stale question id (double submit)", async () => {
     fillBank();
     const q = (await start()).body.data.current_question;
@@ -541,6 +650,33 @@ describe("stacks", () => {
     expect(matchClaims(["data analysis"]).slugs).toEqual(["data-analysis-python"]);
     expect(matchClaims(["React"]).slugs).toEqual(["react"]);
     expect(matchClaims(["MERN stack", "Kotlin"]).unmatched).toEqual(["Kotlin"]);
+  });
+
+  it("doesn't expand a stack from a plain word inside an unrelated claim", () => {
+    expect(matchClaims(["Statistics (mean, median)"])).toEqual({
+      slugs: [],
+      unmatched: ["Statistics (mean, median)"],
+    });
+    expect(matchClaims(["Some backend work at my internship"]).slugs).toEqual([]);
+    expect(matchClaims(["Learning full stack slowly"]).slugs).toEqual([]);
+    // A whole claim that is a stack, however it's dressed up, still expands…
+    expect(matchClaims(["MEAN"]).slugs).toContain("typescript");
+    expect(matchClaims(["Backend developer"]).slugs).toEqual([
+      "nodejs",
+      "expressjs",
+      "rest-apis",
+      "sql",
+    ]);
+    expect(matchClaims(["Full stack developer"]).slugs).toHaveLength(7);
+    // …and a distinctive name counts anywhere in the claim.
+    expect(matchClaims(["Built two MERN apps"]).slugs).toEqual([
+      "mongodb",
+      "expressjs",
+      "react",
+      "nodejs",
+      "javascript",
+    ]);
+    expect(matchClaims(["Projects in the MEAN stack"]).slugs).toContain("typescript");
   });
 
   it("only points at real catalogue skills", () => {

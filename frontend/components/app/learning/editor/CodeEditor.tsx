@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import { useAppTheme } from "@/lib/theme/appTheme";
 import CodeMirror, { EditorView, type Extension } from "@uiw/react-codemirror";
 import { StreamLanguage } from "@codemirror/language";
@@ -80,6 +80,17 @@ export default function CodeEditor({
 }: CodeEditorProps) {
   // The app's own light/dark setting (not next-themes), so the editor matches the page.
   const { resolved } = useAppTheme();
+
+  // CodeMirror reconfigures itself whenever extensions, basicSetup or onChange
+  // change identity. The parent's handlers change on every keystroke (they
+  // close over the content), so they go through a ref and everything passed
+  // down stays stable while the student types.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const handleChange = useCallback((next: string) => onChangeRef.current(next), []);
+
   const extensions = useMemo(
     () => [
       ...languageExtension(language),
@@ -89,43 +100,50 @@ export default function CodeEditor({
         ...(id ? { id } : {}),
         ...(describedBy ? { "aria-describedby": describedBy } : {}),
       }),
-      EditorView.domEventHandlers({
-        keydown: (event) => {
-          if (onRun && event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-            event.preventDefault();
-            onRun();
-            return true;
-          }
-          return false;
-        },
-      }),
     ],
-    [language, label, id, describedBy, onRun],
+    [language, label, id, describedBy],
+  );
+  const basicSetup = useMemo(
+    () => ({
+      lineNumbers: language !== "text",
+      foldGutter: language !== "text",
+      highlightActiveLine: true,
+      highlightActiveLineGutter: true,
+      bracketMatching: true,
+      closeBrackets: true,
+      autocompletion: language !== "text",
+      indentOnInput: true,
+      tabSize: 2,
+    }),
+    [language],
   );
 
+  // Ctrl/Cmd+Enter runs the code. Caught on the way down (capture phase), so
+  // CodeMirror never inserts a newline, and kept out of the extensions so a new
+  // onRun doesn't reconfigure the editor.
+  const onKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (onRun && event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      event.stopPropagation();
+      onRun();
+    }
+  };
+
   return (
-    <CodeMirror
-      value={value}
-      onChange={onChange}
-      extensions={extensions}
-      theme={resolved === "dark" ? "dark" : "light"}
-      editable={!disabled}
-      readOnly={disabled}
-      indentWithTab
-      height="100%"
-      minHeight="18rem"
-      basicSetup={{
-        lineNumbers: language !== "text",
-        foldGutter: language !== "text",
-        highlightActiveLine: true,
-        highlightActiveLineGutter: true,
-        bracketMatching: true,
-        closeBrackets: true,
-        autocompletion: language !== "text",
-        indentOnInput: true,
-        tabSize: 2,
-      }}
-      className="h-full"
-    />
+    <div className="h-full" onKeyDownCapture={onKeyDownCapture}>
+      <CodeMirror
+        value={value}
+        onChange={handleChange}
+        extensions={extensions}
+        theme={resolved === "dark" ? "dark" : "light"}
+        editable={!disabled}
+        readOnly={disabled}
+        indentWithTab
+        height="100%"
+        minHeight="18rem"
+        basicSetup={basicSetup}
+        className="h-full"
+      />
+    </div>
   );
 }

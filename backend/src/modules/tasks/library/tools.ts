@@ -17,15 +17,31 @@ You have a folder resume-site with index.html, style.css and a node_modules fold
 - Show the commit history in one line per commit.
 `,
     [
-      c("init", "git init (and optional branch rename to main)", 2),
-      c("gitignore", "Creates .gitignore listing node_modules/ and .env, and commits it", 3),
+      c(
+        "init",
+        "Initialises the repository on a main branch",
+        2,
+        "git init (and optional branch rename to main)",
+      ),
+      c(
+        "gitignore",
+        "Creates and commits a .gitignore for the right files",
+        3,
+        "Creates .gitignore listing node_modules/ and .env, and commits it",
+      ),
       c(
         "commit",
-        "git add of the right files followed by git commit -m with a meaningful message",
+        "Stages the right files and commits with a meaningful message",
         2,
+        "git add of the right files followed by git commit -m with a meaningful message",
       ),
-      c("remote-push", "git remote add origin ... and git push -u origin main", 2),
-      c("log", "git log --oneline (or equivalent)", 1),
+      c(
+        "remote-push",
+        "Adds the remote and pushes with upstream set",
+        2,
+        "git remote add origin ... and git push -u origin main",
+      ),
+      c("log", "Shows the history compactly", 1, "git log --oneline (or equivalent)"),
     ],
     `
 # 1. Create the repo
@@ -52,17 +68,29 @@ Write the git command for each situation, with one line saying why it is safe:
 - A commit a1b2c3d that is already pushed to the shared main branch broke the build. Undo it without rewriting history.
 `,
     [
-      c("unstage", "git restore --staged secrets.txt (or git reset HEAD secrets.txt)", 2),
-      c("discard", "git restore app.js (or git checkout -- app.js)", 2),
+      c(
+        "unstage",
+        "Correct command to unstage secrets.txt",
+        2,
+        "git restore --staged secrets.txt (or git reset HEAD secrets.txt)",
+      ),
+      c(
+        "discard",
+        "Correct command to discard the changes to app.js",
+        2,
+        "git restore app.js (or git checkout -- app.js)",
+      ),
       c(
         "amend",
-        "git commit --amend -m with a new message, noting it is fine because not pushed",
+        "Correct fix for the last commit message, and why it is safe here",
         3,
+        "git commit --amend -m with a new message, noting it is fine because not pushed",
       ),
       c(
         "revert",
-        "git revert a1b2c3d, explaining it adds a new commit instead of rewriting shared history",
+        "Correct way to undo the pushed commit, and why",
         3,
+        "git revert a1b2c3d, explaining it adds a new commit instead of rewriting shared history",
       ),
     ],
     `
@@ -106,9 +134,19 @@ The correct behaviour is: apply the 10% discount first, then add 18% GST on the 
         "Correctly explains HEAD (current branch) vs incoming feature/discount sections",
         2,
       ),
-      c("resolved", "Resolved code with no markers: discount then 18% tax (price * 0.9 * 1.18)", 4),
-      c("finish", "git add price.js then git commit (or git merge --continue)", 2),
-      c("abort", "git merge --abort", 2),
+      c(
+        "resolved",
+        "Resolved code with no markers that keeps both changes correctly",
+        4,
+        "Resolved code with no markers: discount then 18% tax (price * 0.9 * 1.18)",
+      ),
+      c(
+        "finish",
+        "Correct commands to finish the merge",
+        2,
+        "git add price.js then git commit (or git merge --continue)",
+      ),
+      c("abort", "Correct command to abort the merge", 2, "git merge --abort"),
     ],
     `
 // Resolved price.js
@@ -137,15 +175,36 @@ Write the commands (with a short explanation each) to:
 - Before opening a PR, squash your 5 messy local commits into one clean commit (interactive rebase), and push the rewritten branch safely.
 `,
     [
-      c("bisect", "bisect start, bad HEAD, good v1.0, marking each step, and bisect reset", 3),
-      c("automate", "git bisect run npm test (or similar script)", 2),
-      c("steps", "About 6 steps because it halves the range each time (log2 60)", 1),
+      c(
+        "bisect",
+        "A complete bisect session, from start to reset",
+        3,
+        "bisect start, bad HEAD, good v1.0, marking each step, and bisect reset",
+      ),
+      c(
+        "automate",
+        "Automates the bisect with a test script",
+        2,
+        "git bisect run npm test (or similar script)",
+      ),
+      c(
+        "steps",
+        "Correct estimate of the number of steps, with the reason",
+        1,
+        "About 6 steps because it halves the range each time (log2 60)",
+      ),
       c(
         "reflog",
-        "git reflog to find the old HEAD, then reset/branch/cherry-pick to restore it",
+        "Finds and restores the lost work with the right tool",
         2,
+        "git reflog to find the old HEAD, then reset/branch/cherry-pick to restore it",
       ),
-      c("squash", "git rebase -i HEAD~5 with squash/fixup and git push --force-with-lease", 2),
+      c(
+        "squash",
+        "Squashes the commits and pushes the rewritten branch safely",
+        2,
+        "git rebase -i HEAD~5 with squash/fixup and git push --force-with-lease",
+      ),
     ],
     `
 # Bisect
@@ -172,13 +231,24 @@ On a Linux server, answer and write commands for:
 - Set the permissions on your SSH private key ~/.ssh/id_ed25519 so ssh will accept it, and say why ssh is strict about it.
 `,
     [
-      c("read-perms", "Correctly explains owner rwx, group r-x, others none = 750", 3),
-      c("chmod", "chmod 740 deploy.sh (or equivalent symbolic form)", 2),
-      c("chown", "chown -R deploy:www-data /srv/app", 2),
+      c(
+        "read-perms",
+        "Correctly explains the permission string and its octal value",
+        3,
+        "Correctly explains owner rwx, group r-x, others none = 750",
+      ),
+      c(
+        "chmod",
+        "Correct chmod for deploy.sh",
+        2,
+        "chmod 740 deploy.sh (or equivalent symbolic form)",
+      ),
+      c("chown", "Correct ownership change for /srv/app", 2, "chown -R deploy:www-data /srv/app"),
       c(
         "ssh-key",
-        "chmod 600 (or 400) on the key with a valid reason (others must not read it)",
+        "Correct permissions on the SSH key, with a valid reason",
         3,
+        "chmod 600 (or 400) on the key with a valid reason (others must not read it)",
       ),
     ],
     `
@@ -212,13 +282,24 @@ Using only standard tools (grep, awk, cut, sort, uniq, head, wc), write one comm
 - Every line for failed logins (POST /api/login with status 401), saved to failed.txt.
 `,
     [
-      c("top-ips", "awk/cut for field 1 | sort | uniq -c | sort -nr | head -5", 3),
+      c(
+        "top-ips",
+        "Correct pipeline for the top 5 IPs",
+        3,
+        "awk/cut for field 1 | sort | uniq -c | sort -nr | head -5",
+      ),
       c(
         "count-404",
-        "Counts 404 using the status field (awk on field 8 or a precise grep), not just any 404",
+        "Counts 404s using the status field, not just any '404' in the line",
         3,
+        "Counts 404 using the status field (awk on field 8 or a precise grep), not just any 404",
       ),
-      c("distinct", "Field 1 | sort -u | wc -l (or sort | uniq | wc -l)", 2),
+      c(
+        "distinct",
+        "Correct count of distinct IPs",
+        2,
+        "Field 1 | sort -u | wc -l (or sort | uniq | wc -l)",
+      ),
       c("failed", "Filters POST /api/login with 401 and redirects to failed.txt", 2),
     ],
     `
@@ -245,15 +326,36 @@ Users say your Node app on a Linux VM is slow and new uploads are failing. Write
 - Check free memory, and view the last 50 lines of the app's log /var/log/app.log while following new lines.
 `,
     [
-      c("cpu-mem", "top/htop or ps aux --sort=-%cpu / -%mem", 2),
-      c("port", "ss -ltnp, lsof -i :3000 or netstat to get the PID", 2),
+      c(
+        "cpu-mem",
+        "Finds the processes using the most CPU and memory",
+        2,
+        "top/htop or ps aux --sort=-%cpu / -%mem",
+      ),
+      c(
+        "port",
+        "Finds the PID listening on port 3000",
+        2,
+        "ss -ltnp, lsof -i :3000 or netstat to get the PID",
+      ),
       c(
         "kill",
-        "kill PID (SIGTERM) first, then kill -9 PID only if needed, explaining the difference",
+        "Stops the process safely, explaining the signals used",
         2,
+        "kill PID (SIGTERM) first, then kill -9 PID only if needed, explaining the difference",
       ),
-      c("disk", "df -h plus du -sh /var/* | sort -h (or similar)", 2),
-      c("mem-log", "free -h and tail -n 50 -f /var/log/app.log", 2),
+      c(
+        "disk",
+        "Checks disk space and finds what is using it",
+        2,
+        "df -h plus du -sh /var/* | sort -h (or similar)",
+      ),
+      c(
+        "mem-log",
+        "Checks memory and follows the app log",
+        2,
+        "free -h and tail -n 50 -f /var/log/app.log",
+      ),
     ],
     `
 # 1. CPU / memory hogs
@@ -283,14 +385,25 @@ Then write the crontab line that runs it every day at 2:30 AM for /srv/app, and 
 `,
     [
       c("args", "Validates the argument with a usage message and exit 1", 2),
-      c("archive", "Correct tar -czf with a date-stamped name from date +%F", 2),
+      c(
+        "archive",
+        "Correct compressed archive with a date-stamped name",
+        2,
+        "Correct tar -czf with a date-stamped name from date +%F",
+      ),
       c(
         "rotation",
-        "Deletes all but the 7 newest backups (ls -t | tail -n +8 | xargs rm, or find)",
+        "Keeps only the 7 newest backups",
         2,
+        "Deletes all but the 7 newest backups (ls -t | tail -n +8 | xargs rm, or find)",
       ),
       c("logging", "Timestamped log lines and correct exit codes (checks tar status or set -e)", 2),
-      c("cron", "Correct cron line 30 2 * * * with full paths, plus chmod +x and crontab -e", 2),
+      c(
+        "cron",
+        "Correct cron line with full paths, and the script installed and executable",
+        2,
+        "Correct cron line 30 2 * * * with full paths, plus chmod +x and crontab -e",
+      ),
     ],
     `
 #!/usr/bin/env bash
@@ -322,15 +435,22 @@ Answer in short, clear points as you would in an interview:
     [
       c(
         "region-az",
-        "Region = geographic area, AZ = isolated data centre(s) within it; two AZs for fault tolerance",
+        "Correct definitions of region and availability zone, and why to use two zones",
         3,
+        "Region = geographic area, AZ = isolated data centre(s) within it; two AZs for fault tolerance",
       ),
       c(
         "scaling",
-        "Correct definitions plus a limit of vertical scaling (hardware ceiling, downtime, single point of failure)",
+        "Correct definitions plus a limit of vertical scaling",
         3,
+        "Correct definitions plus a limit of vertical scaling (hardware ceiling, downtime, single point of failure)",
       ),
-      c("lb", "Load balancer spreads traffic and health checks remove unhealthy instances", 2),
+      c(
+        "lb",
+        "Explains the load balancer's job, including health checks",
+        2,
+        "Load balancer spreads traffic and health checks remove unhealthy instances",
+      ),
       c("cdn", "Names a CDN (edge caching) and why it helps", 2),
     ],
     `
@@ -361,9 +481,19 @@ Tasks:
 - Suggest two other ways to cut cost (with a one-line reason each), for example for a dev server only used 9am-7pm on weekdays.
 `,
     [
-      c("vm", "VM cost 2 x 3 x 720 = Rs 4320", 2),
-      c("total", "Storage Rs 400, transfer 90 x 8 = Rs 720, total Rs 5440", 3),
-      c("reserved", "Reserved VMs Rs 2592, new total Rs 3712, saving Rs 1728 per month", 3),
+      c("vm", "Correct monthly VM cost, with working", 2, "VM cost 2 x 3 x 720 = Rs 4320"),
+      c(
+        "total",
+        "Correct storage, transfer and total cost, with working",
+        3,
+        "Storage Rs 400, transfer 90 x 8 = Rs 720, total Rs 5440",
+      ),
+      c(
+        "reserved",
+        "Correct reserved-VM cost, new total and monthly saving, with working",
+        3,
+        "Reserved VMs Rs 2592, new total Rs 3712, saving Rs 1728 per month",
+      ),
       c(
         "ideas",
         "Two sensible savings ideas (scheduling/stopping idle VMs, right-sizing, autoscaling, CDN, cheaper storage tier)",
@@ -400,19 +530,27 @@ You are deploying a placement-portal app on a cloud provider: a web/API server a
     [
       c(
         "subnets",
-        "Web/load balancer in public subnet, database in private subnet with a reason",
+        "Right subnet for each tier, with a reason",
         3,
+        "Web/load balancer in public subnet, database in private subnet with a reason",
       ),
       c(
         "rules",
-        "Web: 80/443 from anywhere; DB: 5432 only from the web server's security group",
+        "Correct, least-privilege security group rules",
         3,
+        "Web: 80/443 from anywhere; DB: 5432 only from the web server's security group",
       ),
-      c("nat", "NAT gateway (or NAT instance) for outbound-only access", 2),
+      c(
+        "nat",
+        "Outbound-only internet access for private instances",
+        2,
+        "NAT gateway (or NAT instance) for outbound-only access",
+      ),
       c(
         "access-secrets",
-        "Bastion host/VPN/session manager with SSH limited by IP or key, and a secrets manager or env vars",
+        "Safe admin access and safe handling of secrets",
         2,
+        "Bastion host/VPN/session manager with SSH limited by IP or key, and a secrets manager or env vars",
       ),
     ],
     `

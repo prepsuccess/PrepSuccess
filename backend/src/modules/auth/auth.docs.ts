@@ -5,6 +5,7 @@ import { RATE_LIMIT_429, VALIDATION_422, bearerAuth, errors, ok } from "../../do
 import {
   authUserSchema,
   forgotPasswordSchema,
+  googleStartQuerySchema,
   resetPasswordSchema,
   loginSchema,
   messageSchema,
@@ -78,15 +79,12 @@ export const authPaths: ZodOpenApiPathsObject = {
       description:
         "Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. " +
         "Always answers 200 with the same message, whether or not the email is registered and even " +
-        "inside the 60-second resend cooldown, so it can't be used to discover accounts.",
+        "inside the 60-second resend cooldown, so it can't be used to discover accounts. The email " +
+        "is sent in the background, so a mail failure doesn't change the answer either.",
       requestBody: json(forgotPasswordSchema),
       responses: {
         ...ok(sendOtpResponseSchema, "Code sent if the account exists."),
-        ...errors({
-          ...VALIDATION_422,
-          ...RATE_LIMIT_429,
-          503: "`EMAIL_SEND_FAILED` — try again.",
-        }),
+        ...errors({ ...VALIDATION_422, ...RATE_LIMIT_429 }),
       },
     },
   },
@@ -114,12 +112,15 @@ export const authPaths: ZodOpenApiPathsObject = {
       summary: "Exchange a refresh token for a new token pair",
       description:
         "Rotates the refresh token: the one you send is revoked and a new pair is returned. " +
-        "Reusing an already-rotated token signs the user out of every session.",
+        "If the token was rotated less than 60 seconds ago (another tab refreshed at the same " +
+        "moment), answers 409 and revokes nothing — retry with the newest token. Replaying a token " +
+        "rotated longer ago signs the user out of every session.",
       requestBody: json(refreshSchema),
       responses: {
         ...ok(tokenResponseSchema, "New tokens issued."),
         ...errors({
           401: "`INVALID_REFRESH_TOKEN` — sign in again.",
+          409: "`REFRESH_RACE` — another tab just refreshed; use its tokens or retry.",
           ...VALIDATION_422,
           ...RATE_LIMIT_429,
         }),
@@ -142,7 +143,11 @@ export const authPaths: ZodOpenApiPathsObject = {
       security: bearerAuth,
       responses: {
         ...ok(authUserSchema, "The current user."),
-        ...errors({ 401: "`UNAUTHORIZED` (no token) or `INVALID_TOKEN` (expired/invalid)." }),
+        ...errors({
+          401:
+            "`UNAUTHORIZED` (no token, or the account is deactivated/deleted) or " +
+            "`INVALID_TOKEN` (expired/invalid).",
+        }),
       },
     },
   },
@@ -153,21 +158,14 @@ export const authPaths: ZodOpenApiPathsObject = {
       description:
         "Open this URL in the browser (a link, not fetch). Redirects to Google's consent screen. " +
         "Google then returns to `/api/v1/auth/google/callback`, which redirects to the frontend's " +
-        "`/auth/callback#access_token=…&refresh_token=…&next=…`, or to `/login?error=<code>` on failure.",
-      requestParams: {
-        query: z.object({
-          next: z.string().optional().meta({
-            description: "Same-site path to land on after sign-in.",
-            example: "/dashboard",
-          }),
-        }),
-      },
+        "`/auth/callback#access_token=…&refresh_token=…&next=…&nonce=…`, or to " +
+        "`/login?error=<code>` on failure. `nonce` is echoed back unchanged; the frontend must " +
+        "check it matches the one it sent. Without Google keys on the server it redirects to " +
+        "`/login?error=google_not_configured`; an invalid `nonce` redirects to `/login?error=google_failed`.",
+      requestParams: { query: googleStartQuerySchema },
       responses: {
-        302: { description: "Redirect to Google's consent screen." },
-        ...errors({
-          503: "`GOOGLE_NOT_CONFIGURED` — Google keys missing on the server.",
-          ...RATE_LIMIT_429,
-        }),
+        302: { description: "Redirect to Google's consent screen, or to `/login?error=<code>`." },
+        ...errors(RATE_LIMIT_429),
       },
     },
   },

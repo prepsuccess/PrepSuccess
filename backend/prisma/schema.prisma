@@ -148,12 +148,15 @@ model UserProfile {
 
 /// Refresh tokens are stored hashed and rotated on every use (PRODUCTION_STANDARDS §3.1).
 model RefreshToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  /// Why it was revoked: "rotated" (replaced by a refresh), "logout", "password_reset",
+  /// "admin" or "reuse". Only replaying a rotated token is treated as theft.
+  revokeReason String?   @map("revoke_reason") @db.VarChar(20)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -384,12 +387,16 @@ model AiUsage {
   outputTokens Int      @default(0) @map("output_tokens")
   latencyMs    Int      @map("latency_ms")
   success      Boolean
+  /// A call the student didn't ask for (coach check-in, bank top-up script):
+  /// recorded for cost tracking, but not counted against their daily limit.
+  system       Boolean  @default(false)
   errorCode    String?  @map("error_code") @db.VarChar(50)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([createdAt])
   @@map("ai_usage")
 }
 
@@ -474,14 +481,16 @@ model QuestionBank {
 /// One row per student per question, so bookmarking or solving twice never
 /// duplicates. Bookmarked and solved are separate: a solved question can stay bookmarked.
 model UserQuestionProgress {
-  id         String    @id @default(uuid()) @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
-  questionId String    @map("question_id") @db.Uuid
-  bookmarked Boolean   @default(false)
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  questionId   String    @map("question_id") @db.Uuid
+  bookmarked   Boolean   @default(false)
+  /// When it was last bookmarked; orders My bookmarks (solving doesn't reorder it).
+  bookmarkedAt DateTime? @map("bookmarked_at") @db.Timestamptz(6)
   /// First time it was marked solved; null when not solved.
-  solvedAt   DateTime? @map("solved_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  solvedAt     DateTime? @map("solved_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   question QuestionBank @relation(fields: [questionId], references: [id], onDelete: Cascade)

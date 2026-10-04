@@ -82,6 +82,24 @@ export const refreshSchema = z
   .object({ refresh_token: refreshToken })
   .meta({ id: "RefreshRequest" });
 
+/** GET /auth/google. `next` is sanitised in the controller rather than rejected. */
+export const googleStartQuerySchema = z.object({
+  next: z.string().optional().meta({
+    description: "Same-site path to land on after sign-in. Anything else is ignored.",
+    example: "/dashboard",
+  }),
+  nonce: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{16,128}$/, "Invalid nonce.")
+    .optional()
+    .meta({
+      description:
+        "Random value the frontend keeps (sessionStorage) and expects back in the callback " +
+        "fragment, so a sign-in it didn't start (login CSRF) is rejected. 16–128 of [A-Za-z0-9_-].",
+      example: "k3J9xQ2mW7pL0aZ8vB4nR6tY",
+    }),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

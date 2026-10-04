@@ -50,10 +50,10 @@ export async function listUsers(query: ListUsersQuery) {
 
 /**
  * PATCH /admin/users/:id — activate/deactivate or change role. Admins can't
- * change their own account (no locking yourself out). Any change signs the
- * user out everywhere, so a new role or a deactivation applies at their next
- * request after the access token expires (≤ 30 min) — and immediately for
- * anything that checks the account, like refresh and /auth/me.
+ * change their own account (no locking yourself out), and no change may leave
+ * the platform without an active admin. Any change signs the user out
+ * everywhere; requireAuth reads the account on every request, so a new role
+ * or a deactivation applies to their very next request.
  */
 export async function updateUser(adminId: string, userId: string, input: UpdateUserInput) {
   if (adminId === userId) {
@@ -62,7 +62,15 @@ export async function updateUser(adminId: string, userId: string, input: UpdateU
   const user = await prisma.user.findFirst({ where: { id: userId, isDeleted: false } });
   if (!user) throw new AppError(404, "USER_NOT_FOUND", "That user doesn't exist.");
 
+  const mayRemoveAdmin =
+    input.is_active === false || (input.role !== undefined && input.role !== "admin");
+
   const updated = await prisma.$transaction(async (tx) => {
+    if (mayRemoveAdmin) {
+      // Lock the active admins first, so two admins demoting each other at the
+      // same moment are serialised and the second one sees the first's change.
+      await tx.$queryRaw`SELECT id FROM users WHERE role = 'ADMIN' AND is_active AND NOT is_deleted FOR UPDATE`;
+    }
     const saved = await tx.user.update({
       where: { id: userId },
       data: {
@@ -71,9 +79,18 @@ export async function updateUser(adminId: string, userId: string, input: UpdateU
       },
       include: withProfileFlag,
     });
+    if (mayRemoveAdmin) {
+      const admins = await tx.user.count({
+        where: { role: "ADMIN", isActive: true, isDeleted: false },
+      });
+      // Throwing rolls the update back.
+      if (admins === 0) {
+        throw new AppError(409, "LAST_ADMIN", "There must be at least one active admin.");
+      }
+    }
     await tx.refreshToken.updateMany({
       where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), revokeReason: "admin" },
     });
     return saved;
   });

@@ -17,6 +17,7 @@ import {
   resultsFingerprint,
   topGaps,
   type Category,
+  type Insight,
   type SkillResult,
 } from "./dashboard.logic.js";
 import type { DashboardResponse, InsightResponse } from "./dashboard.schemas.js";
@@ -49,6 +50,7 @@ async function loadStanding(userId: string) {
               category: a.skill.category.toLowerCase() as Category,
             },
             percent: percentOf(a.result.score, a.result.maxScore),
+            threshold: a.result.threshold,
             mastered: a.result.masteryStatus === "MASTERED",
             completedAt: a.completedAt,
           },
@@ -120,11 +122,25 @@ function toSkillResult(r: SkillResult) {
     category: r.category,
     assessment_id: r.assessmentId,
     percent: r.percent,
+    threshold: r.threshold,
     mastery: r.mastered ? ("mastered" as const) : ("needs_revision" as const),
     completed_at: r.completedAt.toISOString(),
     attempts: r.attempts,
     change: r.change,
   };
+}
+
+const DAY_MS = 86_400_000;
+const IST_OFFSET_MS = 330 * 60_000;
+
+/** The India date (YYYY-MM-DD) of each check finished in the last year, oldest first. */
+function checkDates(finished: { completedAt: Date }[], now = new Date()) {
+  const since = now.getTime() - 365 * DAY_MS;
+  return finished
+    .map((check) => check.completedAt.getTime())
+    .filter((time) => time >= since)
+    .sort((a, b) => a - b)
+    .map((time) => new Date(time + IST_OFFSET_MS).toISOString().slice(0, 10));
 }
 
 /** GET /dashboard — readiness, categories, results, gaps and next steps. No AI call. */
@@ -163,6 +179,7 @@ export async function getDashboard(userId: string): Promise<DashboardResponse> {
     // Weakest first: what needs attention leads.
     skills: [...results].sort((a, b) => a.percent - b.percent).map(toSkillResult),
     gaps: topGaps(results).map(toSkillResult),
+    check_dates: checkDates(standing.finished),
     next_steps: buildNextSteps({
       onboardingCompleted: standing.onboardingCompleted,
       inProgress: standing.inProgress,
@@ -222,28 +239,35 @@ export async function getInsight(userId: string): Promise<InsightResponse> {
   if (cached?.fingerprint === fingerprint) return toInsightResponse(cached);
 
   const categories = categoryScores(standing.results);
-  const { data } = await generateJson(
-    {
-      userId,
-      feature: "next_steps",
-      system: buildInsightPrompt({
-        firstName: standing.user.firstName,
-        profile: standing.profile,
-        results: standing.results,
-        claimedUnchecked: standing.claimedUnchecked.map((s) => s.name),
-        readiness: readinessScore(categories),
-      }),
-      messages: [{ role: "user", content: "Write my coach's take now." }],
-      temperature: 0.5,
-      maxOutputTokens: 1500,
-    },
-    insightSchema,
-  );
+  let data: Insight;
+  try {
+    ({ data } = await generateJson(
+      {
+        userId,
+        feature: "next_steps",
+        system: buildInsightPrompt({
+          firstName: standing.user.firstName,
+          profile: standing.profile,
+          results: standing.results,
+          claimedUnchecked: standing.claimedUnchecked.map((s) => s.name),
+          readiness: readinessScore(categories),
+        }),
+        messages: [{ role: "user", content: "Write my coach's take now." }],
+        temperature: 0.5,
+        maxOutputTokens: 1500,
+      },
+      insightSchema,
+    ));
+  } catch (error) {
+    // A failed refresh shouldn't hide the last take: show it, marked as out of date.
+    if (cached) return { ...toInsightResponse(cached), stale: true };
+    throw error;
+  }
 
   const stored: StoredInsight = {
     fingerprint,
     generated_at: new Date().toISOString(),
-    insight: groundInsight(data, standing.results),
+    insight: groundInsight(data, standing.results, standing.claimedSlugs),
   };
   const messages = [stored] as unknown as Prisma.InputJsonArray;
   if (conversation) {

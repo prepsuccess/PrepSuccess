@@ -7,6 +7,7 @@ import type {
   UserQuestionProgress,
 } from "../../generated/prisma/client.js";
 import { AppError } from "../../lib/http.js";
+import { startOfIndianDay } from "../../lib/time.js";
 import { getDashboard } from "../dashboard/dashboard.service.js";
 import { buildWhere, solvedByWeek } from "./questions.logic.js";
 import type { ListQuestionsQuery, QuestionDetail, QuestionSummary } from "./questions.schemas.js";
@@ -59,7 +60,8 @@ export async function listQuestions(userId: string, query: ListQuestionsQuery) {
     prisma.questionBank.findMany({
       where,
       include: withMine(userId),
-      orderBy: [{ difficulty: "asc" }, { title: "asc" }],
+      // id breaks ties so pages never repeat or skip a question.
+      orderBy: [{ difficulty: "asc" }, { title: "asc" }, { id: "asc" }],
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     }),
@@ -132,14 +134,22 @@ function toProgress(row: UserQuestionProgress | null) {
 
 /**
  * Bookmark / un-bookmark. Idempotent: one row per student and question
- * (unique constraint), so repeating the call changes nothing.
+ * (unique constraint). bookmarkedAt orders My bookmarks: set when bookmarked
+ * (a repeat bookmark keeps it), cleared when removed.
  */
 export async function setBookmark(userId: string, id: string, bookmarked: boolean) {
   await loadQuestion(userId, id);
+  const key = { userId_questionId: { userId, questionId: id } };
+  const existing = await prisma.userQuestionProgress.findUnique({ where: key });
+  const bookmarkedAt = bookmarked
+    ? existing?.bookmarked
+      ? (existing.bookmarkedAt ?? new Date())
+      : new Date()
+    : null;
   const row = await prisma.userQuestionProgress.upsert({
-    where: { userId_questionId: { userId, questionId: id } },
-    create: { userId, questionId: id, bookmarked },
-    update: { bookmarked },
+    where: key,
+    create: { userId, questionId: id, bookmarked, bookmarkedAt },
+    update: { bookmarked, bookmarkedAt },
   });
   return toProgress(row);
 }
@@ -161,14 +171,14 @@ export async function setSolved(userId: string, id: string, solved: boolean) {
   return toProgress(row);
 }
 
-/** GET /questions/bookmarks — the student's bookmarks, newest first. */
+/** GET /questions/bookmarks — the student's bookmarks, most recently bookmarked first. */
 export async function listBookmarks(userId: string, page: number, limit: number) {
   const where = { userId, bookmarked: true, question: { ...live, skill: live } };
   const [rows, total] = await Promise.all([
     prisma.userQuestionProgress.findMany({
       where,
       include: { question: { include: withMine(userId) } },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ bookmarkedAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -238,10 +248,33 @@ export async function listPrepPdfs() {
   return pdfs.map(toPrepPdf);
 }
 
-/** POST /prep-pdfs/:id/download — counts the download and returns the link. */
-export async function downloadPrepPdf(id: string) {
+/**
+ * Downloads already counted today, as `${userId}:${pdfId}`, so re-clicking
+ * doesn't inflate the count: each student counts once per guide per IST day.
+ * In memory, so a restart (or a second instance) may count a repeat; the
+ * set is emptied when the IST day changes.
+ */
+const countedDownloads = { day: 0, keys: new Set<string>() };
+
+/** True the first time this student downloads this guide today. */
+export function firstDownloadToday(userId: string, pdfId: string, now = new Date()) {
+  const day = startOfIndianDay(now).getTime();
+  if (countedDownloads.day !== day) {
+    countedDownloads.day = day;
+    countedDownloads.keys.clear();
+  }
+  const key = `${userId}:${pdfId}`;
+  if (countedDownloads.keys.has(key)) return false;
+  countedDownloads.keys.add(key);
+  return true;
+}
+
+/** POST /prep-pdfs/:id/download — counts the download (once a day per student) and returns the link. */
+export async function downloadPrepPdf(userId: string, id: string) {
   const pdf = await prisma.prepPdf.findFirst({ where: { id, ...live } });
   if (!pdf) throw new AppError(404, "PREP_PDF_NOT_FOUND", "That guide isn't available.");
-  await prisma.prepPdf.update({ where: { id }, data: { downloads: { increment: 1 } } });
+  if (firstDownloadToday(userId, id)) {
+    await prisma.prepPdf.update({ where: { id }, data: { downloads: { increment: 1 } } });
+  }
   return { url: pdf.fileUrl };
 }

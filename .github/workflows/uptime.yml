@@ -1,12 +1,16 @@
 name: Uptime
 
-# Keeps production awake and checks each environment's readiness probe (API + database).
+# Keeps production awake and checks its readiness probe (API + database).
 # Render's free plan sleeps a service after 15 minutes without traffic, so production
-# is pinged every 10 minutes; one service running all month (~744 h) fits the free
-# 750 instance-hours. Staging is only checked hourly so it doesn't use up those hours.
+# is pinged every 10 minutes. That one service running all month uses ~744 of the
+# 750 free instance-hours, and those hours are SHARED by every free service in the
+# workspace — so nothing else may be kept awake. Staging is never pinged on a
+# schedule (each ping would keep it up for 15+ minutes and push the total past 750 h,
+# suspending all free services until the month ends); check it with a manual run
+# (Actions → Uptime → Run workflow), which pings both environments.
 # A failed run emails the repo's watchers via GitHub's normal notifications.
 # Set the URLs as repository variables: PRODUCTION_API_URL and STAGING_API_URL
-# (no trailing slash). An environment without a URL is skipped.
+# (no trailing slash). An environment without a URL is skipped (its job doesn't start).
 # Note: GitHub runs schedules only from the default branch, can delay them by a few
 # minutes, and pauses them after 60 days without repo activity — so also add an
 # external monitor (docs/DEPLOYMENT.md §Monitoring).
@@ -14,37 +18,37 @@ name: Uptime
 on:
   schedule:
     - cron: "*/10 * * * *" # production keep-alive
-    - cron: "7 * * * *" # staging check
   workflow_dispatch:
 
 permissions: {}
 
 jobs:
-  ping:
-    name: Ping ${{ matrix.env }}
+  production:
+    name: Ping production
+    # Every scheduled and manual run, once the URL is set.
+    if: vars.PRODUCTION_API_URL != ''
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - env: production
-            url_var: PRODUCTION_API_URL
-            schedule: "*/10 * * * *"
-          - env: staging
-            url_var: STAGING_API_URL
-            schedule: "7 * * * *"
     steps:
       - name: GET /health/ready
-        # Each schedule pings its own environment; a manual run pings both.
-        if: github.event_name != 'schedule' || github.event.schedule == matrix.schedule
         env:
-          BASE_URL: ${{ vars[matrix.url_var] }}
+          BASE_URL: ${{ vars.PRODUCTION_API_URL }}
         run: |
-          if [ -z "$BASE_URL" ]; then
-            echo "No ${{ matrix.url_var }} set; skipping ${{ matrix.env }}."
-            exit 0
-          fi
           # A sleeping instance takes up to a minute to wake, so allow a slow response and retry.
+          curl --fail --silent --show-error --max-time 60 \
+            --retry 3 --retry-delay 20 --retry-all-errors \
+            "$BASE_URL/health/ready"
+
+  staging:
+    name: Ping staging
+    # Manual runs only: a scheduled run never starts this job (no Actions minutes,
+    # no free instance-hours).
+    if: github.event_name == 'workflow_dispatch' && vars.STAGING_API_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /health/ready
+        env:
+          BASE_URL: ${{ vars.STAGING_API_URL }}
+        run: |
           curl --fail --silent --show-error --max-time 60 \
             --retry 3 --retry-delay 20 --retry-all-errors \
             "$BASE_URL/health/ready"

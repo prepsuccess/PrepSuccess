@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { SKILL_CATALOGUE } from "../skills/catalogue.js";
+
 /**
  * Pure readiness rules — no database, no AI — so every number on the
  * dashboard is deterministic and unit-testable (PRD-01 §3.6, §5: dashboard
@@ -30,6 +32,8 @@ export interface SkillResult {
   category: Category;
   assessmentId: string;
   percent: number;
+  /** The pass mark this result was scored against (the skill's at the time). */
+  threshold: number;
   mastered: boolean;
   completedAt: Date;
   attempts: number;
@@ -42,6 +46,7 @@ export interface FinishedCheck {
   assessmentId: string;
   skill: { id: string; slug: string; name: string; category: Category };
   percent: number;
+  threshold: number;
   mastered: boolean;
   completedAt: Date;
 }
@@ -61,6 +66,7 @@ export function latestPerSkill(checksNewestFirst: FinishedCheck[]): SkillResult[
     category: latest!.skill.category,
     assessmentId: latest!.assessmentId,
     percent: latest!.percent,
+    threshold: latest!.threshold,
     mastered: latest!.mastered,
     completedAt: latest!.completedAt,
     attempts: 1 + (previous ? 1 : 0) + rest.length,
@@ -226,12 +232,35 @@ export const insightSchema = z.object({
 });
 export type Insight = z.infer<typeof insightSchema>;
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Catalogue skills by name, matched as whole words ("Java" isn't found in
+ * "JavaScript"). One-letter names ("C") are too ambiguous to look for.
+ */
+const SKILL_NAMES = SKILL_CATALOGUE.filter((skill) => skill.name.length > 1).map((skill) => ({
+  slug: skill.slug,
+  pattern: new RegExp(`(?<![a-z0-9])${escapeRegExp(skill.name.toLowerCase())}(?![a-z0-9+#])`),
+}));
+
+/** Slugs of the catalogue skills a piece of text names. */
+export function skillsNamedIn(text: string) {
+  const lower = text.toLowerCase();
+  return SKILL_NAMES.filter((skill) => skill.pattern.test(lower)).map((skill) => skill.slug);
+}
+
 /**
  * Grounding check (PRD-01 §3.8): keeps only gaps about skills the student
- * was actually checked on and scored below the pass mark, so the AI can
- * never invent a weakness.
+ * was actually checked on and scored below the pass mark, and only plan
+ * steps that name no skill beyond what they were checked on or claimed —
+ * so the AI can never invent a weakness or steer them to a skill out of
+ * nowhere.
  */
-export function groundInsight(insight: Insight, results: SkillResult[]) {
+export function groundInsight(
+  insight: Insight,
+  results: SkillResult[],
+  claimedSlugs: string[] = [],
+) {
   const bySlug = new Map(results.map((r) => [r.slug, r]));
   const seen = new Set<string>();
   const gaps = insight.gaps.flatMap((gap) => {
@@ -240,7 +269,11 @@ export function groundInsight(insight: Insight, results: SkillResult[]) {
     seen.add(result.slug);
     return [{ skillId: result.skillId, name: result.name, why: gap.why, how: gap.how }];
   });
-  return { summary: insight.summary.trim(), gaps, plan: insight.plan };
+  const known = new Set([...bySlug.keys(), ...claimedSlugs]);
+  const plan = insight.plan.filter((step) =>
+    skillsNamedIn(`${step.title} ${step.detail}`).every((slug) => known.has(slug)),
+  );
+  return { summary: insight.summary.trim(), gaps, plan };
 }
 
 /** Changes whenever any latest result changes, so a cached insight knows it's stale. */
@@ -270,6 +303,7 @@ export function buildInsightPrompt(input: {
       name: r.name,
       category: r.category,
       score_percent: r.percent,
+      pass_mark_percent: r.threshold,
       status: r.mastered ? "mastered" : "needs revision",
       change_since_last_attempt: r.change,
     })),
@@ -277,14 +311,14 @@ export function buildInsightPrompt(input: {
   };
   return [
     `You are ${input.firstName}'s PrepSuccess placement coach. Write a short, honest, encouraging read of where they stand.`,
-    "Use ONLY the facts below. Never mention a skill, score or fact that isn't in them. Pass mark is 40%.",
+    "Use ONLY the facts below. Never mention a skill, score or fact that isn't in them. Each result has its own pass mark (pass_mark_percent); status already says whether it was reached.",
     "",
     `Facts: ${JSON.stringify(facts)}`,
     "",
     "Write:",
     "- summary: 2-3 sentences. Where they stand for their target role (or placements in general if none), their strongest area and the most important gap.",
-    "- gaps: up to 3 skills scoring below 40%, weakest or most important for their target role first. `skill` must be a skill slug from results. `why`: why it matters for their target role. `how`: one concrete thing to study or practise. Empty if nothing is below 40%.",
-    "- plan: 2-4 ordered actions for this week, each with a short title and one sentence of detail. Prefer revising weak skills and checking claimed-but-unchecked skills relevant to their target role.",
+    '- gaps: up to 3 skills with status "needs revision" (below their pass mark), weakest or most important for their target role first. `skill` must be a skill slug from results. `why`: why it matters for their target role. `how`: one concrete thing to study or practise. Empty if every skill is mastered.',
+    "- plan: 2-4 ordered actions for this week, each with a short title and one sentence of detail. Prefer revising weak skills and checking claimed-but-unchecked skills relevant to their target role. Only name skills from results or claimed_but_not_checked.",
     "Plain, simple English. No markdown. Don't repeat the score numbers more than needed.",
   ].join("\n");
 }

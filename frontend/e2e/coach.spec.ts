@@ -13,7 +13,8 @@ const nudge = {
   body: TIP,
   href: null,
   read: false,
-  created_at: "2026-10-03T10:30:00.000Z",
+  // Just created: the bell only toasts notifications newer than the page.
+  created_at: new Date().toISOString(),
 };
 
 test("the coach checks in with a toast that opens the chat", async ({ page }) => {

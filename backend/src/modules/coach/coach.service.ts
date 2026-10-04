@@ -8,11 +8,11 @@ import { notify } from "../../services/notifications/notifications.service.js";
 import { getDashboard } from "../dashboard/dashboard.service.js";
 import {
   COACH_DAILY_LIMIT,
-  HISTORY_WINDOW,
   MAX_STORED_MESSAGES,
   buildCoachPrompt,
   buildNudgePrompt,
   fallbackNudge,
+  historyWindow,
   suggestions,
   trackActivity,
   type CoachContext,
@@ -64,25 +64,54 @@ async function getConversation(userId: string) {
   });
 }
 
-/** Saves messages to the student's one coach conversation, keeping the latest. */
+/** The student's coach conversation, row-locked until the transaction ends. */
+async function lockConversation(tx: Prisma.TransactionClient, userId: string) {
+  const rows = await tx.$queryRaw<{ id: string; messages: unknown }[]>`
+    SELECT id, messages FROM ai_conversations
+    WHERE user_id = ${userId}::uuid AND agent_type = 'COACH'
+    ORDER BY created_at ASC
+    LIMIT 1
+    FOR UPDATE`;
+  return rows[0] ?? null;
+}
+
+/**
+ * Saves to the student's one coach conversation, keeping the latest
+ * MAX_STORED_MESSAGES. Appends to the messages as they are now (not the copy
+ * read before the AI call), so a reply and a check-in landing together don't
+ * overwrite each other. `replace` swaps the whole list (used to clear it).
+ * Returns the saved messages.
+ */
 async function saveMessages(
   userId: string,
-  conversationId: string | null,
   messages: CoachChatMessage[],
+  { replace = false }: { replace?: boolean } = {},
 ) {
-  const kept = messages.slice(-MAX_STORED_MESSAGES) as unknown as Prisma.InputJsonArray;
-  if (conversationId) {
-    await prisma.aIConversation.update({ where: { id: conversationId }, data: { messages: kept } });
-  } else {
-    await prisma.aIConversation.create({ data: { userId, agentType: "COACH", messages: kept } });
-  }
+  return prisma.$transaction(async (tx) => {
+    let conversation = await lockConversation(tx, userId);
+    if (!conversation && replace && messages.length === 0) return [];
+    if (!conversation) {
+      // First save: serialise creators so two first messages make one conversation.
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${userId} || 'COACH'))`;
+      conversation = await lockConversation(tx, userId);
+    }
+    const current = replace ? [] : asMessages(conversation?.messages);
+    const kept = [...current, ...messages].slice(-MAX_STORED_MESSAGES);
+    const json = kept as unknown as Prisma.InputJsonArray;
+    if (conversation) {
+      await tx.aIConversation.update({ where: { id: conversation.id }, data: { messages: json } });
+    } else {
+      await tx.aIConversation.create({ data: { userId, agentType: "COACH", messages: json } });
+    }
+    return kept;
+  });
 }
 
 /** Successful coach replies today: a failed AI call never uses up a message. */
 async function usage(userId: string, now = new Date()) {
   const start = startOfIndianDay(now);
   const used = await prisma.aiUsage.count({
-    where: { userId, feature: "coach", success: true, createdAt: { gte: start } },
+    where: { userId, feature: "coach", success: true, system: false, createdAt: { gte: start } },
   });
   return {
     used,
@@ -103,11 +132,27 @@ export async function getCoach(userId: string) {
   return toState(userId, asMessages(conversation?.messages));
 }
 
+/** Students with a coach message waiting on the AI (this process only). */
+const inFlight = new Set<string>();
+
 /**
  * POST /ai/coach/messages — one AI call with the student's live data in the
  * prompt. Nothing is saved if the AI fails, so the student can send again.
  */
 export async function sendCoachMessage(userId: string, content: string) {
+  // One message at a time per student: two in flight would both pass the daily count.
+  if (inFlight.has(userId)) {
+    throw new AppError(429, "COACH_BUSY", "Wait for the coach to answer your last message.");
+  }
+  inFlight.add(userId);
+  try {
+    return await answer(userId, content);
+  } finally {
+    inFlight.delete(userId);
+  }
+}
+
+async function answer(userId: string, content: string) {
   const today = await usage(userId);
   if (today.remaining <= 0) {
     throw new AppError(
@@ -124,9 +169,7 @@ export async function sendCoachMessage(userId: string, content: string) {
     content,
     created_at: new Date().toISOString(),
   };
-  const history = [...messages, question]
-    .slice(-HISTORY_WINDOW)
-    .map(({ role, content: body }) => ({ role, content: body }));
+  const history = historyWindow([...messages, question]);
 
   const { data: reply } = await generateText({
     userId,
@@ -137,19 +180,16 @@ export async function sendCoachMessage(userId: string, content: string) {
     maxOutputTokens: 800,
   });
 
-  const updated: CoachChatMessage[] = [
-    ...messages,
+  const saved = await saveMessages(userId, [
     question,
     { role: "assistant", content: reply, created_at: new Date().toISOString() },
-  ];
-  await saveMessages(userId, conversation?.id ?? null, updated);
-  return toState(userId, updated.slice(-MAX_STORED_MESSAGES), context);
+  ]);
+  return toState(userId, saved, context);
 }
 
 /** DELETE /ai/coach — starts a fresh chat. Today's message count is unchanged. */
 export async function clearCoach(userId: string) {
-  const conversation = await getConversation(userId);
-  if (conversation) await saveMessages(userId, conversation.id, []);
+  await saveMessages(userId, [], { replace: true });
   return toState(userId, []);
 }
 
@@ -178,7 +218,19 @@ export async function ping(userId: string, now = new Date()) {
   });
   if (claimed.count === 0) return { nudged: false };
 
-  await sendNudge(userId);
+  try {
+    await sendNudge(userId);
+  } catch (error) {
+    // Release today's claim so a later ping can try again.
+    logger.error({ err: error, userId }, "Coach check-in failed");
+    await prisma.userActivity
+      .updateMany({
+        where: { userId, lastNudgeAt: now },
+        data: { lastNudgeAt: previous?.lastNudgeAt ?? null },
+      })
+      .catch((err: unknown) => logger.error({ err, userId }, "Couldn't release the check-in"));
+    return { nudged: false };
+  }
   return { nudged: true };
 }
 
@@ -201,9 +253,7 @@ async function sendNudge(userId: string) {
     logger.warn({ err: error, userId }, "Coach check-in used the fallback");
   }
 
-  const conversation = await getConversation(userId);
-  await saveMessages(userId, conversation?.id ?? null, [
-    ...asMessages(conversation?.messages),
+  await saveMessages(userId, [
     { role: "assistant", content: tip, created_at: new Date().toISOString(), nudge: true },
   ]);
   await notify(userId, { type: "COACH_NUDGE", title: "Your coach has a tip", body: tip });

@@ -4,12 +4,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { QuestionDetail, QuestionSummary } from "@/lib/api/types";
 import { API, fail, http, ok, server } from "@/test/server";
 import { renderWithStore, testUser } from "@/test/render";
+import { Bookmarks } from "./Bookmarks";
+import { PrepGuides, safeGuideUrl } from "./PrepGuides";
 import { QuestionBank } from "./QuestionBank";
 import { QuestionView } from "./QuestionView";
 
-// The question bank keeps its filters in the URL; a stub router records changes.
+// The question bank keeps its filters in the URL; a stub router records changes
+// and updates the address bar, but (like a render that hasn't happened yet)
+// leaves the `useSearchParams` value as it was.
 let search = new URLSearchParams();
-const replace = vi.fn();
+const replace = vi.fn((url: string) => window.history.replaceState(null, "", url));
+const setUrl = (query: string) => {
+  search = new URLSearchParams(query);
+  window.history.replaceState(null, "", query ? `/questions?${query}` : "/questions");
+};
 vi.mock("next/navigation", () => ({
   useSearchParams: () => search,
   usePathname: () => "/questions",
@@ -43,13 +51,13 @@ const filters = {
 };
 
 beforeEach(() => {
-  search = new URLSearchParams();
-  replace.mockReset();
+  setUrl("");
+  replace.mockClear();
 });
 
 describe("QuestionBank", () => {
   it("sends the URL's filters to the API and lists the results", async () => {
-    search = new URLSearchParams("skill=sql&company=TCS&page=2");
+    setUrl("skill=sql&company=TCS&page=2");
     let sent: URLSearchParams | undefined;
     server.use(
       http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
@@ -72,7 +80,7 @@ describe("QuestionBank", () => {
   });
 
   it("puts search text in the URL after typing stops, starting from page 1", async () => {
-    search = new URLSearchParams("page=3");
+    setUrl("page=3");
     server.use(
       http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
       http.get(`${API}/api/v1/questions`, () =>
@@ -87,8 +95,48 @@ describe("QuestionBank", () => {
     );
   });
 
+  it("keeps a filter picked while the search was still waiting to apply", async () => {
+    server.use(
+      http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
+      http.get(`${API}/api/v1/questions`, () =>
+        HttpOk([summary], { page: 1, limit: 20, total: 1 }),
+      ),
+    );
+    // Radix Select uses pointer capture, which jsdom doesn't implement.
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.releasePointerCapture ??= () => {};
+    Element.prototype.scrollIntoView ??= () => {};
+    renderWithStore(<QuestionBank />, { signedInAs: testUser });
+    await screen.findByRole("link", { name: /WHERE and HAVING/ });
+
+    // The company changes the URL, but this render's search params are still the old ones
+    // when the search debounce fires.
+    await userEvent.click(screen.getByRole("combobox", { name: "Company" }));
+    await userEvent.click(await screen.findByRole("option", { name: "TCS (28)" }));
+    expect(replace).toHaveBeenLastCalledWith("/questions?company=TCS", { scroll: false });
+    await userEvent.type(screen.getByLabelText("Search questions"), "having");
+    await waitFor(() =>
+      expect(replace).toHaveBeenLastCalledWith("/questions?company=TCS&q=having", {
+        scroll: false,
+      }),
+    );
+  });
+
+  it("moves to the last page when ?page is past the end", async () => {
+    setUrl("page=5");
+    server.use(
+      http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
+      http.get(`${API}/api/v1/questions`, () => HttpOk([], { page: 5, limit: 20, total: 21 })),
+    );
+    renderWithStore(<QuestionBank />, { signedInAs: testUser });
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith("/questions?page=2", { scroll: false }),
+    );
+    expect(screen.queryByText("No questions match")).not.toBeInTheDocument();
+  });
+
   it("explains an empty result and clears the filters", async () => {
-    search = new URLSearchParams("company=Zoho");
+    setUrl("company=Zoho");
     server.use(
       http.get(`${API}/api/v1/questions/filters`, () => ok(filters)),
       http.get(`${API}/api/v1/questions`, () => HttpOk([], { page: 1, limit: 20, total: 0 })),
@@ -138,6 +186,79 @@ describe("QuestionView", () => {
         "false",
       ),
     );
+  });
+});
+
+describe("Bookmarks", () => {
+  it("steps back a page after removing the last bookmark on it", async () => {
+    const saved = Array.from({ length: 21 }, (_, i) => ({
+      ...summary,
+      id: `11111111-1111-4111-8111-${String(i).padStart(12, "0")}`,
+      title: `Saved question ${i + 1}`,
+    }));
+    server.use(
+      http.get(`${API}/api/v1/questions/bookmarks`, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page"));
+        return HttpOk(saved.slice((page - 1) * 20, page * 20), {
+          page,
+          limit: 20,
+          total: saved.length,
+        });
+      }),
+      http.delete(`${API}/api/v1/questions/:id/bookmark`, ({ params }) => {
+        saved.splice(
+          saved.findIndex((q) => q.id === params.id),
+          1,
+        );
+        return ok({ bookmarked: false, solved: false, solved_at: null });
+      }),
+    );
+    renderWithStore(<Bookmarks />, { signedInAs: testUser });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Next" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove bookmark: Saved question 21" }),
+    );
+    expect(await screen.findByText("Saved question 1")).toBeInTheDocument();
+    expect(screen.queryByText("No bookmarks yet")).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Pages" })).not.toBeInTheDocument();
+  });
+});
+
+describe("PrepGuides", () => {
+  const guide = {
+    id: "33333333-3333-4333-8333-333333333333",
+    title: "SQL interview guide",
+    description: null,
+    skill: null,
+    role: null,
+    company: null,
+    size_label: "8 pages",
+  };
+
+  it("opens https links and same-site guides only", () => {
+    expect(safeGuideUrl("https://cdn.example.com/sql.pdf")).toBe("https://cdn.example.com/sql.pdf");
+    const local = `${window.location.origin}/guides/sql.pdf`;
+    expect(safeGuideUrl(local)).toBe(local);
+    expect(safeGuideUrl("http://example.com/sql.pdf")).toBeNull();
+    expect(safeGuideUrl("javascript:alert(document.cookie)")).toBeNull();
+    expect(safeGuideUrl("data:text/html,<script>alert(1)</script>")).toBeNull();
+  });
+
+  it("refuses to open a guide whose link isn't safe", async () => {
+    const tab = { close: vi.fn(), opener: {}, location: { href: "" } };
+    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    server.use(
+      http.get(`${API}/api/v1/prep-pdfs`, () => ok([guide])),
+      http.post(`${API}/api/v1/prep-pdfs/${guide.id}/download`, () =>
+        ok({ url: "javascript:alert(document.cookie)" }),
+      ),
+    );
+    renderWithStore(<PrepGuides />, { signedInAs: testUser });
+    await userEvent.click(await screen.findByRole("button", { name: "Download" }));
+    await waitFor(() => expect(tab.close).toHaveBeenCalled());
+    expect(tab.location.href).toBe("");
+    open.mockRestore();
   });
 });
 

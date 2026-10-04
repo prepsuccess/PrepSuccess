@@ -15,8 +15,9 @@ Write your reply in about 100-150 words. Use plain language and at least one eve
     [
       c(
         "accuracy",
-        "Explanation is technically correct (photos live on remote servers / data centres)",
+        "Explanation is technically correct",
         3,
+        "Explanation is technically correct (photos live on remote servers / data centres)",
       ),
       c("analogy", "Uses a clear, fitting everyday analogy", 3),
       c("plain", "No unexplained jargon; easy for a non-technical person to follow", 3),
@@ -45,10 +46,16 @@ Write the update (max 5-6 lines). Put the most important information first and m
       c("priority", "Leads with what matters most for Friday's demo (risks / blockers)", 3),
       c(
         "blockers",
-        "Clearly flags the prod email bug and the DevOps access blocker with a specific ask",
+        "Clearly flags the key bug and blocker, with a specific ask",
         3,
+        "Clearly flags the prod email bug and the DevOps access blocker with a specific ask",
       ),
-      c("concise", "Drops low-value detail (e.g. the CORS story) and stays within 5-6 lines", 2),
+      c(
+        "concise",
+        "Drops low-value detail and stays within 5-6 lines",
+        2,
+        "Drops low-value detail (e.g. the CORS story) and stays within 5-6 lines",
+      ),
       c("tone", "Professional, factual tone; gives a revised date for the dashboard", 2),
     ],
     `
@@ -189,7 +196,12 @@ She worked hard on it and is a little sensitive about criticism. Write the feedb
 `,
     [
       c("positive", "Starts with genuine, specific appreciation", 2),
-      c("issues", "Covers all three issues clearly, with the security issue as top priority", 3),
+      c(
+        "issues",
+        "Covers all three issues clearly, the most serious first",
+        3,
+        "Covers all three issues clearly, with the security issue as top priority",
+      ),
       c(
         "constructive",
         "Suggests concrete fixes or offers help instead of only pointing out flaws",
@@ -392,8 +404,9 @@ Give a one-line reason for any item you think is debatable.
     [
       c(
         "placement",
-        "Items placed in sensible quadrants (OA and fee as urgent+important, etc.)",
+        "Items placed in sensible quadrants",
         4,
+        "Items placed in sensible quadrants (OA and fee as urgent+important, etc.)",
       ),
       c("actions", "Clear action for each item that fits its quadrant", 3),
       c("reasoning", "Justifies debatable choices briefly", 3),
@@ -418,8 +431,18 @@ Placement season starts in 6 weeks. You have classes 9 am-4 pm on weekdays and a
 Write a week-by-week plan and a sample weekday schedule. Show how many total hours you have and how you split them.
 `,
     [
-      c("hours", "Correct total available hours (6 weeks × 27 h = 162 h) and a sensible split", 3),
-      c("weakness", "Gives more time to weak areas (DSA) with a clear reason", 2),
+      c(
+        "hours",
+        "Correct total available hours and a sensible split",
+        3,
+        "Correct total available hours (6 weeks × 27 h = 162 h) and a sensible split",
+      ),
+      c(
+        "weakness",
+        "Gives more time to the weak areas, with a clear reason",
+        2,
+        "Gives more time to weak areas (DSA) with a clear reason",
+      ),
       c("progression", "Week-by-week progression ending with mocks and revision", 3),
       c("realistic", "Realistic daily schedule with breaks and a buffer", 2),
     ],
@@ -458,13 +481,15 @@ Identify at least 4 specific time-wasters or habits causing the problem, and pro
     [
       c(
         "diagnosis",
-        "Identifies at least 4 specific problems (phone in bed, open-ended breaks, giving up when stuck, late sleep, vague Sunday plan)",
+        "Identifies at least 4 specific problems in the routine",
         3,
+        "Identifies at least 4 specific problems (phone in bed, open-ended breaks, giving up when stuck, late sleep, vague Sunday plan)",
       ),
       c(
         "fixes",
-        "Concrete, practical fix for each (timers, app limits, Pomodoro, hint rule, sleep time)",
+        "Concrete, practical fix for each problem",
         4,
+        "Concrete, practical fix for each (timers, app limits, Pomodoro, hint rule, sleep time)",
       ),
       c("schedule", "Revised evening schedule is realistic, not overly strict", 3),
     ],
@@ -495,8 +520,9 @@ Write:
       c("plan", "Hour-by-hour plan is realistic and focuses on the highest-value work", 2),
       c(
         "habits",
-        "Habits map directly to the three causes (estimate setup, clarify early, protect focus time)",
+        "Habits map directly to the three causes",
         3,
+        "Habits map directly to the three causes (estimate setup, clarify early, protect focus time)",
       ),
     ],
     `
@@ -528,7 +554,12 @@ Write the short message (about 120 words) you would send the team to re-energise
     [
       c("acknowledge", "Acknowledges the setback honestly instead of ignoring it", 2),
       c("purpose", "Reconnects the team to a clear purpose or goal", 3),
-      c("actions", "Three concrete actions (e.g. new sponsor plan, 1-on-1s, smaller wins)", 3),
+      c(
+        "actions",
+        "Three concrete actions",
+        3,
+        "Three concrete actions (e.g. new sponsor plan, 1-on-1s, smaller wins)",
+      ),
       c("tone", "Positive, inclusive tone without blame", 2),
     ],
   ),
@@ -543,7 +574,12 @@ Write a delegation plan: who owns what (give volunteers names and short strength
 `,
     [
       c("ownership", "Every task has one clear owner matched to strengths", 3),
-      c("deadlines", "Realistic deadlines with dependencies (e.g. lab before publicity)", 3),
+      c(
+        "deadlines",
+        "Realistic deadlines that respect the dependencies",
+        3,
+        "Realistic deadlines with dependencies (e.g. lab before publicity)",
+      ),
       c("tracking", "Light-weight tracking method (checklist, weekly check-in)", 2),
       c("restraint", "Shows they will not micromanage or do everything themselves", 2),
     ],
@@ -563,11 +599,17 @@ You cannot get hold of your guide until next week. Write how you would make the 
     [
       c(
         "info",
-        "Gathers the right information quickly (time left, guide's criteria, effort estimates)",
+        "Gathers the right information quickly",
         3,
+        "Gathers the right information quickly (time left, guide's criteria, effort estimates)",
       ),
       c("involve", "Involves the team fairly but keeps ownership of the final call", 2),
-      c("decision", "Makes a clear, reasoned decision (possibly a hybrid) with a fallback", 3),
+      c(
+        "decision",
+        "Makes a clear, reasoned decision with a fallback",
+        3,
+        "Makes a clear, reasoned decision (possibly a hybrid) with a fallback",
+      ),
       c("communicate", "Communicates respectfully to those who disagreed and gets commitment", 2),
     ],
   ),

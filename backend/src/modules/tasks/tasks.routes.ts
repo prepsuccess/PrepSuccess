@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { rateLimitPerMinute } from "../../middleware/rate-limit.js";
+import { rateLimitPerUserPerMinute } from "../../middleware/rate-limit.js";
 import { requireAuth } from "../../middleware/require-auth.js";
 import * as tasks from "./tasks.controller.js";
 
@@ -10,5 +10,5 @@ export const tasksRouter = Router();
 const student = requireAuth("STUDENT");
 tasksRouter.get("/", student, tasks.list);
 tasksRouter.get("/:id", student, tasks.get);
-// Each submission is one AI call.
-tasksRouter.post("/:id/submit", student, rateLimitPerMinute(6), tasks.submit);
+// Each submission is one AI call; throttled per student, not per (shared) IP.
+tasksRouter.post("/:id/submit", student, rateLimitPerUserPerMinute(6), tasks.submit);

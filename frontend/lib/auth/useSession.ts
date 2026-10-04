@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { baseApi } from "@/lib/api/baseApi";
+import { isApiError } from "@/lib/api/errors";
 import { authApi, useGetMeQuery } from "@/lib/api/endpoints/auth";
 import type { TokenResponse } from "@/lib/api/types";
 import type { AppDispatch } from "@/lib/store/store";
@@ -23,8 +24,14 @@ export function useSession(): SessionState {
   if (status === "unknown") return LOADING;
   if (status === "signedOut") return SIGNED_OUT;
   if (me.data) return { status: "authenticated", user: me.data };
-  // A dead session is signed out by the base query; a network failure lands here too.
-  if (me.isError) return SIGNED_OUT;
+  if (me.isError) {
+    // Only the API saying no ends the session (a dead one is also signed out by
+    // the base query). Offline, a timeout or a 5xx while the host wakes up says
+    // nothing about it, so keep the tokens and offer a retry.
+    const status = isApiError(me.error) ? me.error.status : 0;
+    if (status === 401 || status === 403) return SIGNED_OUT;
+    return { status: "unreachable", user: null, retry: me.refetch };
+  }
   return LOADING;
 }
 

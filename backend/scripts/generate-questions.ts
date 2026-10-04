@@ -11,8 +11,10 @@ import { topUpBank } from "../src/modules/assessment/bank.service.js";
  *   npm run questions:generate -- --as admin@college.edu --skill sql
  *
  * Without it the bank still fills itself as students take checks. `--as` is
- * an admin account the AI usage is recorded against; this job skips the
- * per-student daily limit. About 5 AI calls per skill; safe to stop and re-run.
+ * an admin account the AI usage is recorded against. The calls are system
+ * calls: they skip the daily limit and are recorded with `system: true`, so
+ * they never use up that admin's own quota. About 5 AI calls per skill; safe
+ * to stop and re-run.
  */
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -59,6 +61,7 @@ for (const skill of skills) {
       break;
     }
     try {
+      // A system call: not counted against the admin's daily AI limit.
       const added = await topUpBank(skill, levels, admin.id, { system: true });
       console.log(`  ${skill.name}: +${added} (now ${total + added})`);
       if (!added) break;

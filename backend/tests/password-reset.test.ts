@@ -19,6 +19,30 @@ const db = vi.hoisted(() => {
           (where.isUsed === undefined || o.isUsed === where.isUsed),
       )
       .at(-1) ?? null;
+  // Just enough of Prisma's where/data semantics for the OTP queries.
+  type Row = Record<string, unknown>;
+  const matches = (o: Row, where: Row) =>
+    Object.entries(where).every(([key, cond]) => {
+      if (cond === undefined) return true;
+      if (cond && typeof cond === "object" && !(cond instanceof Date)) {
+        const c = cond as { lt?: number; gte?: number };
+        if (c.lt !== undefined && !((o[key] as number) < c.lt)) return false;
+        if (c.gte !== undefined && !((o[key] as number) >= c.gte)) return false;
+        return true;
+      }
+      return o[key] === cond;
+    });
+  const apply = (o: Row, data: Row) => {
+    for (const [key, value] of Object.entries(data)) {
+      const v = value as { increment?: number; decrement?: number };
+      if (v && typeof v === "object" && "increment" in v)
+        o[key] = (o[key] as number) + v.increment!;
+      else if (v && typeof v === "object" && "decrement" in v)
+        o[key] = (o[key] as number) - v.decrement!;
+      else o[key] = value;
+    }
+    return o;
+  };
   const prisma = {
     user: {
       findUnique: vi.fn(async ({ where }) =>
@@ -44,21 +68,16 @@ const db = vi.hoisted(() => {
         state.otps.push(row);
         return row;
       }),
+      findUnique: vi.fn(async ({ where }) => state.otps.find((o) => o.id === where.id) ?? null),
       update: vi.fn(async ({ where, data }) =>
-        Object.assign(
+        apply(
           state.otps.find((o) => o.id === where.id)!,
           data,
         ),
       ),
       updateMany: vi.fn(async ({ where, data }) => {
-        const rows = state.otps.filter(
-          (o) =>
-            (where.id === undefined || o.id === where.id) &&
-            (where.email === undefined || o.email === where.email) &&
-            (where.purpose === undefined || o.purpose === where.purpose) &&
-            o.isUsed === where.isUsed,
-        );
-        rows.forEach((o) => Object.assign(o, data));
+        const rows = state.otps.filter((o) => matches(o, where));
+        rows.forEach((o) => apply(o, data));
         return { count: rows.length };
       }),
       delete: vi.fn(async () => ({})),
@@ -77,11 +96,15 @@ const db = vi.hoisted(() => {
   return { now, state, prisma };
 });
 
-const mail = vi.hoisted(() => ({ sent: [] as { to: string; code: string; purpose: string }[] }));
+const mail = vi.hoisted(() => ({
+  sent: [] as { to: string; code: string; purpose: string }[],
+  fail: false,
+}));
 
 vi.mock("../src/db/prisma.js", () => ({ prisma: db.prisma }));
 vi.mock("../src/services/email/email.service.js", () => ({
   sendOtpEmail: vi.fn(async (to: string, code: string, _ttl: number, purpose: string) => {
+    if (mail.fail) throw new Error("SMTP down");
     mail.sent.push({ to, code, purpose });
   }),
 }));
@@ -97,6 +120,7 @@ const reset = (otp: string, password = "new-password-123") =>
 beforeEach(() => {
   vi.clearAllMocks();
   mail.sent = [];
+  mail.fail = false;
   db.state.otps = [];
   db.state.revoked = 0;
   db.state.notifications = [];
@@ -144,6 +168,16 @@ describe("POST /auth/forgot-password", () => {
 
     expect(mail.sent).toHaveLength(1);
   });
+
+  it("answers the same when the email fails to send, and keeps the code", async () => {
+    const known = (await forgot("nobody@college.edu")).body.data.message as string;
+    mail.fail = true;
+    const res = await forgot();
+    expect(res.status).toBe(200);
+    expect(res.body.data.message).toBe(known.replace("nobody@college.edu", EMAIL));
+    expect(db.state.otps).toHaveLength(1);
+    expect(db.prisma.emailOtp.delete).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /auth/reset-password", () => {
@@ -170,6 +204,37 @@ describe("POST /auth/reset-password", () => {
     expect((await reset(wrong)).body.error.message).toContain("2 attempts left");
     await reset(wrong);
     expect((await reset(wrong)).body.error.code).toBe("OTP_INVALID");
+    expect((await reset(right)).status).toBe(400);
+    expect(db.state.user!.passwordHash).toBe("old-hash");
+  });
+
+  it("doesn't count a right code as an attempt", async () => {
+    await forgot();
+    const right = mail.sent[0]!.code;
+    const wrong = right === "000000" ? "111111" : "000000";
+    await reset(wrong);
+    db.state.user!.isActive = false; // the code is right, but the reset still fails
+    expect((await reset(right)).status).toBe(400);
+    db.state.user!.isActive = true;
+    expect(db.state.otps[0]!.attempts).toBe(1);
+    expect((await reset(wrong)).body.error.message).toContain("1 attempt left");
+    expect((await reset(right)).status).toBe(200);
+  });
+
+  it("allows at most three guesses even when they arrive at once", async () => {
+    await forgot();
+    const right = mail.sent[0]!.code;
+    const wrong = (n: number) => String((Number(right) + n) % 1_000_000).padStart(6, "0");
+    const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map((n) => reset(wrong(n))));
+
+    expect(results.every((r) => r.status === 400)).toBe(true);
+    expect(db.state.otps[0]).toMatchObject({ attempts: 3, isUsed: true });
+    // Only three guesses were ever compared; the rest were turned away first.
+    const compared = results.filter(
+      (r) => r.body.error.code === "OTP_INVALID" && !r.body.error.message.includes("isn't valid"),
+    );
+    expect(compared.length).toBe(3);
+    // Burnt: even the right code no longer works.
     expect((await reset(right)).status).toBe(400);
     expect(db.state.user!.passwordHash).toBe("old-hash");
   });

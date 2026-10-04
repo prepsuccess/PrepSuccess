@@ -393,7 +393,7 @@ export interface paths {
         put?: never;
         /**
          * Email a password-reset code
-         * @description Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. Always answers 200 with the same message, whether or not the email is registered and even inside the 60-second resend cooldown, so it can't be used to discover accounts.
+         * @description Step 1 of a password reset. Emails a 6-digit code valid for 10 minutes to an active account. Always answers 200 with the same message, whether or not the email is registered and even inside the 60-second resend cooldown, so it can't be used to discover accounts. The email is sent in the background, so a mail failure doesn't change the answer either.
          */
         post: {
             parameters: {
@@ -439,15 +439,6 @@ export interface paths {
                 };
                 /** @description `TOO_MANY_REQUESTS` — rate limit hit; wait a minute. */
                 429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description `EMAIL_SEND_FAILED` — try again. */
-                503: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -555,7 +546,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange a refresh token for a new token pair
-         * @description Rotates the refresh token: the one you send is revoked and a new pair is returned. Reusing an already-rotated token signs the user out of every session.
+         * @description Rotates the refresh token: the one you send is revoked and a new pair is returned. If the token was rotated less than 60 seconds ago (another tab refreshed at the same moment), answers 409 and revokes nothing — retry with the newest token. Replaying a token rotated longer ago signs the user out of every session.
          */
         post: {
             parameters: {
@@ -592,6 +583,15 @@ export interface paths {
                 };
                 /** @description `INVALID_REFRESH_TOKEN` — sign in again. */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `REFRESH_RACE` — another tab just refreshed; use its tokens or retry. */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -725,7 +725,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description `UNAUTHORIZED` (no token) or `INVALID_TOKEN` (expired/invalid). */
+                /** @description `UNAUTHORIZED` (no token, or the account is deactivated/deleted) or `INVALID_TOKEN` (expired/invalid). */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -753,13 +753,15 @@ export interface paths {
         };
         /**
          * Start Google sign-in (browser redirect)
-         * @description Open this URL in the browser (a link, not fetch). Redirects to Google's consent screen. Google then returns to `/api/v1/auth/google/callback`, which redirects to the frontend's `/auth/callback#access_token=…&refresh_token=…&next=…`, or to `/login?error=<code>` on failure.
+         * @description Open this URL in the browser (a link, not fetch). Redirects to Google's consent screen. Google then returns to `/api/v1/auth/google/callback`, which redirects to the frontend's `/auth/callback#access_token=…&refresh_token=…&next=…&nonce=…`, or to `/login?error=<code>` on failure. `nonce` is echoed back unchanged; the frontend must check it matches the one it sent. Without Google keys on the server it redirects to `/login?error=google_not_configured`; an invalid `nonce` redirects to `/login?error=google_failed`.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Same-site path to land on after sign-in. */
+                    /** @description Same-site path to land on after sign-in. Anything else is ignored. */
                     next?: string;
+                    /** @description Random value the frontend keeps (sessionStorage) and expects back in the callback fragment, so a sign-in it didn't start (login CSRF) is rejected. 16–128 of [A-Za-z0-9_-]. */
+                    nonce?: string;
                 };
                 header?: never;
                 path?: never;
@@ -767,7 +769,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Redirect to Google's consent screen. */
+                /** @description Redirect to Google's consent screen, or to `/login?error=<code>`. */
                 302: {
                     headers: {
                         [name: string]: unknown;
@@ -776,15 +778,6 @@ export interface paths {
                 };
                 /** @description `TOO_MANY_REQUESTS` — rate limit hit; wait a minute. */
                 429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description `GOOGLE_NOT_CONFIGURED` — Google keys missing on the server. */
-                503: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1225,7 +1218,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description `COACH_DAILY_LIMIT`, `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
+                /** @description `COACH_DAILY_LIMIT`, `COACH_BUSY` (a reply is still on its way), `AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`. */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -1514,7 +1507,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Bookmarks, newest first. */
+                /** @description Bookmarks, most recently bookmarked first. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2131,7 +2124,7 @@ export interface paths {
         put?: never;
         /**
          * Download a prep guide
-         * @description Counts the download (for admin analytics) and returns the link to open.
+         * @description Counts the download (for admin analytics; once per student per guide per day) and returns the link to open.
          */
         post: {
             parameters: {
@@ -2224,7 +2217,8 @@ export interface paths {
                 query?: {
                     skill?: string;
                     q?: string;
-                    include_inactive?: boolean;
+                    /** @description `false` hides inactive questions. */
+                    include_inactive?: "true" | "false";
                     page?: number;
                     limit?: number;
                 };
@@ -2298,7 +2292,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Add an interview question */
+        /**
+         * Add an interview question
+         * @description If a deleted question in this skill has the same title, it is restored with this content.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2359,7 +2356,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description `QUESTION_EXISTS` — same title in this skill. */
+                /** @description `QUESTION_EXISTS` — a live question in this skill has that title. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4700,7 +4697,7 @@ export interface paths {
         put?: never;
         /**
          * Create a skill
-         * @description Onboarding claims are matched against the built-in catalogue's aliases, so a new skill can be checked from the skill list but isn't auto-matched from the chat yet.
+         * @description Onboarding claims are matched against the built-in catalogue's aliases, so a new skill can be checked from the skill list but isn't auto-matched from the chat yet. If a deleted skill has the slug, it is restored with the new details instead.
          */
         post: {
             parameters: {
@@ -4753,7 +4750,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description `SLUG_TAKEN`. */
+                /** @description `SLUG_TAKEN` — a skill that isn't deleted uses that slug. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -5895,6 +5892,7 @@ export interface components {
                 id: string;
                 description: string;
                 points: number;
+                expected?: string;
             }[];
         };
         AdminUpdateTaskRequest: {
@@ -5906,6 +5904,7 @@ export interface components {
                 id: string;
                 description: string;
                 points: number;
+                expected?: string;
             }[];
             is_active?: boolean;
         };
@@ -6442,8 +6441,17 @@ export interface components {
             };
             /** @description Latest result per checked skill. */
             skills: components["schemas"]["DashboardSkillResult"][];
-            /** @description Up to 3 skills below the pass mark, weakest first. */
+            /** @description Up to 3 skills below their pass mark, weakest first. */
             gaps: components["schemas"]["DashboardSkillResult"][];
+            /**
+             * @description The India date of every check finished in the last 365 days, oldest first (one entry per check), for the practice calendar.
+             * @example [
+             *       "2026-09-28",
+             *       "2026-10-02",
+             *       "2026-10-02"
+             *     ]
+             */
+            check_dates: string[];
             next_steps: {
                 id: string;
                 /** @enum {string} */
@@ -6470,6 +6478,11 @@ export interface components {
             assessment_id: string;
             /** @example 64 */
             percent: number;
+            /**
+             * @description The pass mark (percent) this result was scored against.
+             * @example 40
+             */
+            threshold: number;
             /** @enum {string} */
             mastery: "mastered" | "needs_revision";
             /** Format: date-time */
@@ -6500,6 +6513,8 @@ export interface components {
                 detail: string;
             }[];
             generated_at: string | null;
+            /** @description True when the results changed but refreshing the take failed (e.g. the AI is busy): this is the previous take. */
+            stale?: boolean;
         };
         SkillResources: {
             skill: components["schemas"]["Skill"];
@@ -6575,6 +6590,10 @@ export interface components {
         RubricCriterion: {
             /** @example join */
             id: string;
+            /**
+             * @description What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.
+             * @example Correct JOIN between employees and departments
+             */
             description: string;
             points: number;
         };
@@ -6594,6 +6613,10 @@ export interface components {
                 criteria: {
                     /** @example join */
                     id: string;
+                    /**
+                     * @description What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.
+                     * @example Correct JOIN between employees and departments
+                     */
                     description: string;
                     points: number;
                     /** @description Points awarded, in halves. */
@@ -6747,7 +6770,18 @@ export interface components {
             description: string;
             /** @enum {string} */
             difficulty: "easy" | "medium" | "hard";
-            rubric: components["schemas"]["RubricCriterion"][];
+            rubric: {
+                /** @example join */
+                id: string;
+                /**
+                 * @description What the criterion checks. A neutral label: the model answer is kept on the server for the AI reviewer and never returned.
+                 * @example Correct JOIN between employees and departments
+                 */
+                description: string;
+                points: number;
+                /** @description Private model answer for the AI. */
+                expected?: string;
+            }[];
             is_active: boolean;
         };
     };

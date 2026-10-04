@@ -21,8 +21,12 @@ get it reviewed, merge. Nothing reaches production on an ordinary merge.
 ### 1.1 Databases (Supabase)
 1. Create two Supabase projects: `prepsuccess-staging` and `prepsuccess`.
 2. For each, copy from **Project Settings → Database → Connection string**:
-   - the **pooled** string (port `6543`) → `DATABASE_URL`
-   - the **direct/session** string (port `5432`) → `DIRECT_URL`
+   - the **transaction pooler** string (`*.pooler.supabase.com:6543`) → `DATABASE_URL`
+   - the **session pooler** string (`*.pooler.supabase.com:5432`) → `DIRECT_URL`
+
+   Don't use the "Direct connection" host `db.<project-ref>.supabase.co` for
+   `DIRECT_URL`: it is IPv6-only and Render has no IPv6 outbound, so migrations
+   (which run at start-up) would fail to connect and the deploy would never go live.
 3. Nothing else: migrations create the tables, and every table enables Row Level
    Security with no policies, so Supabase's auto-generated REST API stays closed.
 
@@ -44,11 +48,19 @@ get it reviewed, merge. Nothing reaches production on an ordinary merge.
    | `GEMINI_API_KEY` | from Google AI Studio |
    | `SENTRY_DSN` | Sentry Node project DSN (optional but recommended) |
 
-4. **Seed** each database once (and again after editing a catalogue), from your
-   machine with that environment's URLs in `backend/.env`:
+4. **Seed** each database once, from your machine with that environment's
+   `DATABASE_URL`, `DIRECT_URL` **and `FRONTEND_URL`** (the matching Vercel URL)
+   in `backend/.env`:
    ```bash
    cd backend && npm run db:deploy && npm run db:seed
    ```
+   The prep guide links are built from `FRONTEND_URL`, so the seed refuses to run
+   against a remote database while `FRONTEND_URL` is unset or points at localhost.
+   By default it only adds catalogue rows that don't exist yet and leaves existing
+   ones alone (admin edits are kept). After editing a catalogue file, run
+   `npm run db:seed -- --update` to also refresh existing rows from it — this
+   overwrites admin edits to those rows. It prints created / updated / unchanged
+   counts per table.
 5. **First admin:** sign up on the site, then run
    `npm run admin:promote -- you@example.com` against that environment's
    database. After that, admins change roles from **Admin → Users**.
@@ -61,9 +73,12 @@ Postgres on each PR (`backend-ci.yml → migrations`), so a broken migration
 normally fails long before a deploy.
 
 > **Free plan notes.** Free Render instances sleep after 15 minutes idle and
-> take ~30–50 s to wake. Free instance hours (750/month) are shared by both
-> services. Render's pre-deploy command is a paid feature, which is why
-> migrations run in the start command.
+> take ~30–50 s to wake. Free instance hours (750/month) are **shared by every
+> free service in the workspace**: production kept awake all month uses ~744 h,
+> so if staging is also on the free plan it must be left to sleep (it is only
+> pinged by a manual uptime run). Going over 750 h suspends all free services
+> until the month ends. Render's pre-deploy command is a paid feature, which is
+> why migrations run in the start command.
 
 ### 1.3 Frontend (Vercel)
 1. Import the repository in Vercel with **Root Directory** `frontend`.
@@ -94,7 +109,7 @@ normally fails long before a deploy.
 | Backend errors | Sentry (`SENTRY_DSN`). Only unexpected errors (HTTP 500) are sent, tagged with the request ID — search Render logs for the same `request_id`. Check a new environment with `npm run sentry:test`. |
 | Frontend errors | Sentry (`NEXT_PUBLIC_SENTRY_DSN`), browser and server render errors, plus `app/global-error.tsx`. |
 | Alerts | In Sentry: **Alerts → Create alert → "A new issue is created"** and an error-rate spike rule, sent to email (or Slack). An error nobody is alerted about doesn't count as monitored. |
-| Uptime and keep-alive | `.github/workflows/uptime.yml` pings `/health/ready` (API + database): production every 10 minutes so the free Render instance doesn't sleep (it sleeps after 15 idle minutes; one service all month fits the 750 free hours), staging hourly. Set repository variables `PRODUCTION_API_URL` and `STAGING_API_URL`. It only runs once it's on `main`. A failure emails repo watchers. GitHub schedules can be late and pause after 60 days without activity, so also add a free external monitor (UptimeRobot or cron-job.org) hitting the production `/health/ready` every 5–10 minutes. |
+| Uptime and keep-alive | `.github/workflows/uptime.yml` pings `/health/ready` (API + database) of production every 10 minutes so the free Render instance doesn't sleep (it sleeps after 15 idle minutes). That uses ~744 of the 750 free instance-hours, which all free services share, so staging is **not** pinged on a schedule — any regular ping would keep it awake and push the workspace over 750 h, suspending every free service near month end. Check staging with a manual run (**Actions → Uptime → Run workflow**), which pings both. Set repository variables `PRODUCTION_API_URL` and `STAGING_API_URL`; a job whose URL is unset doesn't start. Schedules only run once the workflow is on `main`. A failure emails repo watchers. GitHub schedules can be late and pause after 60 days without activity, so also add a free external monitor (UptimeRobot or cron-job.org) hitting the production `/health/ready` every 5–10 minutes. |
 | Product analytics | PostHog (optional). Events: `signup_completed`, `onboarding_completed`, `skill_check_completed`, `dashboard_viewed`, `task_submitted`, `password_reset_completed`. No autocapture, no recordings, no cookies, no personal data. |
 | AI usage | Admin → Analytics shows requests, failure rate and tokens (from `ai_usage`). |
 
@@ -106,8 +121,9 @@ normally fails long before a deploy.
 |---|---|
 | Release to production | PR `main → production`, review, merge. |
 | Roll back | Render → service → **Events** → redeploy the previous deploy; Vercel → **Deployments** → promote the previous one. A migration isn't rolled back automatically — write a new forward migration. |
-| Change the schema | Edit `prisma/schema.prisma`, run `npm run db:migrate` against a local/dev database, commit the generated migration **with an `ENABLE ROW LEVEL SECURITY` line for any new table**. Never edit tables in the Supabase dashboard. |
-| Edit skills / resources / tasks | Admin → Skills & content, or edit the catalogue files and re-run `npm run db:seed`. |
+| Change the schema | Edit `prisma/schema.prisma`, run `npm run db:migrate` against a local/dev database, commit the generated migration **with an `ENABLE ROW LEVEL SECURITY` line for any new table**. Never edit tables in the Supabase dashboard. Migrations apply in folder-name order, so a new folder's timestamp must sort **after the latest existing one** (currently `20261010000000_bug_fixes`). Never hand-pick a future date; if your clock is behind the latest folder, rename the new one to a timestamp just after it (e.g. `20261010000001_…`). |
+| Edit skills / resources / tasks | Admin → Skills & content, or edit the catalogue files and run `npm run db:seed -- --update` (plain `db:seed` only adds missing rows). |
+| Clean up old rows | `npm run db:cleanup` against each database, monthly (or from a scheduled job). Deletes email codes older than 1 day, refresh tokens expired or revoked more than 7 days ago, and read notifications older than 90 days, and prints the counts. `ai_usage` is kept (AI cost history). |
 | Turn on AI trial enforcement | Set `AI_TRIAL_ENFORCED=true` (and adjust `AI_TRIAL_DAYS`) on the backend service. |
 | Rotate JWT secrets | Change them in Render; everyone is signed out. |
 | Deactivate an account | Admin → Users → Deactivate. The user is signed out; their current access token lapses within 30 minutes. |

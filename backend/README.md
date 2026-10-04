@@ -31,7 +31,8 @@ set `API_DOCS_ENABLED=true|false` to override.
 | `npm run db:migrate`                    | Create + apply a migration from `prisma/schema.prisma`   |
 | `npm run db:deploy`                     | Apply pending migrations (staging/prod)                  |
 | `npm run db:studio`                     | Browse the database                                      |
-| `npm run db:seed`                       | Upsert the skill, resource and task catalogues           |
+| `npm run db:seed`                       | Add missing catalogue rows (`-- --update` refreshes all) |
+| `npm run db:cleanup`                    | Delete old OTPs, refresh tokens and read notifications   |
 | `npm run admin:promote -- <email>`      | Make an existing account an admin (first admin)          |
 | `npm run sentry:test`                   | Send a test error to Sentry (needs `SENTRY_DSN`)         |
 | `npm run openapi:export`                | Write `openapi.json` (the frontend's types come from it) |
@@ -120,10 +121,12 @@ the student's real data in the prompt and never ask the model to invent skills o
 
 Skills, learning resources and practical tasks start life as code —
 `modules/skills/catalogue.ts`, `modules/resources/catalogue.ts` and
-`modules/tasks/catalogue.ts` — and `npm run db:seed` upserts them. A test checks
-every skill has at least one resource and one task, every link is https, and every
-rubric totals 10 points. Admins can then edit, hide or add content from the admin
-panel; the seed never deletes or un-hides anything an admin changed.
+`modules/tasks/catalogue.ts` — and `npm run db:seed` inserts the ones that don't
+exist yet. A test checks every skill has at least one resource and one task, every
+link is https, and every rubric totals 10 points. Admins can then edit, hide or add
+content from the admin panel; a plain re-seed leaves existing rows alone, and
+`npm run db:seed -- --update` overwrites their content from the catalogues. The
+seed never deletes or un-hides anything.
 
 ## Practical task scoring
 

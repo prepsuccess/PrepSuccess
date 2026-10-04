@@ -188,4 +188,26 @@ describe("SkillCheck", () => {
     await userEvent.click(within(alert).getByRole("button", { name: "Reload" }));
     await waitFor(() => expect(gets).toBe(2));
   });
+
+  it("offers the results when the check was finished elsewhere", async () => {
+    let gets = 0;
+    server.use(
+      http.get(`${API}/api/v1/ai/assessment/${ID}`, () => {
+        gets += 1;
+        return ok(base);
+      }),
+      http.post(`${API}/api/v1/ai/assessment/${ID}/answer`, () =>
+        fail(409, "ASSESSMENT_COMPLETE", "This skill check is already finished."),
+      ),
+    );
+    renderCheck();
+
+    await userEvent.click(await screen.findByRole("radio", { name: /undefined/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Submit answer" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("already finished");
+
+    await userEvent.click(within(alert).getByRole("button", { name: "See results" }));
+    await waitFor(() => expect(gets).toBe(2));
+  });
 });

@@ -26,17 +26,47 @@ const CodeEditor = dynamic(() => import("./CodeEditor"), {
 });
 
 const draftKey = (id: string) => `task-draft:${id}`;
-function readDraft(id: string) {
+
+/**
+ * A saved draft remembers which submission it was written on top of
+ * (`basedOn`, null before the first attempt). If the student has submitted
+ * since — in another tab or on another device — the draft is stale and the
+ * latest submission is shown instead.
+ */
+interface Draft {
+  v: 2;
+  content: string;
+  basedOn: string | null;
+}
+
+function readDraft(id: string, latestId: string | null): string | null {
+  let raw: string | null;
   try {
-    return window.localStorage.getItem(draftKey(id));
+    raw = window.localStorage.getItem(draftKey(id));
   } catch {
     return null;
   }
+  if (raw === null) return null;
+  try {
+    const draft = JSON.parse(raw) as Partial<Draft> | null;
+    if (draft && typeof draft === "object" && draft.v === 2 && typeof draft.content === "string") {
+      return (draft.basedOn ?? null) === latestId ? draft.content : null;
+    }
+  } catch {
+    // Not JSON: an older plain-text draft.
+  }
+  // Older drafts were plain text with no record of what they were based on:
+  // trust them only before the first submission.
+  return latestId === null ? raw : null;
 }
-function writeDraft(id: string, value: string | null) {
+
+function writeDraft(id: string, value: string | null, basedOn: string | null = null) {
   try {
     if (value === null) window.localStorage.removeItem(draftKey(id));
-    else window.localStorage.setItem(draftKey(id), value);
+    else {
+      const draft: Draft = { v: 2, content: value, basedOn };
+      window.localStorage.setItem(draftKey(id), JSON.stringify(draft));
+    }
   } catch {
     // Drafts are a convenience; private windows may block storage.
   }
@@ -111,7 +141,10 @@ function PreviewPanel({ code }: { code: string }) {
 export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: TaskSubmission }) {
   const [submit, { isLoading, error, reset }] = useSubmitTaskMutation();
   const starter = task.starter_code ?? "";
-  const [content, setContent] = useState(() => readDraft(task.id) ?? latest?.content ?? starter);
+  const latestId = latest?.id ?? null;
+  const [content, setContent] = useState(
+    () => readDraft(task.id, latestId) ?? latest?.content ?? starter,
+  );
   const [result, setResult] = useState<RunResult | null>(null);
   const [running, setRunning] = useState(false);
   // HTML/CSS tasks: show the code or the rendered page in the same space.
@@ -123,23 +156,25 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
   const length = content.trim().length;
   const unchanged = Boolean(starter) && content.trim() === starter.trim();
   const invalid = fieldErrors(error).content;
-  const canSubmit = length >= MIN_CHARS && content.length <= MAX_CHARS && !unchanged && !isLoading;
+  const tooLong = content.length > MAX_CHARS;
+  const canSubmit = length >= MIN_CHARS && !tooLong && !unchanged && !isLoading;
 
   const change = (value: string) => {
     setContent(value);
-    writeDraft(task.id, value);
+    writeDraft(task.id, value, latestId);
     if (error) reset();
   };
 
   const run = useCallback(async () => {
-    if (task.runner !== "run" || running) return;
+    // Also blocks Ctrl+Enter while the AI is reviewing (the Run button is disabled then).
+    if (task.runner !== "run" || running || isLoading) return;
     setRunning(true);
     try {
       setResult(await runJavaScript(content));
     } finally {
       setRunning(false);
     }
-  }, [task.runner, running, content]);
+  }, [task.runner, running, isLoading, content]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -284,13 +319,15 @@ export function TaskWorkspace({ task, latest }: { task: TaskDetail; latest?: Tas
               (invalid ??
               (unchanged
                 ? "Change the starter code to answer the task."
-                : length < MIN_CHARS
-                  ? `At least ${MIN_CHARS} characters.`
-                  : isCode && !task.runner
-                    ? "Runs aren't available for this language — the AI reads and marks your code."
-                    : "The AI marks only what's written here."))
+                : tooLong
+                  ? `Too long: keep it under ${MAX_CHARS.toLocaleString()} characters.`
+                  : length < MIN_CHARS
+                    ? `At least ${MIN_CHARS} characters.`
+                    : isCode && !task.runner
+                      ? "Runs aren't available for this language — the AI reads and marks your code."
+                      : "The AI marks only what's written here."))
             )}
-            <span className="block tabular-nums">
+            <span className={cn("block tabular-nums", tooLong && "text-destructive")}>
               {content.length.toLocaleString()} / {MAX_CHARS.toLocaleString()} characters
             </span>
           </p>

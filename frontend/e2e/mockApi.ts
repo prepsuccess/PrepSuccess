@@ -120,6 +120,7 @@ const emptyDashboard: Dashboard = {
   },
   skills: [],
   gaps: [],
+  check_dates: [],
   next_steps: [
     {
       id: "check-SQL",

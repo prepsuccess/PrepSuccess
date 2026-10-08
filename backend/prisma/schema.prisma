@@ -41,6 +41,7 @@ enum Role {
 enum AuthProvider {
   LOCAL
   GOOGLE
+  GITHUB
 }
 
 enum OtpPurpose {
@@ -116,9 +117,11 @@ model User {
   lastName        String?      @map("last_name") @db.VarChar(100)
   /// Always stored normalized (trimmed + lowercased) by the auth service.
   email           String       @unique @db.VarChar(255)
-  /// Null for Google-only accounts.
+  /// Null for Google- or GitHub-only accounts.
   passwordHash    String?      @map("password_hash") @db.VarChar(255)
   googleId        String?      @unique @map("google_id") @db.VarChar(255)
+  /// GitHub's numeric user id, as a string.
+  githubId        String?      @unique @map("github_id") @db.VarChar(255)
   authProvider    AuthProvider @default(LOCAL) @map("auth_provider")
   role            Role         @default(STUDENT)
   profileImageUrl String?      @map("profile_image_url") @db.VarChar(500)
@@ -126,6 +129,8 @@ model User {
   isActive        Boolean      @default(true) @map("is_active")
   isDeleted       Boolean      @default(false) @map("is_deleted")
   lastLoginAt     DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  /// How they last signed in: "password" | "google" | "github".
+  lastLoginMethod String?      @map("last_login_method") @db.VarChar(10)
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 

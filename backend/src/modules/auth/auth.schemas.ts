@@ -100,11 +100,18 @@ export const googleStartQuerySchema = z.object({
     }),
 });
 
+/** GET /auth/github — the same `next` and `nonce` rules as Google. */
+export const githubStartQuerySchema = googleStartQuerySchema;
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 // ---- Responses ----
+
+/** Stored in users.last_login_method. */
+export const LOGIN_METHODS = ["password", "google", "github"] as const;
+export type LoginMethod = (typeof LOGIN_METHODS)[number];
 
 export const authUserSchema = z
   .object({
@@ -114,7 +121,23 @@ export const authUserSchema = z
     email: z.string().meta({ example: "asha@college.edu" }),
     profile_image_url: z.string().nullable(),
     role: z.enum(["student", "mentor", "admin"]),
-    auth_provider: z.enum(["local", "google"]),
+    auth_provider: z.enum(["local", "google", "github"]).meta({
+      description: "How the account was created. Other sign-in methods may be linked since.",
+    }),
+    sign_in_methods: z
+      .object({
+        password: z.boolean().meta({ description: "A password is set." }),
+        google: z.boolean().meta({ description: "A Google account is linked." }),
+        github: z.boolean().meta({ description: "A GitHub account is linked." }),
+      })
+      .meta({
+        description: "Every way this account can sign in.",
+        example: { password: true, google: false, github: true },
+      }),
+    last_login_method: z.enum(LOGIN_METHODS).nullable().meta({
+      description: "How the user last signed in. Null if they haven't since this was tracked.",
+      example: "github",
+    }),
     is_verified: z.boolean(),
     onboarding_completed: z
       .boolean()

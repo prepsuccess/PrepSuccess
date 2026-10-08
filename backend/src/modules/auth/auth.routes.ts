@@ -3,9 +3,10 @@ import { Router } from "express";
 import { rateLimitPerMinute } from "../../middleware/rate-limit.js";
 import { requireAuth } from "../../middleware/require-auth.js";
 import * as auth from "./auth.controller.js";
+import { githubCallback, startGithubLogin } from "./github.controller.js";
 import { googleCallback, startGoogleLogin } from "./google.controller.js";
 
-/** /api/v1/auth — email + password (SCRUM-11) and Google sign-in (SCRUM-12). */
+/** /api/v1/auth — email + password (SCRUM-11), Google (SCRUM-12) and GitHub sign-in. */
 export const authRouter = Router();
 
 authRouter.post("/send-otp", rateLimitPerMinute(5), auth.sendOtp);
@@ -20,3 +21,5 @@ authRouter.get("/me", requireAuth(), auth.me);
 // Full-page browser redirects, not fetch() calls.
 authRouter.get("/google", rateLimitPerMinute(20), startGoogleLogin);
 authRouter.get("/google/callback", rateLimitPerMinute(20), googleCallback);
+authRouter.get("/github", rateLimitPerMinute(20), startGithubLogin);
+authRouter.get("/github/callback", rateLimitPerMinute(20), githubCallback);

@@ -5,6 +5,7 @@ import { RATE_LIMIT_429, VALIDATION_422, bearerAuth, errors, ok } from "../../do
 import {
   authUserSchema,
   forgotPasswordSchema,
+  githubStartQuerySchema,
   googleStartQuerySchema,
   resetPasswordSchema,
   loginSchema,
@@ -94,7 +95,7 @@ export const authPaths: ZodOpenApiPathsObject = {
       summary: "Set a new password with the emailed code",
       description:
         "Step 2. Verifies the code (3 attempts), sets the new password, signs the account out of " +
-        "every other session and signs this one in. A Google-only account gains a password this way.",
+        "every other session and signs this one in. A Google- or GitHub-only account gains a password this way.",
       requestBody: json(resetPasswordSchema),
       responses: {
         ...ok(tokenResponseSchema, "Password changed and signed in."),
@@ -178,6 +179,50 @@ export const authPaths: ZodOpenApiPathsObject = {
         "links Google to an existing account with the same email, or creates a new account. " +
         "Error codes sent to `/login?error=`: `google_cancelled`, `google_failed`, `google_session_expired`, " +
         "`google_email_unverified`, `google_account_conflict`, `account_deactivated`.",
+      requestParams: {
+        query: z.object({
+          code: z.string().optional(),
+          state: z.string().optional(),
+          error: z.string().optional(),
+        }),
+      },
+      responses: {
+        302: {
+          description: "Redirect to the frontend with tokens (URL fragment) or an error code.",
+        },
+      },
+    },
+  },
+  "/api/v1/auth/github": {
+    get: {
+      tags: ["Auth"],
+      summary: "Start GitHub sign-in (browser redirect)",
+      description:
+        "Open this URL in the browser (a link, not fetch). Redirects to GitHub's authorize screen " +
+        "(scope `read:user user:email`). GitHub then returns to `/api/v1/auth/github/callback`, which " +
+        "redirects to the frontend's `/auth/callback#access_token=…&refresh_token=…&next=…&nonce=…`, " +
+        "or to `/login?error=<code>` on failure. `next` and `nonce` follow the same rules as " +
+        "`/auth/google`. Without GitHub keys on the server it redirects to " +
+        "`/login?error=github_not_configured`; an invalid `nonce` redirects to `/login?error=github_failed`.",
+      requestParams: { query: githubStartQuerySchema },
+      responses: {
+        302: { description: "Redirect to GitHub's authorize screen, or to `/login?error=<code>`." },
+        ...errors(RATE_LIMIT_429),
+      },
+    },
+  },
+  "/api/v1/auth/github/callback": {
+    get: {
+      tags: ["Auth"],
+      summary: "GitHub OAuth callback (called by GitHub)",
+      description:
+        "Not called directly. Verifies `state`, exchanges the code, reads the GitHub user and their " +
+        "primary verified email, then logs in the GitHub user, links GitHub to an existing account " +
+        "with the same email (its `auth_provider` is unchanged), or creates a new account. " +
+        "Error codes sent to `/login?error=`: `github_cancelled` (the user cancelled), " +
+        "`github_session_expired` (flow cookie missing or expired — start again), `github_failed` " +
+        "(state mismatch or a GitHub error), `github_no_email` (no verified primary email on GitHub), " +
+        "`github_account_conflict` (the email is linked to another GitHub account), `account_deactivated`.",
       requestParams: {
         query: z.object({
           code: z.string().optional(),

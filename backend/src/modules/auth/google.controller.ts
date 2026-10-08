@@ -1,7 +1,6 @@
-import type { CookieOptions, Request, Response } from "express";
+import type { Request, Response } from "express";
 import { z } from "zod";
 
-import { env, isProduction } from "../../config/env.js";
 import { randomToken, safeEqual } from "../../lib/crypto.js";
 import { AppError } from "../../lib/http.js";
 import { googleStartQuerySchema } from "./auth.schemas.js";
@@ -11,23 +10,21 @@ import {
   exchangeGoogleCode,
   isGoogleConfigured,
 } from "./google.client.js";
+import {
+  flowCookieOptions,
+  redirectWithError,
+  redirectWithSession,
+  safeNext,
+} from "./oauth-flow.js";
 
 /**
  * Browser-facing Google sign-in. Both routes are full-page navigations, so the
  * callback always ends in a redirect to the frontend — tokens in the URL
- * fragment on success (fragments never reach a server or a Referer header),
- * `/login?error=<code>` on failure.
+ * fragment on success, `/login?error=<code>` on failure (see oauth-flow.ts).
  */
 
 const COOKIE = "ps_google_oauth";
-const cookieOptions: CookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  // "lax" lets the cookie ride along on Google's top-level redirect back to us.
-  sameSite: "lax",
-  path: "/api/v1/auth/google",
-  maxAge: 10 * 60_000,
-};
+const cookieOptions = flowCookieOptions("/api/v1/auth/google");
 
 const flowSchema = z.object({
   state: z.string(),
@@ -36,32 +33,6 @@ const flowSchema = z.object({
   // Absent in cookies set before nonces existed.
   nonce: z.string().nullable().default(null),
 });
-
-const NEXT_BASE = "http://x.local";
-
-/**
- * Same-site paths only, never another origin (mirrors safeNext in the
- * frontend). Resolved with the URL parser, so tricks like `/\evil.com` or
- * `/%09/evil.com` can't turn into an absolute URL in a browser.
- */
-function safeNext(value: unknown): string | null {
-  if (typeof value !== "string" || !value.startsWith("/") || value.includes("\\")) return null;
-  for (let i = 0; i < value.length; i++) {
-    const c = value.charCodeAt(i);
-    if (c < 0x20 || c === 0x7f) return null;
-  }
-  try {
-    const url = new URL(value, NEXT_BASE);
-    if (url.origin !== NEXT_BASE || !url.pathname.startsWith("/")) return null;
-    return url.pathname + url.search + url.hash;
-  } catch {
-    return null;
-  }
-}
-
-function redirectWithError(res: Response, code: string) {
-  res.redirect(`${env.FRONTEND_URL}/login?error=${encodeURIComponent(code)}`);
-}
 
 /** GET /api/v1/auth/google?next=/dashboard&nonce=… — sends the browser to Google's consent screen. */
 export async function startGoogleLogin(req: Request, res: Response) {
@@ -113,15 +84,7 @@ export async function googleCallback(req: Request, res: Response) {
   try {
     const identity = await exchangeGoogleCode(code, flow.verifier);
     const session = await loginWithGoogle(identity);
-
-    const fragment = new URLSearchParams({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-      ...(flow.next ? { next: flow.next } : {}),
-      // Echoed back so the frontend can check it started this sign-in.
-      ...(flow.nonce ? { nonce: flow.nonce } : {}),
-    });
-    res.redirect(`${env.FRONTEND_URL}/auth/callback#${fragment.toString()}`);
+    redirectWithSession(res, session, flow);
   } catch (error) {
     if (error instanceof AppError) {
       return redirectWithError(res, error.code.toLowerCase());

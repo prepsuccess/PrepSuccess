@@ -33,9 +33,12 @@ function GoogleLogo() {
 export function GoogleSignIn({
   next,
   label = "Continue with Google",
+  also,
 }: {
   next?: string | null;
   label?: string;
+  /** More sign-in buttons (e.g. GitHub), shown under Google and above the divider. */
+  also?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -50,6 +53,7 @@ export function GoogleSignIn({
         <GoogleLogo />
         {label}
       </a>
+      {also}
       <div className="text-text-dim flex items-center gap-3 text-[13px]" role="separator">
         <span className="bg-border h-px flex-1" />
         or use email

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { GitHubSignIn } from "@/components/auth/GitHubSignIn";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { SelectField } from "@/components/app/form-fields";
 import { Checkbox, Input, PasswordInput } from "@/components/ui/form";
@@ -172,7 +173,10 @@ export function SignupForm() {
 
   return (
     <form noValidate onSubmit={onDetailsSubmit} className="flex flex-col gap-5">
-      <GoogleSignIn label="Sign up with Google" />
+      <GoogleSignIn
+        label="Sign up with Google"
+        also={<GitHubSignIn label="Sign up with GitHub" />}
+      />
       {formError ? <Alert tone="error">{formError}</Alert> : null}
       <div className="grid gap-5 sm:grid-cols-2">
         <Input

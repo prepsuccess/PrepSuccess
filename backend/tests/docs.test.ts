@@ -85,6 +85,7 @@ describe("OpenAPI docs", () => {
       email: "asha@college.edu",
       passwordHash: "x",
       googleId: null,
+      githubId: "12345",
       authProvider: "LOCAL",
       role: "STUDENT",
       profileImageUrl: null,
@@ -92,6 +93,7 @@ describe("OpenAPI docs", () => {
       isActive: true,
       isDeleted: false,
       lastLoginAt: null,
+      lastLoginMethod: "github",
       createdAt: now,
       updatedAt: now,
       profile: {
@@ -105,5 +107,8 @@ describe("OpenAPI docs", () => {
     });
     expect(authUserSchema.parse(user)).toEqual(user);
     expect(user).not.toHaveProperty("password_hash");
+    expect(user).not.toHaveProperty("github_id");
+    expect(user.sign_in_methods).toEqual({ password: true, google: false, github: true });
+    expect(user.last_login_method).toBe("github");
   });
 });

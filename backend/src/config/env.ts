@@ -7,7 +7,8 @@ import { z } from "zod";
  * that aren't fully built yet — tighten them as each one lands.
  * Without GEMINI_API_KEY, AI endpoints answer 503 AI_NOT_CONFIGURED.
  * SMTP is optional outside production: without it, OTP emails are logged.
- * Google keys are optional: without them, /auth/google answers 503.
+ * Google and GitHub keys are optional: without them, /auth/google and
+ * /auth/github send the browser back to /login with a *_not_configured error.
  */
 const envSchema = z
   .object({
@@ -17,9 +18,9 @@ const envSchema = z
       .string()
       .default("http://localhost:3000")
       .transform((value) => value.split(",").map((origin) => origin.trim())),
-    /** Public URL of this API (no trailing slash). Builds the Google OAuth redirect URI. */
+    /** Public URL of this API (no trailing slash). Builds the Google and GitHub OAuth redirect URIs. */
     API_PUBLIC_URL: z.url().default("http://localhost:8000"),
-    /** Public URL of the Next.js app (no trailing slash). Google sign-in redirects back here. */
+    /** Public URL of the Next.js app (no trailing slash). Google/GitHub sign-in redirects back here. */
     FRONTEND_URL: z.url().default("http://localhost:3000"),
     DATABASE_URL: z.string().min(1),
     DIRECT_URL: z.string().optional(),
@@ -30,6 +31,9 @@ const envSchema = z
     JWT_REFRESH_TTL: z.string().default("7d"),
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
+    /** GitHub OAuth App. Callback URL: `${API_PUBLIC_URL}/api/v1/auth/github/callback`. */
+    GITHUB_CLIENT_ID: z.string().optional(),
+    GITHUB_CLIENT_SECRET: z.string().optional(),
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     /** Inbox for student feedback emails. Defaults to SMTP_USER. */
@@ -93,3 +97,6 @@ export const isProduction = env.NODE_ENV === "production";
 export const apiDocsEnabled = env.API_DOCS_ENABLED
   ? env.API_DOCS_ENABLED === "true"
   : !isProduction;
+
+/** True when both GitHub OAuth keys are set. */
+export const isGithubConfigured = () => Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);

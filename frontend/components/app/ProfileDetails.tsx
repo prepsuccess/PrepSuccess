@@ -10,6 +10,12 @@ import { Loading } from "@/components/ui/Skeleton";
 import { useSession } from "@/lib/auth/useSession";
 import { ProfileForm } from "./ProfileForm";
 
+const METHOD: Record<string, string> = {
+  password: "Email and password",
+  google: "Google",
+  github: "GitHub",
+};
+
 function DetailsSkeleton() {
   return (
     <Loading label="Loading your details…">
@@ -30,6 +36,15 @@ export function ProfileDetails() {
   if (editing) return <ProfileForm user={user} onDone={() => setEditing(false)} />;
 
   const p = user.profile;
+  // How this session started, and every way the account can sign in.
+  const signIn = user as typeof user & {
+    last_login_method?: "password" | "google" | "github" | null;
+    sign_in_methods?: { password: boolean; google: boolean; github: boolean };
+  };
+  const methods = signIn.sign_in_methods;
+  const linked = methods
+    ? (["password", "google", "github"] as const).filter((m) => methods[m]).map((m) => METHOD[m])
+    : [METHOD[user.auth_provider === "local" ? "password" : user.auth_provider]];
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
   const initials = `${user.first_name[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
   const rows: [string, string | null][] = [
@@ -43,6 +58,8 @@ export function ProfileDetails() {
     ["Skills", p.skills?.length ? p.skills.join(", ") : null],
     ["Goals", p.goals?.length ? p.goals.join(", ") : null],
     ["Member since", new Date(user.created_at).toLocaleDateString("en-IN", { dateStyle: "long" })],
+    ["Signed in with", signIn.last_login_method ? METHOD[signIn.last_login_method] : null],
+    ["Sign-in methods", linked.join(", ") || null],
   ];
 
   return (

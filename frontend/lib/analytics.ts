@@ -11,7 +11,7 @@
 import type { CaptureResult } from "posthog-js";
 
 export type AnalyticsEvent =
-  | { name: "signup_completed"; props: { method: "email" | "google" } }
+  | { name: "signup_completed"; props: { method: "email" | "google" | "github" } }
   | { name: "onboarding_completed"; props?: undefined }
   | { name: "skill_check_completed"; props: { category: string; mastered: boolean } }
   | { name: "dashboard_viewed"; props: { has_results: boolean } }

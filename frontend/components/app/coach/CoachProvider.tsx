@@ -22,6 +22,14 @@ export function coachHiddenOn(pathname: string) {
   return pathname.startsWith("/onboarding") || /^\/assessment\/[^/]+/.test(pathname);
 }
 
+/** What the student is looking at, sent with each message while set. */
+export interface CoachPageContext {
+  /** The interview question open on the page. */
+  questionId: string;
+  /** Shown in the chat as "About: <label>". */
+  label: string;
+}
+
 interface CoachContextValue {
   open: boolean;
   /** True on pages where the coach isn't shown (see coachHiddenOn). */
@@ -29,6 +37,10 @@ interface CoachContextValue {
   setOpen: (open: boolean) => void;
   /** Opens the chat panel, e.g. from the coach's check-in notification. No-op while hidden. */
   openCoach: () => void;
+  /** The page the student is on, e.g. an interview question; null when there's none. */
+  context: CoachPageContext | null;
+  /** Set by a page on mount and cleared on unmount; the chat's × also clears it. Stable. */
+  setContext: (context: CoachPageContext | null) => void;
 }
 
 const CoachContext = createContext<CoachContextValue | null>(null);
@@ -43,6 +55,7 @@ export const useCoach = () => useContext(CoachContext);
  */
 export function CoachProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [context, setContext] = useState<CoachPageContext | null>(null);
   const [ping] = usePingCoachMutation();
   const last = useRef(0);
   const hidden = coachHiddenOn(usePathname() ?? "/");
@@ -72,8 +85,10 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       openCoach: () => {
         if (!hidden) setOpen(true);
       },
+      context,
+      setContext,
     }),
-    [open, hidden],
+    [open, hidden, context],
   );
   return <CoachContext.Provider value={value}>{children}</CoachContext.Provider>;
 }

@@ -12,6 +12,9 @@ export default defineConfig({
       // Fake Google client: the consent URL is built offline; the code exchange is mocked.
       GOOGLE_CLIENT_ID: "test-client-id.apps.googleusercontent.com",
       GOOGLE_CLIENT_SECRET: "test-client-secret",
+      // Fake GitHub OAuth App: the authorize URL is built offline; fetch is mocked.
+      GITHUB_CLIENT_ID: "test-github-client-id",
+      GITHUB_CLIENT_SECRET: "test-github-client-secret",
       API_PUBLIC_URL: "http://localhost:8000",
       FRONTEND_URL: "http://localhost:3000",
       // Scripted AI replies; tests never call Gemini.

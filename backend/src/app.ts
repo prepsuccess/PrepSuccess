@@ -22,6 +22,10 @@ export function createApp() {
   app.use(pinoHttp({ logger, genReqId: genRequestId }));
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGINS, credentials: true }));
+  // Bulk question import sends up to 500 questions in one body.
+  app.use("/api/v1/admin/questions/import", express.json({ limit: "5mb" }));
+  // Feedback can carry three 2 MB screenshots as base64 (~8 MB).
+  app.post("/api/v1/feedback", express.json({ limit: "10mb" }));
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 

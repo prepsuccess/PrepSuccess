@@ -13,6 +13,24 @@ const admin = { ...testUser, role: "admin" as const };
 describe("LoginForm", () => {
   afterEach(() => replace.mockReset());
 
+  it("offers Google first, then GitHub, both with a fresh nonce on click", async () => {
+    renderWithStore(<LoginForm next="/questions" />);
+    const links = screen.getAllByRole("link", { name: /Continue with (Google|GitHub)/ });
+    expect(links.map((a) => a.textContent)).toEqual([
+      "Continue with Google",
+      "Continue with GitHub",
+    ]);
+
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    await userEvent.click(screen.getByRole("link", { name: "Continue with GitHub" }));
+    const url = new URL(assign.mock.calls[0]![0] as string);
+    expect(url.pathname).toBe("/api/v1/auth/github");
+    expect(url.searchParams.get("next")).toBe("/questions");
+    expect(url.searchParams.get("nonce")).toBe(sessionStorage.getItem("ps-google-nonce"));
+    vi.unstubAllGlobals();
+  });
+
   it("shows field errors and doesn't call the API when empty", async () => {
     // No handlers: any request would fail the test (onUnhandledRequest: "error").
     renderWithStore(<LoginForm />);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { GitHubSignIn } from "@/components/auth/GitHubSignIn";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { Input, PasswordInput } from "@/components/ui/form";
 import { useLoginMutation } from "@/lib/api/endpoints/auth";
@@ -47,7 +48,7 @@ export function LoginForm({ next, error }: { next?: string; error?: string | nul
 
   return (
     <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
-      <GoogleSignIn next={safeNext(next)} />
+      <GoogleSignIn next={safeNext(next)} also={<GitHubSignIn next={safeNext(next)} />} />
       {formError ? <Alert tone="error">{formError}</Alert> : null}
       <Input
         label="Email"

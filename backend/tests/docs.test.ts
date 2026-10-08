@@ -9,6 +9,7 @@ import { adminRouter } from "../src/modules/admin/admin.routes.js";
 import { aiRouter } from "../src/modules/ai/ai.routes.js";
 import { authRouter } from "../src/modules/auth/auth.routes.js";
 import { dashboardRouter } from "../src/modules/dashboard/dashboard.routes.js";
+import { feedbackRouter } from "../src/modules/feedback/feedback.routes.js";
 import { notificationsRouter } from "../src/modules/notifications/notifications.routes.js";
 import { resourcesRouter } from "../src/modules/resources/resources.routes.js";
 import { skillsRouter } from "../src/modules/skills/skills.routes.js";
@@ -37,6 +38,7 @@ const MOUNTED: [prefix: string, router: Router][] = [
   ["/api/v1/progress", progressRouter],
   ["/api/v1/prep-pdfs", prepPdfsRouter],
   ["/api/v1/notifications", notificationsRouter],
+  ["/api/v1/feedback", feedbackRouter],
   ["/api/v1/admin", adminRouter],
 ];
 
@@ -83,6 +85,7 @@ describe("OpenAPI docs", () => {
       email: "asha@college.edu",
       passwordHash: "x",
       googleId: null,
+      githubId: "12345",
       authProvider: "LOCAL",
       role: "STUDENT",
       profileImageUrl: null,
@@ -90,6 +93,7 @@ describe("OpenAPI docs", () => {
       isActive: true,
       isDeleted: false,
       lastLoginAt: null,
+      lastLoginMethod: "github",
       createdAt: now,
       updatedAt: now,
       profile: {
@@ -103,5 +107,8 @@ describe("OpenAPI docs", () => {
     });
     expect(authUserSchema.parse(user)).toEqual(user);
     expect(user).not.toHaveProperty("password_hash");
+    expect(user).not.toHaveProperty("github_id");
+    expect(user.sign_in_methods).toEqual({ password: true, google: false, github: true });
+    expect(user.last_login_method).toBe("github");
   });
 });

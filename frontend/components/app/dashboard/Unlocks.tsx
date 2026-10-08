@@ -14,25 +14,28 @@ export function Unlocks({ items, className }: { items: Unlock[]; className?: str
       description="These unlock as you take skill checks"
       className={className}
     >
-      <ul className="grid gap-2.5 sm:grid-cols-2">
-        {items.map((item) => (
-          <li
-            key={item.title}
-            className="bg-dash-canvas/60 flex items-start gap-3 rounded-2xl p-3 text-sm"
-          >
-            <span
-              aria-hidden
-              className="bg-dash-indigo/12 text-dash-indigo flex size-8 shrink-0 items-center justify-center rounded-xl"
+      {/* Two columns only when the card itself is wide enough, not the screen. */}
+      <div className="@container">
+        <ul className="grid gap-2.5 @md:grid-cols-2">
+          {items.map((item) => (
+            <li
+              key={item.title}
+              className="bg-dash-canvas/60 flex items-start gap-3 rounded-2xl p-3 text-sm"
             >
-              <Lock className="size-3.5" />
-            </span>
-            <span className="min-w-0">
-              <span className="text-foreground block font-medium">{item.title}</span>
-              <span className="text-muted-foreground block text-xs">{item.need}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+              <span
+                aria-hidden
+                className="bg-dash-indigo/12 text-dash-indigo flex size-8 shrink-0 items-center justify-center rounded-xl"
+              >
+                <Lock className="size-3.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="text-foreground block font-medium">{item.title}</span>
+                <span className="text-muted-foreground block text-xs">{item.need}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </DashCard>
   );
 }

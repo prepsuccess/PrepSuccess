@@ -1,6 +1,15 @@
 import { baseApi } from "../baseApi";
 import type { CoachPing, CoachState } from "../types";
 
+/**
+ * POST /ai/coach/messages. `questionId` is the interview question open on the
+ * page: the coach sees it for this reply only (sent as `context.question_id`).
+ */
+export interface CoachMessageInput {
+  content: string;
+  questionId?: string;
+}
+
 /** /api/v1/ai/coach — the coach chat in the bottom-right corner. */
 export const coachApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -8,8 +17,12 @@ export const coachApi = baseApi.injectEndpoints({
       query: () => "/api/v1/ai/coach",
       providesTags: ["Coach"],
     }),
-    sendCoachMessage: build.mutation<CoachState, string>({
-      query: (content) => ({ url: "/api/v1/ai/coach/messages", method: "POST", body: { content } }),
+    sendCoachMessage: build.mutation<CoachState, CoachMessageInput>({
+      query: ({ content, questionId }) => ({
+        url: "/api/v1/ai/coach/messages",
+        method: "POST",
+        body: questionId ? { content, context: { question_id: questionId } } : { content },
+      }),
       // The response is the whole conversation; write it straight into the cache.
       async onQueryStarted(_content, { dispatch, queryFulfilled }) {
         try {

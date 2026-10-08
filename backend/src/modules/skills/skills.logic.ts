@@ -117,3 +117,48 @@ export function matchClaims(claims: string[]) {
   }
   return { slugs, unmatched };
 }
+
+/** Full stack names ("mern stack", "data analytics"): only these expand inside free text. */
+const STACK_NAMES = new Map(STACKS.map((stack) => [normalizeSkillName(stack.name), stack]));
+
+/**
+ * Single words that are also ordinary English ("express myself", "get some
+ * rest"), so they never count inside a sentence. The longer forms still do
+ * ("node js", "express js").
+ */
+const AMBIGUOUS_IN_TEXT = new Set(["express", "rest", "node", "shell", "networking", "networks"]);
+
+/**
+ * Catalogue skills named inside a free-text phrase such as a goal ("get
+ * better at DSA", "learn system design and SQL"). Tries word runs of 4 down
+ * to 1 at each position and takes the longest match, so "data structures and
+ * algorithms" is one skill. A stack expands only when its whole name appears.
+ */
+export function skillsInText(text: string) {
+  const words = text
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/\.js\b/g, " js")
+    .replace(/[^a-z0-9+#\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const slugs: string[] = [];
+  const add = (slug: string) => {
+    if (!slugs.includes(slug)) slugs.push(slug);
+  };
+  for (let i = 0; i < words.length;) {
+    let used = 1;
+    for (let n = Math.min(4, words.length - i); n >= 1; n--) {
+      const key = normalizeSkillName(words.slice(i, i + n).join(" "));
+      const stack = STACK_NAMES.get(key);
+      const slug = AMBIGUOUS_IN_TEXT.has(key) ? null : (ALIAS_INDEX.get(key) ?? null);
+      if (stack) stack.skills.forEach(add);
+      else if (slug) add(slug);
+      else continue;
+      used = n;
+      break;
+    }
+    i += used;
+  }
+  return slugs;
+}

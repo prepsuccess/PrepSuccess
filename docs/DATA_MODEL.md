@@ -157,6 +157,15 @@ Columns added later (migration `20261010000000_bug_fixes`):
 | `ai_usage` index on `created_at` | Admin analytics read usage by date range across all users. |
 | `user_question_progress.bookmarked_at` | When the question was last bookmarked; orders My bookmarks, so solving a question doesn't reorder the list. Existing bookmarks were backfilled from `updated_at`. |
 
+Columns added for answer practice (migration `20261011000000_question_attempts`):
+
+| Column | Purpose |
+|---|---|
+| `user_question_progress.last_answer` | The student's latest written answer to the question (only the latest is kept). |
+| `user_question_progress.last_feedback` | The AI feedback on it: `{ score 0–10, verdict, strengths[], missing[], tip }`. The verdict follows the score (8+ strong, 5–7 partial, 0–4 weak). |
+| `user_question_progress.attempted_at` | When that answer was written. |
+| `user_question_progress.attempts` | How many answers the student has written for this question (default 0). Writing an answer never marks the question solved. |
+
 Old rows in `email_otps`, `refresh_tokens` and read `notifications` are removed
 by `npm run db:cleanup` ([DEPLOYMENT.md](DEPLOYMENT.md) §3); `ai_usage` is kept.
 
@@ -189,6 +198,10 @@ erDiagram
         bool bookmarked
         timestamptz bookmarked_at "orders My bookmarks"
         timestamptz solved_at "first solve; null if not solved"
+        text last_answer "latest written answer"
+        jsonb last_feedback "AI feedback on it"
+        timestamptz attempted_at "when it was written"
+        int attempts "answers written so far"
     }
     prep_pdfs {
         string title

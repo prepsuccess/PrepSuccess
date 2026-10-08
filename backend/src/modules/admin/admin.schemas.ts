@@ -38,7 +38,7 @@ export const adminUserSchema = z
     last_name: z.string().nullable(),
     email: z.string(),
     role: z.enum(roles),
-    auth_provider: z.enum(["local", "google"]),
+    auth_provider: z.enum(["local", "google", "github"]),
     is_active: z.boolean(),
     is_verified: z.boolean(),
     onboarding_completed: z.boolean(),

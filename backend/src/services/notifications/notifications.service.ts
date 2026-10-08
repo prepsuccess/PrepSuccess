@@ -8,7 +8,8 @@ import { logger } from "../../lib/logger.js";
  * (a task review, a password reset) still succeeds.
  */
 
-export type NotificationType = "WELCOME" | "TASK_REVIEWED" | "PASSWORD_CHANGED" | "COACH_NUDGE";
+export type NotificationType =
+  "WELCOME" | "TASK_REVIEWED" | "PASSWORD_CHANGED" | "COACH_NUDGE" | "FEEDBACK_UPDATED";
 
 export interface NewNotification {
   type: NotificationType;

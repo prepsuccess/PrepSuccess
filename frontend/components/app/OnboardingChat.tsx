@@ -151,7 +151,12 @@ function CompletionCard({ profile }: { profile: StudentProfile }) {
   const rows: [string, string | undefined][] = [
     [
       "Studying",
-      [profile.degree, profile.student_year ? `year ${profile.student_year}` : null]
+      // e.g. "B.Tech CSE, year 3, IIT Delhi"
+      [
+        [profile.degree, profile.branch].filter(Boolean).join(" "),
+        profile.student_year ? `year ${profile.student_year}` : null,
+        profile.college,
+      ]
         .filter(Boolean)
         .join(", ") || undefined,
     ],

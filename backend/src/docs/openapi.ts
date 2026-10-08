@@ -7,6 +7,7 @@ import { questionsPaths } from "../modules/questions/questions.docs.js";
 import { assessmentPaths } from "../modules/assessment/assessment.docs.js";
 import { authPaths } from "../modules/auth/auth.docs.js";
 import { dashboardPaths } from "../modules/dashboard/dashboard.docs.js";
+import { feedbackPaths } from "../modules/feedback/feedback.docs.js";
 import { healthPaths } from "../modules/health/health.docs.js";
 import { notificationsPaths } from "../modules/notifications/notifications.docs.js";
 import { onboardingPaths } from "../modules/onboarding/onboarding.docs.js";
@@ -35,6 +36,7 @@ const paths: ZodOpenApiPathsObject = {
   ...resourcesPaths,
   ...tasksPaths,
   ...notificationsPaths,
+  ...feedbackPaths,
   ...adminPaths,
 };
 
@@ -75,6 +77,11 @@ export function buildOpenApiDocument() {
           "Learning resources for weak skills and AI-reviewed practical tasks (SCRUM-125, SCRUM-126).",
       },
       { name: "Notifications", description: "In-app notifications (SCRUM-48)." },
+      {
+        name: "Feedback",
+        description:
+          "Students report bugs, ideas and content issues with screenshots; admins reply and resolve them.",
+      },
       {
         name: "Admin",
         description:

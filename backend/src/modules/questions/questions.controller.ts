@@ -6,12 +6,14 @@ import {
   adminListQuestionsQuerySchema,
   adminPrepPdfInputSchema,
   adminPrepPdfPatchSchema,
+  adminQuestionImportInputSchema,
   adminQuestionInputSchema,
   adminQuestionPatchSchema,
   filtersQuerySchema,
   listQuestionsQuerySchema,
   pageQuerySchema,
   prepPdfIdParamsSchema,
+  questionAttemptInputSchema,
   questionIdParamsSchema,
 } from "./questions.schemas.js";
 import * as questions from "./questions.service.js";
@@ -34,6 +36,10 @@ export async function filters(req: Request, res: Response) {
   sendSuccess(req, res, await questions.filterOptions(skill));
 }
 
+export async function mine(req: Request, res: Response) {
+  sendSuccess(req, res, await questions.getMyScope(req.user!.id));
+}
+
 export async function get(req: Request, res: Response) {
   sendSuccess(req, res, await questions.getQuestion(req.user!.id, questionId(req)));
 }
@@ -52,6 +58,11 @@ export async function solve(req: Request, res: Response) {
 
 export async function unsolve(req: Request, res: Response) {
   sendSuccess(req, res, await questions.setSolved(req.user!.id, questionId(req), false));
+}
+
+export async function attempt(req: Request, res: Response) {
+  const { answer } = questionAttemptInputSchema.parse(req.body);
+  sendSuccess(req, res, await questions.attemptQuestion(req.user!.id, questionId(req), answer));
 }
 
 export async function bookmarks(req: Request, res: Response) {
@@ -84,6 +95,11 @@ export async function adminList(req: Request, res: Response) {
 export async function adminCreate(req: Request, res: Response) {
   const input = adminQuestionInputSchema.parse(req.body);
   sendSuccess(req, res, await admin.createQuestion(req.user!.id, input), { status: 201 });
+}
+
+export async function adminImport(req: Request, res: Response) {
+  const { questions: rows, dry_run } = adminQuestionImportInputSchema.parse(req.body);
+  sendSuccess(req, res, await admin.importQuestions(req.user!.id, rows, dry_run));
 }
 
 export async function adminUpdate(req: Request, res: Response) {

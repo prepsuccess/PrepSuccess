@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import type { AiInsight, Dashboard } from "@/lib/api/types";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { AiInsight, Dashboard, Feedback } from "@/lib/api/types";
 import { API, fail, http, ok, server } from "@/test/server";
 import { renderWithStore, testUser } from "@/test/render";
 import { DashboardView } from "./DashboardView";
@@ -143,6 +143,13 @@ const aiStatus = {
 
 const renderDashboard = () => renderWithStore(<DashboardView />, { signedInAs: testUser });
 const card = (name: string) => screen.getByRole("region", { name });
+
+// The feedback card asks for the student's latest feedback on every dashboard.
+beforeEach(() => {
+  server.use(http.get(`${API}/api/v1/feedback/mine`, () => ok([])));
+  // The card starts at the top until a test closes it.
+  localStorage.removeItem("ps-feedback-card-dismissed");
+});
 
 describe("DashboardView", () => {
   it("shows the full frame with guidance before any result, without asking the AI", async () => {
@@ -409,5 +416,66 @@ describe("DashboardView", () => {
     );
     renderDashboard();
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load your dashboard");
+  });
+
+  it("ends with the feedback card: a send button and the latest two with their status", async () => {
+    const sent: Feedback = {
+      id: "f1",
+      category: "bug",
+      message: "The timer froze on question 3.",
+      page: "/assessment",
+      status: "solved",
+      admin_remark: "Fixed, thanks!",
+      resolved_at: now,
+      created_at: now,
+      updated_at: now,
+      images: [],
+    };
+    let limit: string | null = null;
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(empty)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+      http.get(`${API}/api/v1/feedback/mine`, ({ request }) => {
+        limit = new URL(request.url).searchParams.get("limit");
+        return ok([
+          sent,
+          { ...sent, id: "f2", category: "idea", status: "open", admin_remark: null },
+        ]);
+      }),
+    );
+    renderDashboard();
+
+    const feedback = await screen.findByRole("region", { name: "Help us improve PrepSuccess" });
+    expect(within(feedback).getByRole("button", { name: "Send feedback" })).toBeInTheDocument();
+    const latest = await within(feedback).findByRole("list", { name: "Your latest feedback" });
+    expect(within(latest).getAllByRole("listitem")).toHaveLength(2);
+    expect(latest).toHaveTextContent("Solved");
+    expect(latest).toHaveTextContent("Replied");
+    expect(latest).toHaveTextContent("Open");
+    expect(within(feedback).getByRole("link", { name: "See all" })).toHaveAttribute(
+      "href",
+      "/feedback",
+    );
+    expect(limit).toBe("4");
+  });
+
+  it("shows the feedback card first, and moves it to the bottom once closed", async () => {
+    server.use(
+      http.get(`${API}/api/v1/dashboard`, () => ok(withResults)),
+      http.get(`${API}/api/v1/ai/insight`, () => ok(insight)),
+      http.get(`${API}/api/v1/ai/status`, () => ok(aiStatus)),
+    );
+    const { container } = renderDashboard();
+    const regions = () => within(container).getAllByRole("region");
+
+    const top = await screen.findByRole("region", { name: "Help us improve PrepSuccess" });
+    expect(regions()[0]).toBe(top);
+
+    await userEvent.click(within(top).getByRole("button", { name: /^Close/ }));
+    const bottom = await screen.findByRole("region", { name: "Help us improve PrepSuccess" });
+    expect(regions().at(-1)).toBe(bottom);
+    // At the bottom it stays put: no close button there.
+    expect(within(bottom).queryByRole("button", { name: /^Close/ })).not.toBeInTheDocument();
+    expect(localStorage.getItem("ps-feedback-card-dismissed")).toBe("1");
   });
 });

@@ -1,5 +1,7 @@
 import type { Difficulty, Prisma } from "../../generated/prisma/client.js";
 import { startOfIndianDay } from "../../lib/time.js";
+import { matchClaims, skillsInText } from "../skills/skills.logic.js";
+import { ROLES, type Role } from "./taxonomy.js";
 
 /**
  * Pure rules for the interview question bank (Phase 2) — no database. Filters
@@ -22,6 +24,10 @@ export interface QuestionFilters {
   difficulty?: Difficulty;
   q?: string;
   status?: QuestionStatusFilter;
+  /** Only these skill slugs (the student's own skills); empty matches nothing. */
+  skills?: string[];
+  /** With `skills`: questions tagged this role count too (either one matches). */
+  mineRole?: string | null;
 }
 
 const live = { isActive: true, isDeleted: false } as const;
@@ -30,6 +36,10 @@ const live = { isActive: true, isDeleted: false } as const;
 export function buildWhere(filters: QuestionFilters, userId: string) {
   const and: Prisma.QuestionBankWhereInput[] = [{ ...live, skill: live }];
   if (filters.skill) and.push({ skill: { slug: filters.skill } });
+  if (filters.skills) {
+    const bySkill = { skill: { slug: { in: filters.skills } } };
+    and.push(filters.mineRole ? { OR: [bySkill, { role: filters.mineRole }] } : bySkill);
+  }
   if (filters.company) and.push({ company: filters.company });
   if (filters.role) and.push({ role: filters.role });
   if (filters.topic) and.push({ topic: { equals: filters.topic, mode: "insensitive" } });
@@ -51,6 +61,89 @@ export function buildWhere(filters: QuestionFilters, userId: string) {
     and.push({ NOT: { progress: { some: { userId, solvedAt: { not: null } } } } });
   }
   return { AND: and } satisfies Prisma.QuestionBankWhereInput;
+}
+
+// ---- My skills ---------------------------------------------------------------
+
+/**
+ * Ways students write a target role, after roleKey(), → the taxonomy role.
+ * The trailing "developer" / "engineer" / "dev" is dropped first, so
+ * "Frontend dev" and "front-end engineer" both land on "frontend".
+ */
+const ROLE_ALIASES: Record<string, Role> = {
+  sde: "SDE",
+  swe: "SDE",
+  software: "SDE",
+  "software development": "SDE",
+  programmer: "SDE",
+  frontend: "Frontend Developer",
+  ui: "Frontend Developer",
+  react: "Frontend Developer",
+  backend: "Backend Developer",
+  node: "Backend Developer",
+  "full stack": "Full Stack Developer",
+  mern: "Full Stack Developer",
+  "mern stack": "Full Stack Developer",
+  web: "Full Stack Developer",
+  "data analyst": "Data Analyst",
+  "data analytics": "Data Analyst",
+  "data scientist": "Data Scientist",
+  "data science": "Data Scientist",
+  ml: "ML Engineer",
+  "machine learning": "ML Engineer",
+  ai: "ML Engineer",
+  "ai ml": "ML Engineer",
+  devops: "DevOps Engineer",
+  cloud: "DevOps Engineer",
+  sre: "DevOps Engineer",
+  qa: "QA Engineer",
+  test: "QA Engineer",
+  tester: "QA Engineer",
+  "software tester": "QA Engineer",
+  sdet: "QA Engineer",
+  "quality assurance": "QA Engineer",
+  "business analyst": "Business Analyst",
+};
+
+/** "Front-end Developer (intern)" → "frontend": lowercase, joined, role nouns and levels dropped. */
+function roleKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\b(front|back)\s+end\b/g, "$1end")
+    .replace(/\bfullstack\b/g, "full stack")
+    .replace(/\b(aspiring|junior|senior|trainee|intern|an?|role)\b/g, " ")
+    .replace(/\b(developer|dev|engineer|engineering|[0-9]+|i{1,3})\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** A free-text target role ("frontend dev", "Software engineer") → a taxonomy role, or null. */
+export function roleForTarget(value: unknown): Role | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const exact = ROLES.find((role) => role.toLowerCase() === value.trim().toLowerCase());
+  return exact ?? ROLE_ALIASES[roleKey(value)] ?? null;
+}
+
+const strings = (value: unknown) =>
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+
+/**
+ * What "My skills" covers for a profile: the skills claimed, skills named in
+ * goals and interests (not already claimed), and the target role. Claims the
+ * catalogue doesn't know come back as `unmatched`.
+ */
+export function mineScope(profileData: unknown) {
+  const data = (profileData ?? {}) as Record<string, unknown>;
+  const { slugs: skillSlugs, unmatched } = matchClaims(strings(data.skills));
+  const goalSlugs: string[] = [];
+  for (const phrase of [...strings(data.goals), ...strings(data.interests)]) {
+    for (const slug of skillsInText(phrase)) {
+      if (!skillSlugs.includes(slug) && !goalSlugs.includes(slug)) goalSlugs.push(slug);
+    }
+  }
+  return { skillSlugs, goalSlugs, role: roleForTarget(data.target_role), unmatched };
 }
 
 const DAY_MS = 86_400_000;

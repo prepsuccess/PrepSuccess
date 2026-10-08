@@ -11,8 +11,9 @@ import {
   type NewNotification,
 } from "../../services/notifications/notifications.service.js";
 import { toAuthUser } from "./auth.dto.js";
+import type { GithubIdentity } from "./github.client.js";
 import type { GoogleIdentity } from "./google.client.js";
-import type { LoginInput, RegisterInput, ResetPasswordInput } from "./auth.schemas.js";
+import type { LoginInput, LoginMethod, RegisterInput, ResetPasswordInput } from "./auth.schemas.js";
 import { issueTokens } from "./tokens.js";
 
 // Flow details: docs/SYSTEM_ARCHITECTURE_FLOW.md §3.
@@ -35,6 +36,13 @@ const WELCOME: NewNotification = {
   body: "Start with a short chat so your skill checks match your skills and target role.",
   href: "/onboarding",
 };
+
+/** Stamps a successful sign-in; returns the fields so the response can show them. */
+async function recordLogin(userId: string, method: LoginMethod) {
+  const data = { lastLoginAt: new Date(), lastLoginMethod: method };
+  await prisma.user.update({ where: { id: userId }, data });
+  return data;
+}
 
 type OtpPurpose = "SIGNUP" | "PASSWORD_RESET";
 
@@ -199,6 +207,7 @@ export async function register(input: RegisterInput) {
           authProvider: "LOCAL",
           isVerified: true,
           lastLoginAt: new Date(),
+          lastLoginMethod: "password",
           profile: {
             create: {
               profileData: input.student_year ? { student_year: input.student_year } : {},
@@ -269,7 +278,12 @@ export async function resetPassword(input: ResetPasswordInput) {
     await consumeOtp(tx, otp.id);
     const updated = await tx.user.update({
       where: { id: user.id },
-      data: { passwordHash, isVerified: true, lastLoginAt: new Date() },
+      data: {
+        passwordHash,
+        isVerified: true,
+        lastLoginAt: new Date(),
+        lastLoginMethod: "password",
+      },
       include: withProfile,
     });
     // Every other session ends; this one gets fresh tokens below.
@@ -302,8 +316,8 @@ export async function login(input: LoginInput) {
     throw new AppError(403, "ACCOUNT_DEACTIVATED", "This account has been deactivated.");
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  return { ...(await issueTokens(user.id, user.role)), user: toAuthUser(user) };
+  const login = await recordLogin(user.id, "password");
+  return { ...(await issueTokens(user.id, user.role)), user: toAuthUser({ ...user, ...login }) };
 }
 
 const sessionExpired = () =>
@@ -444,6 +458,87 @@ export async function loginWithGoogle(identity: GoogleIdentity) {
     throw new AppError(403, "ACCOUNT_DEACTIVATED", "This account has been deactivated.");
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  return { ...(await issueTokens(user.id, user.role)), user: toAuthUser(user) };
+  const login = await recordLogin(user.id, "google");
+  return { ...(await issueTokens(user.id, user.role)), user: toAuthUser({ ...user, ...login }) };
+}
+
+/** First and last name from GitHub's free-text `name`, falling back to the login. */
+function splitGithubName(identity: GithubIdentity) {
+  const parts = (identity.name ?? "").split(/\s+/).filter(Boolean);
+  const first = parts.shift() || identity.login;
+  return { firstName: first.slice(0, 100), lastName: parts.join(" ").slice(0, 100) || null };
+}
+
+/**
+ * GitHub sign-in, the same rules as Google, given an identity whose email
+ * GitHub reports as primary and verified:
+ *   1. a user with this github_id exists → log in
+ *   2. a user with this email exists → link GitHub to that account (their
+ *      auth_provider stays as it was), then log in
+ *   3. otherwise → create a GITHUB user with an empty profile for onboarding
+ */
+export async function loginWithGithub(identity: GithubIdentity) {
+  let user = await prisma.user.findUnique({
+    where: { githubId: identity.githubId },
+    include: withProfile,
+  });
+
+  if (!user) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: identity.email },
+      include: withProfile,
+    });
+
+    if (byEmail) {
+      // Checked before linking, so a deactivated account isn't modified.
+      if (byEmail.isDeleted || !byEmail.isActive) {
+        throw new AppError(403, "ACCOUNT_DEACTIVATED", "This account has been deactivated.");
+      }
+      if (byEmail.githubId && byEmail.githubId !== identity.githubId) {
+        throw new AppError(
+          409,
+          "GITHUB_ACCOUNT_CONFLICT",
+          "This email is linked to a different GitHub account.",
+        );
+      }
+      user = await prisma.user.update({
+        where: { id: byEmail.id },
+        data: {
+          githubId: identity.githubId,
+          isVerified: true,
+          profileImageUrl: byEmail.profileImageUrl ?? identity.avatarUrl?.slice(0, 500) ?? null,
+        },
+        include: withProfile,
+      });
+    } else {
+      try {
+        user = await prisma.user.create({
+          data: {
+            ...splitGithubName(identity),
+            email: identity.email,
+            githubId: identity.githubId,
+            authProvider: "GITHUB",
+            isVerified: true,
+            profileImageUrl: identity.avatarUrl?.slice(0, 500) ?? null,
+            profile: { create: {} },
+          },
+          include: withProfile,
+        });
+      } catch (error) {
+        // Two callbacks for the same new account racing each other.
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw new AppError(409, "GITHUB_ACCOUNT_CONFLICT", "Please try signing in again.");
+        }
+        throw error;
+      }
+      await notify(user.id, WELCOME);
+    }
+  }
+
+  if (user.isDeleted || !user.isActive) {
+    throw new AppError(403, "ACCOUNT_DEACTIVATED", "This account has been deactivated.");
+  }
+
+  const login = await recordLogin(user.id, "github");
+  return { ...(await issueTokens(user.id, user.role)), user: toAuthUser({ ...user, ...login }) };
 }

@@ -73,7 +73,11 @@ export const APP_GUIDE = [
   "- Dashboard (/dashboard): readiness score (technical 50%, aptitude 30%, soft skills 20%), results, gaps, next steps and the coach's take.",
   "- Skill checks (/assessment): adaptive multiple-choice checks for 36 skills. The student picks 10 to 30 questions; questions get harder after right answers. Each skill has a pass mark. Answers can be reviewed afterwards.",
   "- Learn (/learn): every skill has hand-picked study material and 5 practical tasks (2 easy, 2 medium, 1 hard). Tasks open in a real code editor in the skill's language; JavaScript can be run in the browser and HTML/CSS shows a live preview. The AI marks each answer against a rubric; 60% passes.",
-  "- Interview prep (/questions): about 700 real interview questions tagged by skill, company, role, topic and difficulty, each with a model answer (hidden until the student asks). Students can filter, bookmark (/questions/bookmarks) and mark questions solved; the dashboard shows questions solved per week.",
+  "- Interview prep (/questions): about 700 real interview questions tagged by skill, company, role, topic and difficulty, each with a model answer (hidden until the student asks). Students can search, open Filters, bookmark (/questions/bookmarks) and mark questions solved; the dashboard shows questions solved per week.",
+  '- "My skills" on Interview prep: shows only questions for the skills on the student\'s profile, skills named in their goals (e.g. "get better at DSA") and their target role, with solved / total per skill. Profile changes update it.',
+  '- Practise your answer: on any question the student can type their answer and press "Get feedback". The AI scores it out of 10 and lists what they covered, what to add and one tip. It uses their daily AI requests; the last attempt is saved.',
+  '- "Ask coach about this question" on a question page opens this chat with that question attached, so the coach can explain it or give hints.',
+  "- After a skill check, the result page links to that skill's interview questions.",
   "- Prep guides (/prep-guides): downloadable interview guides added by the PrepSuccess team.",
   "- Profile (/profile): the student's details; edit them any time.",
   "- Notifications: the bell in the top bar.",
@@ -130,7 +134,37 @@ export function describeStudent(context: CoachContext) {
   return lines.join("\n");
 }
 
-export function buildCoachPrompt(context: CoachContext, now = new Date()) {
+/** The interview question the student has open while chatting (used for one reply only). */
+export interface CoachQuestion {
+  skill: string;
+  title: string;
+  body: string;
+  answer: string | null;
+}
+
+/** Long questions or answers are cut, so one page can't crowd out the rest of the prompt. */
+export const MAX_QUESTION_CHARS = 3000;
+const clip = (value: string) =>
+  value.length > MAX_QUESTION_CHARS ? `${value.slice(0, MAX_QUESTION_CHARS)}…` : value;
+
+/** Prompt lines about the question on the student's screen. */
+export function describeQuestion(question: CoachQuestion) {
+  return [
+    `The student is looking at this ${question.skill} interview question on PrepSuccess right now. "This question" means this one:`,
+    `Question: ${question.title}`,
+    clip(question.body),
+    question.answer
+      ? `Model answer (they can open it on the page):\n${clip(question.answer)}`
+      : "This question has no model answer.",
+    "Explain it in simple words, give hints, or quiz them on it, whichever they ask for. Don't ask them to paste it.",
+  ].join("\n");
+}
+
+export function buildCoachPrompt(
+  context: CoachContext,
+  question: CoachQuestion | null = null,
+  now = new Date(),
+) {
   return [
     "You are the PrepSuccess coach: a friendly, practical placement-preparation mentor for an Indian college student.",
     `Today is ${now.toLocaleDateString("en-IN", { dateStyle: "long", timeZone: "Asia/Kolkata" })}.`,
@@ -140,6 +174,7 @@ export function buildCoachPrompt(context: CoachContext, now = new Date()) {
     "",
     APP_GUIDE,
     "",
+    ...(question ? [describeQuestion(question), ""] : []),
     "How to answer:",
     "- Be specific to this student's data. Point them to the right page (by name and path) when it helps.",
     "- Keep replies short: under 150 words unless they ask for detail. Simple English. Use short lists when listing steps.",

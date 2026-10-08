@@ -9,6 +9,16 @@ export const coachMessageSchema = z
       .trim()
       .min(1, "Type a question.")
       .max(MAX_MESSAGE_CHARS, `Keep it under ${MAX_MESSAGE_CHARS} characters.`),
+    context: z
+      .object({
+        question_id: z.uuid().meta({ description: "The interview question open on the page." }),
+      })
+      .optional()
+      .meta({
+        description:
+          "What the student is looking at. Used for this reply only and not saved; an unknown or " +
+          "removed question is ignored.",
+      }),
   })
   .meta({ id: "CoachMessageRequest" });
 

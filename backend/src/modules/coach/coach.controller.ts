@@ -9,8 +9,12 @@ export async function get(req: Request, res: Response) {
 }
 
 export async function send(req: Request, res: Response) {
-  const { content } = coachMessageSchema.parse(req.body);
-  sendSuccess(req, res, await coach.sendCoachMessage(req.user!.id, content));
+  const { content, context } = coachMessageSchema.parse(req.body);
+  sendSuccess(
+    req,
+    res,
+    await coach.sendCoachMessage(req.user!.id, content, { questionId: context?.question_id }),
+  );
 }
 
 export async function clear(req: Request, res: Response) {

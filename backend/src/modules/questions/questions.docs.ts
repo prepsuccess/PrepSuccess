@@ -7,16 +7,21 @@ import {
   adminPrepPdfInputSchema,
   adminPrepPdfPatchSchema,
   adminPrepPdfSchema,
+  adminQuestionImportRequestSchema,
+  adminQuestionImportResultSchema,
   adminQuestionInputSchema,
   adminQuestionPatchSchema,
   adminQuestionSchema,
   filtersQuerySchema,
   listQuestionsQuerySchema,
+  mineScopeSchema,
   pageQuerySchema,
   prepPdfDownloadSchema,
   prepPdfIdParamsSchema,
   prepPdfSchema,
   progressSchema,
+  questionAttemptInputSchema,
+  questionAttemptSchema,
   questionDetailSchema,
   questionFiltersSchema,
   questionIdParamsSchema,
@@ -96,6 +101,17 @@ export const questionsPaths: ZodOpenApiPathsObject = {
       },
     }),
   },
+  "/api/v1/questions/mine": {
+    get: student("What My skills covers", {
+      description:
+        "The skills on your profile, skills named in your goals, and your target role (matched to " +
+        "a known role) that `mine=true` uses, with question counts and your solves per skill.",
+      responses: {
+        ...ok(mineScopeSchema, "Your question scope."),
+        ...errors(studentAuth),
+      },
+    }),
+  },
   "/api/v1/questions/bookmarks": {
     get: student("My bookmarked questions", {
       requestParams: { query: pageQuerySchema },
@@ -128,6 +144,31 @@ export const questionsPaths: ZodOpenApiPathsObject = {
       "Idempotent: solving again keeps the first solved date, so each question counts once.",
     ),
     delete: progressWrite("Mark a question not solved", "Idempotent."),
+  },
+  "/api/v1/questions/{id}/attempt": {
+    post: student("Get AI feedback on my answer", {
+      description:
+        "One AI call. Compares the student's written answer with the question's model answer and " +
+        "returns a 0-10 score, a verdict (8+ strong, 5-7 partial, 0-4 weak), what they covered, " +
+        "what to add and one tip. The answer is treated strictly as the answer to judge — " +
+        "instructions inside it are ignored. Only the latest attempt is kept (it comes back as " +
+        "`my_attempt` on the question). Doesn't mark the question solved. Nothing is saved if " +
+        "the AI call fails.",
+      requestParams: questionPath,
+      requestBody: json(questionAttemptInputSchema),
+      responses: {
+        ...ok(questionAttemptSchema, "The answer and its feedback."),
+        ...errors({
+          ...studentAuth,
+          403: "`FORBIDDEN` — students only, or `AI_TRIAL_ENDED`.",
+          404: "`QUESTION_NOT_FOUND`.",
+          ...VALIDATION_422,
+          429: "`AI_DAILY_LIMIT` or `TOO_MANY_REQUESTS`.",
+          502: "`AI_BAD_RESPONSE` — try again.",
+          503: "`AI_UNAVAILABLE` or `AI_NOT_CONFIGURED`.",
+        }),
+      },
+    }),
   },
   "/api/v1/progress": {
     get: student("My progress over time", {
@@ -181,6 +222,25 @@ export const questionsPaths: ZodOpenApiPathsObject = {
           ...adminAuth,
           404: "`SKILL_NOT_FOUND`.",
           409: "`QUESTION_EXISTS` — a live question in this skill has that title.",
+          ...VALIDATION_422,
+        }),
+      },
+    }),
+  },
+  "/api/v1/admin/questions/import": {
+    post: admin("Import interview questions", {
+      description:
+        "Bulk add for seeding (up to 500 rows; body up to 5 MB). Rows follow the single add's rules and name their skill by `skill` slug or `skill_id`. Blank optional cells are ignored and company, role and difficulty match the lists ignoring case. Each row is checked on its own: a bad row (or a repeat of an earlier row's skill and title) goes in `errors` with its 1-based row number, the rest still import. A live question with the same skill and title is skipped, not overwritten; a deleted one is restored with the row's content. Writes happen in one transaction. `dry_run: true` reports the same counts and saves nothing. Limited to 10 imports a minute.",
+      requestBody: json(adminQuestionImportRequestSchema),
+      responses: {
+        ...ok(
+          adminQuestionImportResultSchema,
+          "What was (or would be) created, restored and skipped.",
+        ),
+        ...errors({
+          ...adminAuth,
+          409: "`QUESTION_EXISTS` — a question was added with one of these titles mid-import; try again.",
+          413: "`PAYLOAD_TOO_LARGE` — split the file.",
           ...VALIDATION_422,
         }),
       },

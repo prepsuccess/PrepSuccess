@@ -4,13 +4,14 @@
  * recording, no cookies (memory persistence) and never personal data such as
  * names, emails, answers or chats. Call `track` from the handler of a
  * successful action, never during render, so each event fires exactly once
- * per real occurrence.
+ * per real occurrence. Props are counts, flags and categories only: e.g.
+ * question_feedback_requested carries the 0-10 score, never the answer text.
  */
 
 import type { CaptureResult } from "posthog-js";
 
 export type AnalyticsEvent =
-  | { name: "signup_completed"; props: { method: "email" | "google" } }
+  | { name: "signup_completed"; props: { method: "email" | "google" | "github" } }
   | { name: "onboarding_completed"; props?: undefined }
   | { name: "skill_check_completed"; props: { category: string; mastered: boolean } }
   | { name: "dashboard_viewed"; props: { has_results: boolean } }
@@ -18,7 +19,15 @@ export type AnalyticsEvent =
   | { name: "password_reset_completed"; props?: undefined }
   | { name: "question_bookmarked"; props?: Record<string, never> }
   | { name: "question_solved"; props?: Record<string, never> }
-  | { name: "prep_pdf_downloaded"; props?: Record<string, never> };
+  | { name: "prep_pdf_downloaded"; props?: Record<string, never> }
+  /** AI feedback came back on a written interview answer. */
+  | { name: "question_feedback_requested"; props: { score: number } }
+  /** "My skills" switched on or off on the question bank. */
+  | { name: "my_skills_toggled"; props: { on: boolean } }
+  /** "Ask coach about this question" on a question page. */
+  | { name: "coach_asked_about_question"; props?: Record<string, never> }
+  /** Feedback sent from the "Send feedback" dialog: its category and how many screenshots. */
+  | { name: "feedback_sent"; props: { category: string; images: number } };
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";

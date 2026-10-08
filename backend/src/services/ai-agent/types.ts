@@ -10,6 +10,7 @@ export type AiFeature =
   | "onboarding"
   | "assessment"
   | "task_review"
+  | "question_feedback"
   | "next_steps"
   | "coach"
   | "coach_nudge"

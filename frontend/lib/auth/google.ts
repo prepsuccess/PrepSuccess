@@ -50,11 +50,19 @@ const ERROR_MESSAGES: Record<string, string> = {
   google_email_unverified: "Your Google email isn't verified, so we can't use it to sign in.",
   google_account_conflict: "This email is linked to a different Google account.",
   google_not_configured: "Google sign-in isn't available right now. Use email instead.",
+  github_cancelled: "GitHub sign-in was cancelled.",
+  github_session_expired: "GitHub sign-in took too long. Please try again.",
+  github_no_email:
+    "Your GitHub account has no verified email. Add one on GitHub, or sign up with email.",
+  github_not_configured: "GitHub sign-in isn't available right now. Use email or Google instead.",
   account_deactivated: "This account has been deactivated.",
 };
 
 /** Turns a `?error=` code from the backend into a sentence, or null for no/unknown code. */
 export function authErrorMessage(code: string | undefined): string | null {
   if (!code) return null;
-  return ERROR_MESSAGES[code] ?? "Google sign-in didn't work. Please try again.";
+  if (ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
+  return code.startsWith("github")
+    ? "GitHub sign-in didn't work. Please try again."
+    : "Google sign-in didn't work. Please try again.";
 }

@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Check, CircleAlert, GraduationCap, RotateCw, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  GraduationCap,
+  MessagesSquare,
+  RotateCw,
+  X,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/alert";
 import { Badge } from "@/components/shadcn/badge";
 import { Button } from "@/components/shadcn/button";
@@ -12,6 +20,7 @@ import { Skeleton } from "@/components/shadcn/skeleton";
 import { QueryState } from "@/components/ui/QueryState";
 import { Spinner } from "@/components/ui/Spinner";
 import { errorMessage, isApiError } from "@/lib/api/errors";
+import { useGetQuestionFiltersQuery } from "@/lib/api/endpoints/questions";
 import { useAnswerQuestionMutation, useGetAssessmentQuery } from "@/lib/api/endpoints/skills";
 import type { AnsweredQuestion, AssessmentQuestion, AssessmentState } from "@/lib/api/types";
 import { cn } from "@/lib/utils/cn";
@@ -312,6 +321,11 @@ function ResultStep({ state }: { state: AssessmentState }) {
   const result = state.result!;
   const mastered = result.mastery === "mastered";
   const right = state.answers.filter((a) => a.correct).length;
+  // Link to interview questions only when this skill has some (or the counts didn't load).
+  const questionFilters = useGetQuestionFiltersQuery(undefined);
+  const hasQuestions = questionFilters.isError
+    ? true
+    : !!questionFilters.data?.skills.some((s) => s.slug === state.skill.slug && s.count > 0);
 
   return (
     <div className="space-y-6">
@@ -375,6 +389,14 @@ function ResultStep({ state }: { state: AssessmentState }) {
               Study {state.skill.name}
             </Link>
           </Button>
+          {hasQuestions ? (
+            <Button asChild variant="ghost">
+              <Link href={`/questions?skill=${encodeURIComponent(state.skill.slug)}`}>
+                <MessagesSquare />
+                Practise {state.skill.name} interview questions
+              </Link>
+            </Button>
+          ) : null}
         </CardFooter>
       </Card>
 
@@ -388,7 +410,8 @@ function ResultStep({ state }: { state: AssessmentState }) {
               Hand-picked material for {state.skill.name}.{" "}
               <Link
                 href={`/learn/${state.skill.slug}`}
-                className="text-foreground underline underline-offset-4"
+                // A bigger tap area on touch screens, without changing the line.
+                className="text-foreground relative underline underline-offset-4 pointer-coarse:after:absolute pointer-coarse:after:-inset-x-1 pointer-coarse:after:-inset-y-1.5"
               >
                 See everything, plus practical tasks
               </Link>

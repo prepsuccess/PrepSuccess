@@ -19,13 +19,21 @@ const nudge = {
 
 test("the coach checks in with a toast that opens the chat", async ({ page }) => {
   const api = await signIn(page);
-  await page.route(`${API}/api/v1/ai/coach/ping`, (route) =>
-    route.fulfill({ json: envelope({ nudged: true }) }),
-  );
-  // Nothing on the first load; the check-in appears after the ping.
+  // Nothing on the first load; the check-in appears after the ping. The ping
+  // answers only once the bell has shown that first (empty) load, as it would
+  // 30 minutes in; otherwise the tip could land in the bell's starting list,
+  // which never toasts.
+  let firstLoadServed!: () => void;
+  const firstLoad = new Promise<void>((resolve) => (firstLoadServed = resolve));
+  await page.route(`${API}/api/v1/ai/coach/ping`, async (route) => {
+    await firstLoad;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ json: envelope({ nudged: true }) });
+  });
   let loads = 0;
   await page.route(`${API}/api/v1/notifications`, (route) => {
     loads += 1;
+    if (loads === 1) firstLoadServed();
     const list = loads === 1 ? [] : [nudge];
     return route.fulfill({
       json: envelope({ notifications: list, unread_count: list.length }),

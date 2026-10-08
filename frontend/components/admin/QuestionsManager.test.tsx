@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import toast from "react-hot-toast";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminQuestion, AdminSkill } from "@/lib/api/types";
 import { API, fail, http, ok, server } from "@/test/server";
 import { renderWithStore, testUser } from "@/test/render";
@@ -171,5 +172,107 @@ describe("QuestionsManager", { timeout: 15_000 }, () => {
 
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(deleted).toBe(question.id));
+  });
+});
+
+describe("QuestionsManager import", { timeout: 15_000 }, () => {
+  const csv = [
+    "skill,title,body,answer,topic,difficulty,company,role",
+    'sql,"Joins, explained","Line one',
+    "",
+    'Say ""hi""",,Joins,easy,,',
+    "sql,Hi,Too short,,Joins,easy,Acme,",
+  ].join("\n");
+
+  it("checks the file with a dry run, then imports and refreshes the list", async () => {
+    const bodies: { questions: Record<string, unknown>[]; dry_run?: boolean }[] = [];
+    let listCalls = 0;
+    server.use(
+      http.get(`${API}/api/v1/admin/questions`, () => {
+        listCalls += 1;
+        return Response.json(page([question]));
+      }),
+      http.post(`${API}/api/v1/admin/questions/import`, async ({ request }) => {
+        const body = (await request.json()) as (typeof bodies)[number];
+        bodies.push(body);
+        return ok({
+          created: 1,
+          restored: 0,
+          skipped: 0,
+          errors: [{ row: 2, title: "Hi", message: "title: Use at least 5 characters." }],
+        });
+      }),
+    );
+    const success = vi.spyOn(toast, "success");
+    renderManager();
+    await screen.findByText(question.title);
+    const before = listCalls;
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = await screen.findByRole("dialog", { name: "Import questions" });
+    expect(within(dialog).getByRole("link", { name: "Download template" })).toHaveAttribute(
+      "download",
+      "questions-template.csv",
+    );
+    const file = new File([csv], "questions.csv", { type: "text/csv" });
+    await user.upload(within(dialog).getByLabelText("Question file"), file);
+    await user.click(within(dialog).getByRole("button", { name: "Check file" }));
+
+    expect(
+      await within(dialog).findByText("1 will be created, 0 restored, 0 skipped, 1 error."),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Row 2 \(“Hi”\): title: Use at least 5/)).toBeInTheDocument();
+    expect(bodies[0]).toEqual({
+      dry_run: true,
+      questions: [
+        {
+          skill: "sql",
+          title: "Joins, explained",
+          body: 'Line one\n\nSay "hi"',
+          topic: "Joins",
+          difficulty: "easy",
+        },
+        {
+          skill: "sql",
+          title: "Hi",
+          body: "Too short",
+          topic: "Joins",
+          difficulty: "easy",
+          company: "Acme",
+        },
+      ],
+    });
+    expect(listCalls).toBe(before);
+
+    await user.click(within(dialog).getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ questions: bodies[0].questions });
+    await waitFor(() =>
+      expect(success).toHaveBeenCalledWith(
+        "Imported: 1 created, 0 restored, 0 skipped. 1 row had errors.",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(listCalls).toBeGreaterThan(before));
+  });
+
+  it("explains a file it can't read without calling the API", async () => {
+    let called = false;
+    server.use(
+      http.post(`${API}/api/v1/admin/questions/import`, () => {
+        called = true;
+        return ok({ created: 0, restored: 0, skipped: 0, errors: [] });
+      }),
+    );
+    renderManager();
+    await screen.findByText(question.title);
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = await screen.findByRole("dialog", { name: "Import questions" });
+    await fill(within(dialog).getByLabelText("Or paste JSON"), "{ not json");
+    await user.click(within(dialog).getByRole("button", { name: "Check file" }));
+
+    expect(await within(dialog).findByText("That isn't valid JSON.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Import" })).toBeDisabled();
+    expect(called).toBe(false);
   });
 });
